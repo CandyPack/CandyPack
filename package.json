@@ -1,0 +1,19 @@
+{
+  "name": "candypack",
+  "version": "0.0.2",
+  "directories": {
+    "bin": "./bin",
+    "lib": "./lib"
+  },
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "bin": {
+    "candypack": "bin/candypack"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ps-node": "^0.1.6"
+  }
+}
