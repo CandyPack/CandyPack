@@ -3,16 +3,18 @@
   "version": "0.0.2",
   "directories": {
     "bin": "./bin",
-    "lib": "./lib"
+    "lib": "./lib",
+    "src": "./src"
   },
   "description": "",
   "main": "index.js",
   "scripts": {},
   "bin": {
+    "candy": "bin/candy",
     "candypack": "bin/candypack"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "ps-node": "^0.1.6"
   }

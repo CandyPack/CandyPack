@@ -1,3 +1,5 @@
 #!/usr/bin/env node
 
+global.trigger = 'candypack';
+
 require('../lib/server/cli.js');
