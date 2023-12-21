@@ -1,20 +1,31 @@
 {
   "name": "candypack",
-  "version": "0.0.2",
+  "description": "",
+  "homepage": "https://candypack.dev",
+  "author": {
+    "name": "Emre Red",
+    "email": "mail@emre.red",
+    "url": "https://emre.red"
+  },
+  "version": "0.0.3",
+  "license": "MIT",
+  "engines": {
+    "node": ">=10.0.0"
+  },
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CandyPack/CandyPack.git"
+  },
   "directories": {
     "bin": "./bin",
     "lib": "./lib",
     "src": "./src"
   },
-  "description": "",
-  "main": "index.js",
-  "scripts": {},
   "bin": {
     "candy": "bin/candy",
     "candypack": "bin/candypack"
   },
-  "author": "",
-  "license": "MIT",
   "dependencies": {
     "http-proxy": "^1.18.1",
     "mysql": "^2.18.1",
