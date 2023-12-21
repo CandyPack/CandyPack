@@ -9,7 +9,6 @@ global.Candy = {
 
 module.exports = {
     init: function(){
-        console.log('Candy is Starting!');
         Candy.Mysql.init();
         Candy.Route.init();
         Candy.Server.init();

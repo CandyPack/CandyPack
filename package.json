@@ -16,6 +16,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "http-proxy": "^1.18.1",
+    "mysql": "^2.18.1",
     "ps-node": "^0.1.6"
   }
 }

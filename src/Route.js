@@ -17,7 +17,8 @@ module.exports = {
             if(Candy.Route.routes[route].page[url]) Candy.Route.routes[route].page[url](req, res);
             else res.end('no');
         } else if(Candy.Route.routes['www']){
-            Candy.Route.routes['www'].request(req, res);
+            if(Candy.Route.routes['www'].page[url]) Candy.Route.routes['www'].page[url](req, res);
+            else res.end('no');
         } else {
             res.end();
         }

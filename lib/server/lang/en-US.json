@@ -1,12 +1,10 @@
 {
-    "Running": "Running",
-    "Services": "Services",
-    "Name": "Name",
-    "Uptime": "Uptime",
+    "Restart CandyPack Server": "Restart CandyPack Server",
+    "Login to CandyPack Server": "Login to CandyPack Server",
     "Status": "Status",
-    "Active": "Active",
-    "Restarting CandyPack Server...": "Restarting CandyPack Server...",
     "Starting CandyPack Server...": "Starting CandyPack Server...",
+    "Uptime": "Uptime",
+    "Running": "Running",
     "Auth": "Auth",
     "Online": "Online",
     "%s Services": "%s Services",
@@ -14,10 +12,6 @@
     "Login on %s to manage all your server operations.": "Login on %s to manage all your server operations.",
     "Start a CandyPack Service": "Start a CandyPack Service",
     "Create a new Website": "Create a new Website",
-    "Restart CandyPack Server": "Restart CandyPack Server",
     "List all CandyPack Services": "List all CandyPack Services",
-    "List all CandyPack Websites": "List all CandyPack Websites",
-    "%s Running": "%s Running",
-    "Websites": "Websites",
-    "Website %s doesn't have index.js file.": "Website %s doesn't have index.js file."
+    "List all CandyPack Websites": "List all CandyPack Websites"
 }
