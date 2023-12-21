@@ -7,7 +7,7 @@
     "email": "mail@emre.red",
     "url": "https://emre.red"
   },
-  "version": "0.0.3",
+  "version": "0.0.5",
   "license": "MIT",
   "engines": {
     "node": ">=10.0.0"

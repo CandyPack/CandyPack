@@ -19,5 +19,10 @@
     "List all CandyPack Websites": "List all CandyPack Websites",
     "%s Running": "%s Running",
     "Websites": "Websites",
-    "Website %s doesn't have index.js file.": "Website %s doesn't have index.js file."
+    "Website %s doesn't have index.js file.": "Website %s doesn't have index.js file.",
+    "Insert Domain (example.com): ": "Insert Domain (example.com): ",
+    "Insert Path (%s): ": "Insert Path (%s): ",
+    "%s Creating...": "%s Creating...",
+    "Candy Framework Initializing...": "Candy Framework Initializing...",
+    "%s Created.": "%s Created."
 }
