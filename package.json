@@ -29,6 +29,7 @@
   "dependencies": {
     "http-proxy": "^1.18.1",
     "mysql": "^2.18.1",
-    "ps-node": "^0.1.6"
+    "ps-node": "^0.1.6",
+    "selfsigned": "^2.4.1"
   }
 }

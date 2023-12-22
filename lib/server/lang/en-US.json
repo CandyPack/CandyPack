@@ -15,5 +15,6 @@
     "List all CandyPack Services": "List all CandyPack Services",
     "List all CandyPack Websites": "List all CandyPack Websites",
     "Websites": "Websites",
-    "Services": "Services"
+    "Services": "Services",
+    "Website %s doesn't have index.js file.": "Website %s doesn't have index.js file."
 }

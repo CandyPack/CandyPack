@@ -24,5 +24,6 @@
     "Insert Path (%s): ": "Insert Path (%s): ",
     "%s Creating...": "%s Creating...",
     "Candy Framework Initializing...": "Candy Framework Initializing...",
-    "%s Created.": "%s Created."
+    "%s Created.": "%s Created.",
+    "Website %s already exists.": "Website %s already exists."
 }
