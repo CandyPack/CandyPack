@@ -1,7 +1,7 @@
 'use strict'
 
 global.Candy = {
-    _config: require(`${dir}/config.js`),
+    _config: require(`${__dir}/config.js`),
     Route  : require('./src/Route.js'),
     Server : require('./src/Server.js'),
     Mysql  : require('./src/Mysql.js')

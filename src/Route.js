@@ -1,32 +1,93 @@
 const fs = require('fs');
 
+var loading = false;
+var reload = 0;
+var routes = {};
+
+function set(type, url, file){
+    if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
+    let path = `${__dir}/controller/${type}/${file}.js`;
+    if(!Candy.Route.routes[Candy.Route.buff]) Candy.Route.routes[Candy.Route.buff] = {};
+    if(!Candy.Route.routes[Candy.Route.buff][type]) Candy.Route.routes[Candy.Route.buff][type] = {};
+    if(Candy.Route.routes[Candy.Route.buff][type][url]){
+        Candy.Route.routes[Candy.Route.buff][type][url].reload = reload;
+        if(Candy.Route.routes[Candy.Route.buff][type][url].mtime < fs.statSync(path).mtimeMs){
+            delete Candy.Route.routes[Candy.Route.buff][type][url];
+            delete require.cache[require.resolve(path)];
+        } else return;
+    }
+    if(fs.existsSync(path)){
+        if(!Candy.Route.routes[Candy.Route.buff][type][url]) Candy.Route.routes[Candy.Route.buff][type][url] = {};
+        Candy.Route.routes[Candy.Route.buff][type][url].cache = require(path);
+        Candy.Route.routes[Candy.Route.buff][type][url].file = file;
+        Candy.Route.routes[Candy.Route.buff][type][url].mtime = fs.statSync(path).mtimeMs;
+        Candy.Route.routes[Candy.Route.buff][type][url].reload = reload;
+    }
+}
+
+function init(){
+    if(loading) return;
+    loading = true;
+    let dir = fs.readdirSync(`${__dir}/route/`);
+    for(const file of dir){
+        if(file.substr(-3) !== '.js') continue;
+        let mtime = fs.statSync(`${__dir}/route/${file}`).mtimeMs;
+        Candy.Route.buff = file.replace('.js', '');
+        if(!routes[file] || routes[file] < mtime){
+            delete require.cache[require.resolve(`${__dir}/route/${file}`)];
+            reload++;
+            routes[file] = mtime;
+            require(`${__dir}/route/${file}`);
+        }
+        for(const type of ['page', 'post', 'get', 'error']){
+            if(!Candy.Route.routes[Candy.Route.buff]) continue;
+            if(!Candy.Route.routes[Candy.Route.buff][type]) continue;
+            for (const route in Candy.Route.routes[Candy.Route.buff][type]) {
+                if(Candy.Route.routes[Candy.Route.buff][type][route].reload !== reload){
+                    delete Candy.Route.routes[Candy.Route.buff][type][route];
+                    delete require.cache[require.resolve(`${__dir}/controller/page/${route}.js`)];
+                } else if(Candy.Route.routes[Candy.Route.buff][type][route]){
+                    if(Candy.Route.routes[Candy.Route.buff][type][route].mtime < fs.statSync(`${__dir}/controller/${type}/${Candy.Route.routes[Candy.Route.buff][type][route].file}.js`).mtimeMs){
+                        set(type, route, Candy.Route.routes[Candy.Route.buff][type][route].file);
+                    }
+                }
+            }
+        }
+        delete Candy.Route.buff;
+    }
+    loading = false;
+}
+
 module.exports = {
     routes: {},
     init: function(){
-        fs.readdirSync(`${dir}/route/`).forEach(file => {
-            Candy.Route.buff = file.replace('.js', '');
-            require(`${dir}/route/${file}`).init
-        });
-        delete Candy.Route.buff;
+        init();
+        setInterval(init, 1000);
     },
     request: function(req, res){
         let route = req.headers.host.split('.')[0];
         let url = req.url.split('?')[0];
         if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
         if(Candy.Route.routes[route]){
-            if(Candy.Route.routes[route].page[url]) Candy.Route.routes[route].page[url](req, res);
+            if(Candy.Route.routes[route].page[url]) Candy.Route.routes[route].page[url].cache(req, res);
             else res.end('no');
         } else if(Candy.Route.routes['www']){
-            if(Candy.Route.routes['www'].page[url]) Candy.Route.routes['www'].page[url](req, res);
+            if(Candy.Route.routes['www'].page[url]) Candy.Route.routes['www'].page[url].cache(req, res);
             else res.end('no');
         } else {
             res.end();
         }
     },
     page: function(path, file){
-        if(path.substr(-1) === '/') path = path.substr(0, path.length - 1);
-        if(!Candy.Route.routes[Candy.Route.buff]) Candy.Route.routes[Candy.Route.buff] = {};
-        if(!Candy.Route.routes[Candy.Route.buff].page) Candy.Route.routes[Candy.Route.buff].page = {};
-        if(fs.existsSync(`${dir}/controller/page/${file}.js`)) Candy.Route.routes[Candy.Route.buff].page[path] = require(`${dir}/controller/page/${file}.js`);
+        set('page', path, file);
+    },
+    post: function(path, file){
+        set('post', path, file);
+    },
+    get: function(path, file){
+        set('get', path, file);
+    },
+    error: function(code, file){
+        set('error', code, file);
     }
 };
