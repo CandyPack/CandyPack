@@ -7,6 +7,10 @@ var routes = {};
 function set(type, url, file){
     if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
     let path = `${__dir}/controller/${type}/${file}.js`;
+    if(file.includes('.')){
+        let arr = file.split('.');
+        path = `${__dir}/controller/${arr[0]}/${type}/${arr.slice(1).join('.')}.js`;
+    }
     if(!Candy.Route.routes[Candy.Route.buff]) Candy.Route.routes[Candy.Route.buff] = {};
     if(!Candy.Route.routes[Candy.Route.buff][type]) Candy.Route.routes[Candy.Route.buff][type] = {};
     if(Candy.Route.routes[Candy.Route.buff][type][url]){
@@ -22,6 +26,7 @@ function set(type, url, file){
         Candy.Route.routes[Candy.Route.buff][type][url].file = file;
         Candy.Route.routes[Candy.Route.buff][type][url].mtime = fs.statSync(path).mtimeMs;
         Candy.Route.routes[Candy.Route.buff][type][url].reload = reload;
+        Candy.Route.routes[Candy.Route.buff][type][url].path = path;
     }
 }
 
@@ -47,7 +52,7 @@ function init(){
                     delete Candy.Route.routes[Candy.Route.buff][type][route];
                     delete require.cache[require.resolve(`${__dir}/controller/page/${route}.js`)];
                 } else if(Candy.Route.routes[Candy.Route.buff][type][route]){
-                    if(Candy.Route.routes[Candy.Route.buff][type][route].mtime < fs.statSync(`${__dir}/controller/${type}/${Candy.Route.routes[Candy.Route.buff][type][route].file}.js`).mtimeMs){
+                    if(Candy.Route.routes[Candy.Route.buff][type][route].mtime < fs.statSync(Candy.Route.routes[Candy.Route.buff][type][route].path).mtimeMs){
                         set(type, route, Candy.Route.routes[Candy.Route.buff][type][route].file);
                     }
                 }
@@ -68,11 +73,13 @@ module.exports = {
         let route = req.headers.host.split('.')[0];
         let url = req.url.split('?')[0];
         if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
+        let type = req.method.toLowerCase();
+        console.log(route, type, url);
         if(Candy.Route.routes[route]){
-            if(Candy.Route.routes[route].page[url]) Candy.Route.routes[route].page[url].cache(req, res);
+            if(Candy.Route.routes[route][type] && Candy.Route.routes[route][type][url]) Candy.Route.routes[route][type][url].cache(req, res);
             else res.end('no');
         } else if(Candy.Route.routes['www']){
-            if(Candy.Route.routes['www'].page[url]) Candy.Route.routes['www'].page[url].cache(req, res);
+            if(Candy.Route.routes['www'][type] && Candy.Route.routes['www'][type][url]) Candy.Route.routes['www'][type][url].cache(req, res);
             else res.end('no');
         } else {
             res.end();
