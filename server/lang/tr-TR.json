@@ -1,12 +1,9 @@
 {
-    "Running": "Running",
-    "Services": "Services",
-    "Name": "Name",
-    "Uptime": "Uptime",
+    "Website %s doesn't have index.js file.": "Website %s doesn't have index.js file.",
     "Status": "Status",
-    "Errored": "Errored",
-    "Active": "Active",
+    "Uptime": "Uptime",
     "Websites": "Websites",
+    "Services": "Services",
     "Auth": "Auth",
     "Online": "Online",
     "Not logged in": "Not logged in",
@@ -16,6 +13,5 @@
     "Restart CandyPack Server": "Restart CandyPack Server",
     "List all CandyPack Services": "List all CandyPack Services",
     "List all CandyPack Websites": "List all CandyPack Websites",
-    "Monitor Website or Service": "Monitor Website or Service",
-    "Domains": "Domains"
+    "Monitor Website or Service": "Monitor Website or Service"
 }

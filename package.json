@@ -7,20 +7,20 @@
     "email": "mail@emre.red",
     "url": "https://emre.red"
   },
-  "version": "0.0.8",
+  "version": "0.0.9",
   "license": "MIT",
   "engines": {
     "node": ">=10.0.0"
   },
-  "main": "index.js",
+  "main": "framework/index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/CandyPack/CandyPack.git"
   },
   "directories": {
     "bin": "./bin",
-    "lib": "./lib",
-    "src": "./src"
+    "server": "./server",
+    "framework": "./framework"
   },
   "bin": {
     "candy": "bin/candy",

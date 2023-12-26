@@ -2,4 +2,4 @@
 
 global.trigger = 'candy';
 
-require('../lib/server/cli.js');
+require('../server/cli.js');
