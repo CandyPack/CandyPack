@@ -1,8 +1,8 @@
 const Candy = {
     Config  : require('./Config.js'),
+    Mysql   : require('./Mysql.js'),
     Route   : require('./Route.js'),
     Server  : require('./Server.js'),
-    Mysql   : require('./Mysql.js'),
     var     : function(value){
         const variable = require('./Var.js');
         return variable.init(value);

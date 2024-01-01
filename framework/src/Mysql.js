@@ -1,5 +1,5 @@
 'use strict';
-const mysql = require('mysql');
+const mysql = require('mysql2');
 
 class Raw {
   constructor(query){
@@ -11,12 +11,12 @@ class Raw {
 }
 
 class Table {
-  arr = [];
-  result = [];
-  table;
   conn;
+  table;
+  arr = {};
+  result = {};
   statements = ['=','>','>=','<','<=','!=','LIKE','NOT LIKE','IN','NOT IN','BETWEEN','NOT BETWEEN','IS','IS NOT'];
-  // protected $val_statements = ['IS NULL','IS NOT NULL'];
+  val_statements = ['IS NULL','IS NOT NULL'];
 
   constructor(table, conn){
     this.conn  = conn;
@@ -45,7 +45,6 @@ class Table {
       // if($type == 'delete')   return $this->query = "DELETE FROM ".$this->escape($this->arr['table'],'table')." ".$query;
       // if($type == 'replace')  return $this->query = "REPLACE INTO ".$this->escape($this->arr['table'],'table').' '.$this->arr['into'].' VALUES '.$this->arr['values'].'';
     }
-    console.log(query);
     return new Promise((resolve, reject) => {
       if(!query) return false;
       this.conn.query(query, (err, result) => {
@@ -58,7 +57,6 @@ class Table {
 
   where(...args){
     if(args.length == 1 && !['array','object'].includes(typeof args[0])){
-      console.log(this.table[this.arr.table])
       this.arr.where = this.whereExtract([this.table[this.arr.table].primary, args[0]]);
     }else if(args.length > 0){
       this.arr.where = this.arr.where && this.arr.where.trim() != '' ? `${this.arr.where} AND ${this.whereExtract(args)}` : this.whereExtract(args);
@@ -299,8 +297,8 @@ class Table {
         in_arr = true;
         last = 1;
       }else if(arr.length == 2 && loop == 2){
-        if(typeof key !== 'array' && this.statements.includes(key.toUpperCase())){
-          q += " " + key.toUpperCase();
+        if(typeof key !== 'array' && this.statements.includes(key.toString().toUpperCase())){
+          q += " " + key.toString().toUpperCase();
         }else{
           q += " =" + this.escape(key);
         }
@@ -397,51 +395,46 @@ class Table {
 
   define(table){
     if(!Candy.Config.mysql.db) Candy.Config.mysql.db = {};
-    if(!Candy.Config.mysql.db[Candy.Mysql.name ?? 'default']) Candy.Config.mysql.db[Candy.Mysql.name ?? 'default'] = {};
-    this.table[table] = Candy.Config.mysql.db[Candy.Mysql.name ?? 'default'][table];
-    if(this.table[table]) return reject();
+    if(!Candy.Config.mysql.db['default']) Candy.Config.mysql.db['default'] = {};
+    this.table[table] = Candy.Config.mysql.db['default'][table];
+    if(this.table[table]) return;
     let columns = [];
-    return new Promise((resolve, reject) => {
-      console.log(`SHOW COLUMNS FROM ${this.escape(table,'table')}`);
-      this.conn.query(`SHOW COLUMNS FROM ${this.escape(table,'table')}`, (err, result) => {
-        console.log(result);
-        console.log(err);
-        console.log('anandan başlicam')
-        if(err) return reject(err);
-        for(let get of result){
-          columns[get.Field] = get;
-          if(get.Key == 'PRI') this.table[table].primary = get.Field;
+    this.conn.query(`SHOW COLUMNS FROM ${this.escape(table,'table')}`, (err, result) => {
+      if(err) return reject(err);
+      for(let get of result){
+        columns[get.Field] = get;
+        if(get.Key == 'PRI'){
+          if(!this.table[table]) this.table[table] = {};
+          this.table[table].primary = get.Field;
         }
-        this.table[table].columns = columns;
-        Candy.Config.mysql.db[Candy.Mysql.name ?? 'default'][table] = this.table[table];
-        this.table[table] = {time: Date.now()};
-        return resolve();
-      });
+      }
+      this.table[table].columns = columns;
+      Candy.Config.mysql.db['default'][table] = this.table[table];
     });
   }
 
   type(col, value, action = 'decode'){
-    // if($this->types ?? false) $this->types = [];
-    // if(!isset($this->types[$col])) {
-    //   $this->types[$col] = 'string';
-    //   foreach($this->table as $key => $table){
-    //     if(!isset($this->arr['select']) && isset($this->table[$key]['columns'][$col]['Type'])){
-    //       $this->types[$col] = $this->table[$key]['columns'][$col]['Type'] ?? $this->types[$col];
-    //       break;
-    //     } else if(!isset($this->arr['select'])){
-    //       continue;
-    //     } else if(Candy::var($this->arr['select'])->contains(" AS \"$col\"")){
-    //       $exp = explode(' ,',explode(" AS \"$col\"",$this->arr['select'])[0]);
+    if(!this.types) this.types = {};
+    if(!this.types[col]) {
+      this.types[col] = 'string';
+      for (const key of Object.keys(this.table)) {
+        if(!this.arr.select && this.table[key].columns[col].Type){
+          this.types[col] = this.table[key].columns[col].Type ?? this.types[col];
+          break;
+        } else if(!this.arr.select){
+          continue;
+        } else if(Candy.var(this.arr.select).contains(" AS \"" + col + "\"")){
+          // $exp = explode(' ,',explode(" AS \"$col\"",$this->arr['select'])[0]);
     //       $real_col = explode('.',Candy::var(trim(end($exp)))->clear('`'));
     //       $real_table = trim($real_col[0]);
     //       $real_col = trim($real_col[1]);
     //       $this->types[$col] = $this->types[$col] = $this->table[$real_table]['columns'][$real_col]['Type'] ?? $this->types[$col];
-    //       break;
-    //     } else if(Candy::var($this->arr['select'])->containsAny(" `$col`", " `".$key."`.`$col`")){
-    //       $this->types[$col] = $table['columns'][$col]['Type'] ?? $this->types[$col];
-    //     }
-    //   }
-    // }
+          break;
+        } else if(Candy.var(this.arr.select).containsAny(" `" + col + "`", " `" + key + "`.`" + col + "`")){
+          this.types[col] = table.columns[col].Type ?? this.types[col];
+        }
+      }
+    }
     if(action == 'decode'){
     //       if(Candy::var($this->types[$col])->isBegin('tinyint(1)')) $value = boolval($value);
     //   elseif(Candy::var($this->types[$col])->contains('int'))       $value = intval($value);
@@ -449,28 +442,40 @@ class Table {
     //   elseif(Candy::var($this->types[$col])->isBegin('float'))      $value = floatval($value);
     //   elseif(Candy::var($this->types[$col])->isBegin('boolean'))    $value = boolval($value);
     //   elseif(Candy::var($this->types[$col])->isBegin('json'))       $value = json_decode($value);
-    // } else if(!is_string($value) && (!is_array($value) || ($value['ct'] ?? 0) != $GLOBALS['candy_token_mysql'])) {
-    //       if(Candy::var($this->types[$col])->isBegin('tinyint(1)')) $value = intval($value);
-    //   elseif(Candy::var($this->types[$col])->isBegin('boolean'))    $value = intval($value);
-    //   elseif(Candy::var($this->types[$col])->isBegin('json'))       $value = json_encode($value);
+    } else /* if(!is_string($value) && (!is_array($value) || ($value['ct'] ?? 0) != $GLOBALS['candy_token_mysql']))*/ {
+           if(Candy.var(this.types[col]).isBegin('tinyint(1)')) value = parseInt(value);
+      else if(Candy.var(this.types[col]).isBegin('int'))        value = parseInt(value);
+      else if(Candy.var(this.types[col]).isBegin('double'))     value = parseFloat(value);
+      else if(Candy.var(this.types[col]).isBegin('float'))      value = parseFloat(value);
+      else if(Candy.var(this.types[col]).isBegin('boolean'))    value = parseInt(value);
+      else if(Candy.var(this.types[col]).isBegin('json'))       value = JSON.stringify(value);
+      else if(Candy.var(this.types[col]).isBegin('date', 'datetime', 'timestamp')) value = Candy.var(value).date('Y-m-d H:i:s');
     }
     return value;
   }
 }
 
+
 module.exports = {
   conn: {},
   init: function(){
-    if(Candy.Config?.mysql){
-        let db = Candy.Config.mysql;
-        Candy.Mysql.conn[db.name ?? 'default'] = mysql.createConnection({
-            host: db.host ?? "localhost",
-            user: db.username,
-            password: db.password,
-            database: db.database
-        });
-        Candy.Mysql.conn[db.name ?? 'default'].connect();
-    }
+    if(!Candy.Config?.mysql) return;
+    if(!Candy.Config.mysql.db) Candy.Config.mysql.db = {};
+    if(!Candy.Config.mysql.db['default']) Candy.Config.mysql.db['default'] = {};
+    let db = Candy.Config.mysql;
+    Candy.Mysql.conn['default'] = mysql.createConnection({
+        host: db.host ?? "localhost",
+        user: db.username,
+        password: db.password,
+        database: db.database
+    });
+    Candy.Mysql.conn['default'].connect();
+    Candy.Mysql.conn['default'].query('SHOW TABLES', (err, result) => {
+      if(err) return;
+      for(let table of result) for(let key of Object.keys(table)){
+        let t = new Table(table[key], Candy.Mysql.conn['default']);
+      }
+    });
   },
   table: function(name){
     return new Table(name, Candy.Mysql.conn['default']);
