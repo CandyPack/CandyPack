@@ -1,3 +1,4 @@
+const { Console } = require('console');
 const fs = require('fs');
 
 var loading = false;
@@ -5,7 +6,8 @@ var reload = 0;
 var routes = {};
 
 function set(type, url, file){
-    if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
+    if(typeof url != 'string') url.toString();
+    if(url.length && url.substr(-1) === '/') url = url.substr(0, url.length - 1);
     let path = `${__dir}/route/${Candy.Route.buff}.js`;
     if(typeof file !== 'function'){
         path = `${__dir}/controller/${type}/${file}.js`;
@@ -84,6 +86,16 @@ function init(){
     loading = false;
 }
 
+function params(req, res){
+    let _candy = { req: req, res: res };
+    _candy.return = function(data){
+        if(typeof data === 'object') data = JSON.stringify(data);
+        this.res.end(data);
+    }
+    for (const iterator of Object.keys(Candy)) _candy[iterator] = Candy[iterator];
+    return _candy;
+}
+
 module.exports = {
     routes: {},
     init: function(){
@@ -98,11 +110,28 @@ module.exports = {
         if(!Candy.Route.routes[route]) route = 'www';
         if(!Candy.Route.routes[route]) return res.end();
         let result = null;
-        if(Candy.Route.routes[route][type] && Candy.Route.routes[route][type][url]) result = await Candy.Route.routes[route][type][url].cache();
-        else if(Candy.Route.routes[route].error && Candy.Route.routes[route].error[404]) result = await Candy.Route.routes[route].error[404].cache();
+        let status = 200;
+        let param = params(req, res);
+        if(Candy.Route.routes[route][type] && Candy.Route.routes[route][type][url]){
+            status = 200;
+            result = await Candy.Route.routes[route][type][url].cache(param);
+        } else if(Candy.Route.routes[route]['page'] && Candy.Route.routes[route]['page'][url]){
+            status = 200;
+            result = await Candy.Route.routes[route]['page'][url].cache(param);
+        } else if(Candy.Route.routes[route].error && Candy.Route.routes[route].error[404]){
+            status = 404;
+            result = await Candy.Route.routes[route].error[404].cache(param);
+        }
+        delete param;
         if(result){
-            result = JSON.stringify(typeof result === 'object' ? result : { result: result });
-            res.writeHead(200, { 'Content-Type': 'application/json' });
+            if(typeof result === 'object'){
+                result = JSON.stringify(result);
+                res.writeHead(status, { 'Content-Type': 'application/json' });
+            } else {
+                res.writeHead(status, { 'Content-Type': 'text/html' });
+            }
+        } else if(status !== 200){
+            res.writeHead(status, { 'Content-Type': 'text/html' });
         }
         res.end(result);
     },
