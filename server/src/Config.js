@@ -29,7 +29,9 @@ function save(b) {
     }
     let json = JSON.stringify(config, null, 4);
     if(json.length < 3) json = '{}';
-    fs.writeFileSync(file, json, 'utf8');
+    fs.writeFileSync(file, json, 'utf8', function(err) {
+        if(err) log(err);
+    });
     saving = false;
 }
 

@@ -170,8 +170,8 @@ function ssl(){
     const attrs = [{ name: 'commonName', value: 'CandyPack' }];
     const pems = selfsigned.generate(attrs, { days: 365 });
     if(!fs.existsSync(os.homedir() + '/.candypack/ssl')) fs.mkdirSync(os.homedir() + '/.candypack/ssl');
-    let key_file = os.homedir() + '/.candypack/ssl/candypack.key';
-    let crt_file = os.homedir() + '/.candypack/ssl/candypack.crt';
+    let key_file = os.homedir().replace(/\\/g, '/') + '/.candypack/ssl/candypack.key';
+    let crt_file = os.homedir().replace(/\\/g, '/') + '/.candypack/ssl/candypack.crt';
     fs.writeFileSync(key_file, pems.private);
     fs.writeFileSync(crt_file, pems.cert);
     ssl.key = key_file;
@@ -238,11 +238,13 @@ module.exports = {
                     return resolve();
                 }
                 web.domain = domain;
-                web.path = path.resolve() + '/' + web.domain;
+                web.path = path.resolve().replace(/\\/g, '/') + '/' + domain + '/';
                 readline.question(await Lang.get('Insert Path (%s): ', web.path), async function(path) {
                     if(path.length > 0) web.path = path;
                     log(await Lang.get('%s Creating...', web.domain));
-                    if(!fs.existsSync(web.path)) fs.mkdirSync(web.path);
+                    if(!fs.existsSync(web.path)){
+                        fs.mkdirSync(web.path, { recursive: true });
+                    }
                     websites[web.domain] = web;
                     Config.set('websites', websites);
                     readline.close();

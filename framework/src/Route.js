@@ -86,11 +86,14 @@ function init(){
     loading = false;
 }
 
-function params(req, res){
+function params(req, res, id){
     let _candy = { req: req, res: res };
     _candy.return = function(data){
-        if(typeof data === 'object') data = JSON.stringify(data);
-        this.res.end(data);
+        if(typeof data === 'object'){
+            data = JSON.stringify(data);
+            this.res.writeHead(200, { 'Content-Type': 'application/json' });
+        }
+        if(!res.finished) this.res.end(data);
     }
     for (const iterator of Object.keys(Candy)) _candy[iterator] = Candy[iterator];
     return _candy;
@@ -103,6 +106,7 @@ module.exports = {
         setInterval(init, 1000);
     },
     request: async function(req, res){
+        let id = `${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
         let route = req.headers.host.split('.')[0];
         let url = req.url.split('?')[0];
         if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
@@ -111,7 +115,13 @@ module.exports = {
         if(!Candy.Route.routes[route]) return res.end();
         let result = null;
         let status = 200;
-        let param = params(req, res);
+        let param = params(req, res, id);
+        let t = setTimeout(() => {
+            if(!res.finished){
+                res.writeHead(408, { 'Content-Type': 'text/html' });
+                res.end();
+            }
+        }, Candy.Config.request.timeout);
         if(Candy.Route.routes[route][type] && Candy.Route.routes[route][type][url]){
             status = 200;
             result = await Candy.Route.routes[route][type][url].cache(param);
@@ -133,7 +143,6 @@ module.exports = {
         } else if(status !== 200){
             res.writeHead(status, { 'Content-Type': 'text/html' });
         }
-        res.end(result);
     },
     page: function(path, file){
         set('page', path, file);

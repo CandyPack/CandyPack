@@ -48,7 +48,10 @@ class Table {
     return new Promise((resolve, reject) => {
       if(!query) return false;
       this.conn.query(query, (err, result) => {
-        if(err) return reject(err);
+        if(err){
+          console.error(err);
+          return reject(false);
+        }
         return resolve(result);
       });
     });
@@ -95,7 +98,7 @@ class Table {
 //       $this->arr['cache'] = $t;
 //       return new static($this->table,$this->arr);
 //     }
-  get(b){
+  async get(b){
     return new Promise((resolve,reject)=>{
       if(!b) b = false;
       let query = this.run('get');
@@ -195,19 +198,18 @@ class Table {
 //       return new static($this->table,$this->arr, ['id' => $this->id]);
 //     }
 
-  first (b = false ){
-    this.arr.limit =  1;
-    let sql = this.get(b);
-    if(sql === false || sql[0]) return false;
-    return sql[0];
+  first(b = false) {
+    return new Promise(async (resolve, reject) => {
+      this.arr.limit = 1;
+      this.get(b)
+        .then(sql => {
+          if (sql === false || !sql[0]) return resolve(false);
+          return resolve(sql[0]);
+        })
+        .catch(reject);
+    });
   }
 
-//     function first($b=false){
-//       $this->arr['limit'] = 1;
-//       $sql = $this->get($b);
-//       if($sql === false || !isset($sql[0])) return false;
-//       return $sql[0];
-//     }
 //     function select(){
 //       $this->arr['select'] = isset($this->arr['select']) ? $this->arr['select'] : '';
 //       $select = array_filter(explode(',',$this->arr['select']));
@@ -228,16 +230,16 @@ class Table {
 //       $this->arr['select'] = implode(', ',$select);
 //       return new static($this->table,$this->arr);
 //     }
-//     function orderBy($v1,$v2='asc'){
-//       if(is_array($v1) && (!isset($v1['ct']) || $v1['ct'] != $GLOBALS['candy_token_mysql'])){
-//         $order = [];
-//         foreach($v1 as $key => $val)
-//         if(!is_int($key)) $order[] = $this->escape($key,'col').(strtolower($val) == 'desc' ? ' DESC' : ' ASC');
-//         else $order[] = $this->escape($val,'col').' ASC';
-//         $this->arr['order by'] = implode(',',$order);
-//       }else $this->arr['order by'] = $this->escape($v1,'col').(strtolower($v2) == 'desc' ? ' DESC' : ' ASC');
-//       return new static($this->table,$this->arr);
-//     }
+    order(v1,v2='asc'){
+      // if(is_array($v1) && (!isset($v1['ct']) || $v1['ct'] != $GLOBALS['candy_token_mysql'])){
+      //   $order = [];
+      //   foreach($v1 as $key => $val)
+      //   if(!is_int($key)) $order[] = $this->escape($key,'col').(strtolower($val) == 'desc' ? ' DESC' : ' ASC');
+      //   else $order[] = $this->escape($val,'col').' ASC';
+      //   $this->arr['order by'] = implode(',',$order);
+      // }else $this->arr['order by'] = $this->escape($v1,'col').(strtolower($v2) == 'desc' ? ' DESC' : ' ASC');
+      return this;
+    }
 //     function groupBy(){
 //       $this->arr['group by'] = isset($this->arr['group by']) ? $this->arr['group by'] : '';
 //       $select = array_filter(explode(',',$this->arr['group by']));
@@ -292,12 +294,12 @@ class Table {
     let state = '=';
     let last = 0;
     for (const key of arr) {
-      if(Array.isArray(key) && (state != 'IN' && state != 'NOT IN') && !typeof key.raw !== 'function'){
-        q += $last == 1 ? ' AND ' + this.whereExtract(key) : this.whereExtract(key);
+      if(typeof key == 'array' && (state != 'IN' && state != 'NOT IN') && !typeof key.raw !== 'function'){
+        q += last == 1 ? ' AND ' + this.whereExtract(key) : this.whereExtract(key);
         in_arr = true;
         last = 1;
       }else if(arr.length == 2 && loop == 2){
-        if(typeof key !== 'array' && this.statements.includes(key.toString().toUpperCase())){
+        if(!['object','array'].includes(typeof key) && this.statements.includes(key.toString().toUpperCase())){
           q += " " + key.toString().toUpperCase();
         }else{
           q += " =" + this.escape(key);
@@ -400,7 +402,7 @@ class Table {
     if(this.table[table]) return;
     let columns = [];
     this.conn.query(`SHOW COLUMNS FROM ${this.escape(table,'table')}`, (err, result) => {
-      if(err) return reject(err);
+      if(err) return;
       for(let get of result){
         columns[get.Field] = get;
         if(get.Key == 'PRI'){
