@@ -17,5 +17,6 @@
     "Websites": "Websites",
     "Services": "Services",
     "Website %s doesn't have index.js file.": "Website %s doesn't have index.js file.",
-    "Monitor Website or Service": "Monitor Website or Service"
+    "Monitor Website or Service": "Monitor Website or Service",
+    "Offline": "Offline"
 }

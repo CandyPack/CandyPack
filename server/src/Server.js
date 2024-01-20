@@ -8,6 +8,8 @@ const os = require("os");
 const Service = require('./Service.js');
 const Config = require('./Config.js');
 const Lang = require('./Lang.js');
+const SSL = require('./SSL.js');
+const DNS = require('./DNS.js');
 const Web = require('./Web.js');
 const Cli = require('./Cli.js');
 
@@ -29,7 +31,7 @@ async function watchdog(){
     Config.set('watchdog', child.pid);
     Config.set('started', Date.now());
     setInterval(async function(){
-        if(global.completed) process.exit(0);
+        if(global.completed && !global.saving) process.exit(0);
     }, 500);
 }
 
@@ -54,11 +56,13 @@ async function start(){
     Config.set('pid', process.pid);
     Config.set('started', Date.now());
     Service.init();
+    DNS.init();
     Web.init();
     setTimeout(function(){
         let t = setInterval(function(){
             Config.load();
             Service.check();
+            SSL.check();
             Web.check();
         }, 1000);
     }, 1000);

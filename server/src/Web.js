@@ -63,7 +63,7 @@ function server(){
         server_http = http.createServer(request).listen(80);
     }
     let ssl = Config.get('ssl') ?? {};
-    if(!server_https && ssl && ssl.key){
+    if(!server_https && ssl && ssl.key && ssl.cert && fs.existsSync(ssl.key) && fs.existsSync(ssl.cert)){
             server_https = https.createServer({
             key: fs.readFileSync(ssl.key),
             cert: fs.readFileSync(ssl.cert)
@@ -170,8 +170,8 @@ function ssl(){
     const attrs = [{ name: 'commonName', value: 'CandyPack' }];
     const pems = selfsigned.generate(attrs, { days: 365 });
     if(!fs.existsSync(os.homedir() + '/.candypack/ssl')) fs.mkdirSync(os.homedir() + '/.candypack/ssl');
-    let key_file = os.homedir().replace(/\\/g, '/') + '/.candypack/ssl/candypack.key';
-    let crt_file = os.homedir().replace(/\\/g, '/') + '/.candypack/ssl/candypack.crt';
+    let key_file = os.homedir() + '/.candypack/ssl/candypack.key';
+    let crt_file = os.homedir() + '/.candypack/ssl/candypack.crt';
     fs.writeFileSync(key_file, pems.private);
     fs.writeFileSync(crt_file, pems.cert);
     ssl.key = key_file;
@@ -242,9 +242,11 @@ module.exports = {
                 readline.question(await Lang.get('Insert Path (%s): ', web.path), async function(path) {
                     if(path.length > 0) web.path = path;
                     log(await Lang.get('%s Creating...', web.domain));
-                    if(!fs.existsSync(web.path)){
-                        fs.mkdirSync(web.path, { recursive: true });
-                    }
+                    if(!fs.existsSync(web.path)) fs.mkdirSync(web.path, { recursive: true });
+                    web.dns = [
+                        {type: 'A',     name: web.domain},
+                        {type: 'CNAME', name: 'www.' + web.domain, value: web.domain}
+                    ];
                     websites[web.domain] = web;
                     Config.set('websites', websites);
                     readline.close();

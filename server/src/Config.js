@@ -1,4 +1,3 @@
-
 const { log } = require('console');
 const fs = require('fs');
 const os = require("os");
@@ -10,7 +9,7 @@ const file = dir + '/config.json';
 
 var config = {};
 var loaded = false;
-var saving = false;
+global.saving = false;
 
 async function init() {
     if(!fs.existsSync(dir)) fs.mkdirSync(dir);
@@ -18,28 +17,31 @@ async function init() {
     else await load();
     let t = setInterval(function(){
         save(true);
-        if(global.trigger == 'candy' && global.completed && !saving) clearInterval(t);
+        if(global.trigger == 'candy' && global.completed && !global.saving) clearInterval(t);
     }, 500);
 }
 
 function save(b) {
-    if(!saving || !loaded){
-        if(!b) saving = true;
+    if(!global.saving || !loaded){
+        if(!b) global.saving = true;
         return;
     }
     let json = JSON.stringify(config, null, 4);
     if(json.length < 3) json = '{}';
-    fs.writeFileSync(file, json, 'utf8', function(err) {
-        if(err) log(err);
-    });
-    saving = false;
+    fs.writeFileSync(file, json, 'utf8');
+    global.saving = false;
 }
 
 async function load() {
     return new Promise((resolve, reject) => {
-        if(saving) return resolve();
+        if(global.saving && loaded) return resolve();
+        if(!fs.existsSync(file)){
+            loaded = true;
+            return resolve();
+        }
         fs.readFile(file, 'utf8', function(err, data) {
             if(err){
+                console.log(err);
                 loaded = true;
                 save(true);
                 return resolve();
@@ -49,6 +51,7 @@ async function load() {
                 if(!config.updated || (data.updated && data.updated > config.updated)) config = data;
                 loaded = true;
             } catch(e) {
+                console.log(e);
                 loaded = true;
                 if(data.length > 2){
                     var backup = dir + '/config-' + Date.now() + '.json';

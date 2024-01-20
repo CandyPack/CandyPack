@@ -1,2 +1,2 @@
 global.__dir = __dirname;
-require('CandyPack').init();
+require('candypack').init();

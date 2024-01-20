@@ -13,5 +13,8 @@
     "Restart CandyPack Server": "Restart CandyPack Server",
     "List all CandyPack Services": "List all CandyPack Services",
     "List all CandyPack Websites": "List all CandyPack Websites",
-    "Monitor Website or Service": "Monitor Website or Service"
+    "Monitor Website or Service": "Monitor Website or Service",
+    "Domains": "Domains",
+    "Restarting CandyPack Server...": "Restarting CandyPack Server...",
+    "Starting CandyPack Server...": "Starting CandyPack Server..."
 }
