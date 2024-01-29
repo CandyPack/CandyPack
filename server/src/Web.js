@@ -6,6 +6,7 @@ const cp = require('child_process');
 const https = require('https');
 const http = require(`http`);
 const path = require('path');
+const tls = require('tls');
 const net = require('net');
 const fs = require('fs');
 const os = require("os");
@@ -26,21 +27,39 @@ var active = {};
 var loaded = false;
 var updated = {};
 var server_http, server_https;
+var ssl = {};
 
 function init(){
     websites = Config.get('websites') ?? {};
     loaded = true;
 }
 
-function request(req, res){
+function request(req, res, secure){
     let host = req.headers.host;
     if(!host) return index(req, res);
-    if(host.startsWith('www.')) host = host.replace('www.', '');
     while(!websites[host] && host.includes('.')) host = host.split('.').slice(1).join('.');
     const website = websites[host];
     if(!website) return index(req, res);
     if(!website.pid || !watcher[website.pid] || website.status != 'running') return index(req, res);
     try{
+        console.log('REQUEST', req.headers.host, req.url);
+        // if(secure){
+        //     if(website.ssl && website.ssl.key && website.ssl.cert && fs.existsSync(website.ssl.key) && fs.existsSync(website.ssl.cert)){
+        //         console.log('SSL CHANGE');
+        //         const sslOptions = {
+        //             key: fs.readFileSync(website.ssl.key),
+        //             cert: fs.readFileSync(website.ssl.cert)
+        //         };
+        //     } else {
+        //         const sslOptions = {
+        //             key: fs.readFileSync(ssl.key),
+        //             cert: fs.readFileSync(ssl.cert)
+        //         };
+
+        //     }
+        //     const secureContext = new Map([[`${req.headers.host}`, sslOptions]]);
+        //     req.connection.setSecureContext(secureContext);
+        // }
         const proxy = httpProxy.createProxyServer({});
         proxy.web(req, res, { target: 'http://127.0.0.1:' + website.port });
         proxy.on('proxyReq', (proxyReq, req, res, options) => {
@@ -64,10 +83,28 @@ function server(){
     }
     let ssl = Config.get('ssl') ?? {};
     if(!server_https && ssl && ssl.key && ssl.cert && fs.existsSync(ssl.key) && fs.existsSync(ssl.cert)){
-            server_https = https.createServer({
-            key: fs.readFileSync(ssl.key),
-            cert: fs.readFileSync(ssl.cert)
-        }, request).listen(443);
+        server_https = https.createServer({
+            SNICallback: (hostname, callback) => {
+                let sslOptions;
+                while(!websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.');
+                let website = websites[hostname];
+                if(website && website.ssl && website.ssl.key && website.ssl.cert && fs.existsSync(website.ssl.key) && fs.existsSync(website.ssl.cert)){
+                    sslOptions = {
+                        key: fs.readFileSync(website.ssl.key),
+                        cert: fs.readFileSync(website.ssl.cert)
+                    };
+                } else {
+                    sslOptions = {
+                        key: fs.readFileSync(ssl.key),
+                        cert: fs.readFileSync(ssl.cert)
+                    };
+                }            
+                const ctx = tls.createSecureContext(sslOptions);
+                callback(null, ctx);
+            }
+        }, function(req, res){
+            request(req, res, true);
+        }).listen(443);
     }
 }
 
@@ -165,19 +202,7 @@ function set(domain, data){
 }
 
 function ssl(){
-    let ssl = Config.get('ssl') ?? {};
-    if(ssl && ssl.expiry > Date.now() && ssl.key) return;
-    const attrs = [{ name: 'commonName', value: 'CandyPack' }];
-    const pems = selfsigned.generate(attrs, { days: 365 });
-    if(!fs.existsSync(os.homedir() + '/.candypack/ssl')) fs.mkdirSync(os.homedir() + '/.candypack/ssl');
-    let key_file = os.homedir() + '/.candypack/ssl/candypack.key';
-    let crt_file = os.homedir() + '/.candypack/ssl/candypack.crt';
-    fs.writeFileSync(key_file, pems.private);
-    fs.writeFileSync(crt_file, pems.cert);
-    ssl.key = key_file;
-    ssl.cert = crt_file;
-    ssl.expiry = Date.now() + 86400000;
-    Config.set('ssl', ssl);
+    
 }
 
 module.exports = {
@@ -243,10 +268,13 @@ module.exports = {
                     if(path.length > 0) web.path = path;
                     log(await Lang.get('%s Creating...', web.domain));
                     if(!fs.existsSync(web.path)) fs.mkdirSync(web.path, { recursive: true });
-                    web.dns = [
-                        {type: 'A',     name: web.domain},
-                        {type: 'CNAME', name: 'www.' + web.domain, value: web.domain}
-                    ];
+                    web.DNS = {
+                        A: [
+                            { name: web.domain },
+                            { name: 'www' + web.domain}
+                        ]
+                    };
+                    web.subdomain = ['www'];
                     websites[web.domain] = web;
                     Config.set('websites', websites);
                     readline.close();

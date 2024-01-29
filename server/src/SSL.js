@@ -7,6 +7,7 @@ const os = require("os");
 const Config = require('./Config');
 
 var records = {dns: {}, http: {}};
+var checking = false;
 
 function self(){
     let ssl = Config.get('ssl') ?? {};
@@ -24,8 +25,103 @@ function self(){
     Config.set('ssl', ssl);
 }
 
+async function ssl(domain){
+    return;
+    // let websites = Config.get('websites') ?? {};
+    // let website = websites[domain];
+    // if(!website) return;
+    // let records = [];
+    // for(const record of website.DNS.TXT ?? []) if(record && record.name == '_acme-challenge.' + domain) records.push(record);
+    // website.DNS.TXT = website.DNS.TXT;
+    const accountPrivateKey = await acme.forge.createPrivateKey();
+    const client = new acme.Client({
+        directoryUrl: acme.directory.letsencrypt.production,
+        accountKey: accountPrivateKey
+    });
+    const [key, csr] = await acme.forge.createCsr({
+        commonName: domain,
+        altNames: [domain, 'www.' + domain],
+        // wildcard and multiple subdomains
+        // commonName: '*.example.com',
+        // altNames: ['example.com', 'www.example.com'],
+    });
+    const cert = await client.auto({
+        csr,
+        termsOfServiceAgreed: true,
+        challengePriority: ['dns-01', 'http-01'],
+        challengeCreateFn: async (authz, challenge, keyAuthorization) => {
+            return new Promise((resolve, reject) => {
+                console.log(authz, keyAuthorization);
+                if(challenge.type == 'dns-01'){
+                    let websites = Config.get('websites') ?? {};
+                    let website = websites[domain];
+                    if(!website){
+                        console.log('website not found');
+                        return reject();
+                    }
+                    if(!website.DNS) website.DNS = [];
+                    if(!website.DNS['TXT']) website.DNS['TXT'] = [];
+                    let txt = [];
+                    for(const record of website.DNS['TXT']) /*if(record && record.name != '_acme-challenge.' + domain)*/ txt.push(record);
+                    txt.push({
+                        name: '_acme-challenge.' + authz.identifier.value,
+                        value: keyAuthorization,
+                    });
+                    website.DNS['TXT'] = txt;
+                    websites[domain] = website;
+                    Config.set('websites', websites);
+                    return resolve();
+                }
+            });
+        },
+        challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
+            return new Promise((resolve, reject) => {
+                if(challenge.type == 'dns-01'){
+                    let websites = Config.get('websites') ?? {};
+                    let website = websites[domain];
+                    if(!website) return reject();
+                    if(!website.DNS) website.DNS = [];
+                    if(!website.DNS['TXT']) website.DNS['TXT'] = [];
+                    website.DNS['TXT'] = website.DNS['TXT'].filter(function(record){
+                        return record.name != '_acme-challenge.' + authz.identifier.value;
+                    });
+                    websites[domain] = website;
+                    Config.set('websites', websites);
+                }
+                return resolve();
+            });
+        },
+        challengeKeyAuthorizationFn: async (challenge, keyAuthorization) => {
+            return keyAuthorization;
+        },
+        challengeTimeoutFn: async (ms) => {
+            return new Promise((resolve, reject) => {
+                resolve();
+            });
+        }
+    });
+    fs.writeFileSync(os.homedir() + '/.candypack/ssl/' + domain + '.key', key);
+    fs.writeFileSync(os.homedir() + '/.candypack/ssl/' + domain + '.crt', cert);
+    let websites = Config.get('websites') ?? {};
+    let website = websites[domain];
+    if(!website) return;
+    website.ssl = {
+        key: os.homedir() + '/.candypack/ssl/' + domain + '.key',
+        cert: os.homedir() + '/.candypack/ssl/' + domain + '.crt',
+        expiry: Date.now() + 86400000
+    };
+    websites[domain] = website;
+    Config.set('websites', websites);
+}
+
 module.exports = {
-    check: function(){
+    check: async function(){
+        if(checking) return;
+        checking = true;
         self();
+        for (const domain of Object.keys(Config.get('websites'))) {
+            if(!Config.get('websites')[domain].ssl) await ssl(domain);
+        }
+        checking = false;
     }
 };

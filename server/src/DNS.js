@@ -11,26 +11,34 @@ function publish(){
     if(loaded || !Object.keys(Config.get('websites')).length) return;
     loaded = true;
     server.on('request', function (request, response) {
-        if(Config.get('websites')[request.question[0].name] && Config.get('websites')[request.question[0].name].dns){
-            console.log(Config.get('websites')[request.question[0].name].dns);
-            for (const record of Config.get('websites')[request.question[0].name].dns) {
-                switch(record.type){
-                    case 'A':
-                        response.answer.push(dns.A({
-                          name: record.name,
-                          address: record.value ?? ip,
-                          ttl: 3600,
-                        }));
-                        break;
-                    case 'TXT':
-                        response.answer.push(dns.TXT({
-                          name: record.name,
-                          data: record.value,
-                          ttl: 3600,
-                        }));
-                        break;            
-                }
-            }
+        response.question[0].name = response.question[0].name.toLowerCase();
+        console.log(response.question[0].name);
+        let domain = response.question[0].name;
+        while(!Config.get('websites',domain) && domain.includes('.')) domain = domain.split('.').slice(1).join('.');
+        if(!Config.get('websites',domain)) return response.send();
+        for(const record of Config.get('websites',domain,'DNS','A') ?? []){
+            if(record.name != response.question[0].name) continue;
+            response.answer.push(dns.A({
+                name: record.name,
+                address: record.value ?? ip,
+                ttl: record.ttl ?? 3600,
+            }));
+        }
+        for(const record of Config.get('websites',domain,'DNS','CNAME') ?? []){
+            if(record.name != response.question[0].name) continue;
+            response.answer.push(dns.CNAME({
+                name: record.name,
+                data: record.value,
+                ttl: record.ttl ?? 3600,
+            }));
+        }
+        for(const record of Config.get('websites',domain,'DNS','TXT') ?? []){
+            if(!record || record.name != response.question[0].name) continue;
+            response.answer.push(dns.TXT({
+                name: record.name,
+                data: [record.value],
+                ttl: record.ttl ?? 3600,
+            }));
         }
         response.send();
     });

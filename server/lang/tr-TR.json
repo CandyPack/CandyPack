@@ -16,5 +16,6 @@
     "Monitor Website or Service": "Monitor Website or Service",
     "Domains": "Domains",
     "Restarting CandyPack Server...": "Restarting CandyPack Server...",
-    "Starting CandyPack Server...": "Starting CandyPack Server..."
+    "Starting CandyPack Server...": "Starting CandyPack Server...",
+    "Service %s added.": "Service %s added."
 }

@@ -66,8 +66,13 @@ async function load() {
 
 module.exports = {
     init: init,
-    get: function(key) {
-        return config[key];
+    get: function(...keys) {
+        let value = config;
+        for(let key of keys){
+            if(!value[key]) return null;
+            value = value[key];
+        }
+        return value;
     },
     set: function(key, value) {
         config[key] = value;

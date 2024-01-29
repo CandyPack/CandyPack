@@ -61,14 +61,6 @@ async function check(){
 async function start() {
     await check();
     if(!fs.existsSync(logdir)) fs.mkdirSync(logdir);
-    fs.readFile(logdir + '.candypack.log', 'utf8', function(err, data) {
-        if(!err) log = '[' + Date.now() + '] ' + data;
-        if(log.length > 1000000) log = log.substr(log.length - 1000000);
-    });
-    fs.readFile(logdir + '.candypack_err.log', 'utf8', function(err, data) {
-        if(!err) err = '[' + Date.now() + '] ' + data;
-        if(err.length > 1000000) err = err.substr(err.length - 1000000);
-    });
     var child = spawn('node', [__dirname + '/cli.js', 'start'], { detached: true });
     child.stdout.on('data', function(data) {
         log += data.toString();
