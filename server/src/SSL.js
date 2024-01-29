@@ -26,7 +26,7 @@ function self(){
 }
 
 async function ssl(domain){
-    return;
+    // return;
     // let websites = Config.get('websites') ?? {};
     // let website = websites[domain];
     // if(!website) return;
@@ -38,9 +38,11 @@ async function ssl(domain){
         directoryUrl: acme.directory.letsencrypt.production,
         accountKey: accountPrivateKey
     });
+    let subdomains = [domain];
+    for(const subdomain of Config.get('websites')[domain].subdomain ?? []) subdomains.push(subdomain + '.' + domain);
     const [key, csr] = await acme.forge.createCsr({
         commonName: domain,
-        altNames: [domain, 'www.' + domain],
+        altNames: subdomains,
         // wildcard and multiple subdomains
         // commonName: '*.example.com',
         // altNames: ['example.com', 'www.example.com'],
@@ -116,7 +118,7 @@ async function ssl(domain){
 
 module.exports = {
     check: async function(){
-        if(checking) return;
+        if(checking || !Config.get('websites')) return;
         checking = true;
         self();
         for (const domain of Object.keys(Config.get('websites'))) {

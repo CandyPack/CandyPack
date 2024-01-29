@@ -66,15 +66,15 @@ async function check(){
     for(const service of services) {
         if(service.active){
             if(!service.pid){
-                run(service.id);
+                run(services.indexOf(service));
             } else {
                 if(!watcher[service.pid]){
                     try {
                         process.kill(service.pid, 'SIGTERM');
                     } catch(e) {
                     }
-                    run(service.id);
-                    services[service.id].pid = null;
+                    run(services.indexOf(service));
+                    services[services.indexOf(service)].pid = null;
                 }
             }
         }
@@ -92,6 +92,7 @@ async function run(id){
     if(active[id]) return;
     active[id] = true;
     let service = services[id];
+    if(!service) return;
     if(service.status == 'errored' && error_counts[id] > 10){
         active[id] = false;
         return;

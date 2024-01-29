@@ -201,10 +201,6 @@ function set(domain, data){
     Config.set('websites', websites);
 }
 
-function ssl(){
-    
-}
-
 module.exports = {
     init: async function() {
         init();
@@ -215,7 +211,6 @@ module.exports = {
         websites = Config.get('websites') ?? {};
         for (const domain of Object.keys(websites)) {
             let website = websites[domain];
-            ssl();
             if(!website.pid){
                 start(domain);
             } else if(!watcher[website.pid]){

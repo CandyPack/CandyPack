@@ -17,5 +17,8 @@
     "Domains": "Domains",
     "Restarting CandyPack Server...": "Restarting CandyPack Server...",
     "Starting CandyPack Server...": "Starting CandyPack Server...",
-    "Service %s added.": "Service %s added."
+    "Service %s added.": "Service %s added.",
+    "Running": "Running",
+    "Name": "Name",
+    "Active": "Active"
 }

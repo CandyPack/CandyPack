@@ -8,7 +8,7 @@ var loaded = false;
 var ip = '127.0.0.1';
 
 function publish(){
-    if(loaded || !Object.keys(Config.get('websites')).length) return;
+    if(loaded || !Object.keys(Config.get('websites') ?? []).length) return;
     loaded = true;
     server.on('request', function (request, response) {
         response.question[0].name = response.question[0].name.toLowerCase();
