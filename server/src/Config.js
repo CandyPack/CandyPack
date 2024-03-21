@@ -54,7 +54,7 @@ async function load() {
                 console.log(e);
                 loaded = true;
                 if(data.length > 2){
-                    var backup = dir + '/config-' + Date.now() + '.json';
+                    var backup = dir + '/config-bak.json';
                     fs.copyFileSync(file, backup);
                 }
                 save(true);

@@ -27,7 +27,10 @@ function save(b){
 
 async function check(){
     return new Promise((resolve, reject) => {
-        if(!fs.existsSync(os.homedir() + '/.candypack/config.json')) return resolve(false);
+        if(!fs.existsSync(os.homedir() + '/.candypack/config.json')){
+            fs.mkdirSync(os.homedir() + '/.candypack/');
+            fs.writeFileSync(os.homedir() + '/.candypack/config.json', '{}', 'utf8');
+        }
         fs.readFile(os.homedir() + '/.candypack/config.json', 'utf8', function(err, data) {
             if(err){
                 data = {};
@@ -50,6 +53,7 @@ async function check(){
                 } catch(e) { }
             }
             data.watchdog = watchdog;
+            data.started = Date.now();
             fs.writeFile(os.homedir() + '/.candypack/config.json', JSON.stringify(data, null, 4), 'utf8', function(err) {
                 if(err) console.log(err);
             });

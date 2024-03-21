@@ -154,7 +154,7 @@ function monitor(){
     result += color(' ┌', 'gray');
     if(domains.length){
         result += color('─'.repeat(5), 'gray');
-        let title = color(Lang.get('Domains'), null);
+        let title = color(Lang.get('Websites'), null);
         result += ' ' + color(title) + ' ';
         result += color('─'.repeat(c1 - title.length - 7), 'gray');
     } else {
@@ -178,7 +178,7 @@ function monitor(){
             result += color('─'.repeat(c1 - title.length - 7), 'gray');
             result += color('┤','gray');
             service++;
-        } else if(service > 0 && service < services.length){
+        } else if(service >= 0 && service < services.length){
             result += color(' │', 'gray');
             result += icon(services[service].status ?? null, i - 1 == selected);
             result += color(spacing(services[service].name, c1 - 3), i - 1 == selected ? 'blue' : 'white', i - 1 == selected ? 'white' : null, i - 1 == selected ? 'bold' : null);

@@ -116,7 +116,7 @@ module.exports = {
         let result = null;
         let status = 200;
         let param = params(req, res, id);
-        let t = setTimeout(() => {
+        let t = setTimeout(function(){
             if(!res.finished){
                 res.writeHead(408, { 'Content-Type': 'text/html' });
                 res.end();

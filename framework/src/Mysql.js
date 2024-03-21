@@ -1,5 +1,5 @@
 'use strict';
-const mysql = require('mysql2');
+const mysql = require('mysql');
 
 class Raw {
   constructor(query){
@@ -42,7 +42,7 @@ class Table {
       case 'get':    query = `SELECT ${this.arr.select ? this.arr.select : '*'} FROM ${this.escape(this.arr.table,'table')} ${query}`; break;
       case 'set':    query = `UPDATE ${this.escape(this.arr['table'],'table')} SET ${this.arr['set']} ${query}`; break;
       case 'insert': query = `INSERT ${this.arr.ignore ? 'IGNORE' : ''} INTO ${this.escape(this.arr.table,'table')} ${this.arr.into} VALUES ${this.arr.values}`; break;
-      // if($type == 'delete')   return $this->query = "DELETE FROM ".$this->escape($this->arr['table'],'table')." ".$query;
+      case 'delete': query = `DELETE FROM ${this.escape(this.arr.table,'table')} ${query}`; break;
       // if($type == 'replace')  return $this->query = "REPLACE INTO ".$this->escape($this->arr['table'],'table').' '.$this->arr['into'].' VALUES '.$this->arr['values'].'';
     }
     return new Promise((resolve, reject) => {
@@ -99,9 +99,8 @@ class Table {
 //       return new static($this->table,$this->arr);
 //     }
   async get(b){
-    return new Promise((resolve,reject)=>{
+    return new Promise(async (resolve,reject)=>{
       if(!b) b = false;
-      let query = this.run('get');
       let data = [];
       // if(isset($this->arr['cache'])){
       //   $md5_query = md5($query);
@@ -110,8 +109,13 @@ class Table {
       //   $cache = Candy::storage($file)->get('cache');
       //   if(isset($cache->date) && ($cache->date >= (time() - $this->arr['cache']))) return $cache->data;
       // }
-      // $sql = mysqli_query(Mysql::$conn, $query);
-      // if($sql === false) return $this->error();
+      let sql = await this.run('get');
+    //   console.log(sql);
+      if(sql === false) return resolve(this.error());
+      for(let row of sql){
+        for(let [key, value] of Object.entries(row)) row[key] = this.type(key, value);
+        data.push(row);
+      }
       // while($row = mysqli_fetch_assoc($sql)){
       //   foreach($row as $key => $value) $row[$key] = $this->type($key, $value);
       //   $data[] = $b ? $row : (object)$row;
@@ -122,16 +126,19 @@ class Table {
       //   $cache->date = time();
       //   Candy::storage($file)->set('cache', $cache);
       // }
-      return resolve(query);
+      return resolve(data);
     });
   }
-//     function delete($b=false){
-//       $query = $this->query('delete');
+  async delete(b){
+    return new Promise(async (resolve, reject) => {
+      let query = this.run('delete');
 //       $sql = mysqli_query(Mysql::$conn, $query);
 //       $this->affected = mysqli_affected_rows(Mysql::$conn);
 //       if($this->affected > 0) self::clearcache();
 //       return new static($this->table,$this->arr, ['affected' => $this->affected]);
-//     }
+      return this;
+    });
+  }
 //     function rows($b=false){
 //       $query = $this->query('get');
 //       if(isset($this->arr['cache'])){
@@ -151,7 +158,7 @@ class Table {
 //       }
 //       return $sql===false ? false : $rows;
 //     }
-  set(arr, val){
+  async set(arr, val){
     let vars = '';
     if(!['array','object'].includes(typeof arr) && val !== undefined) vars += this.escape(arr,'col') + ' = ' + this.escape(this.type(arr, val, 'encode')) + ',';
     else for(let [key, value] of Object.entries(arr)) vars += this.escape(key,'col') + ' = ' + this.escape(this.type(key, value, 'encode')) + ',';
@@ -163,20 +170,20 @@ class Table {
 //       return new static($this->table,$this->arr, ['affected' => $this->affected]);
   }
 
-  insert(arr){
-      return new Promise((resolve, reject) => {
-        this.id = 1;
-        let ext = this.valuesExtract(arr);
-        this.arr['into'] = ext['into'];
-        this.arr['values'] = ext['values'];
-        let query = this.run('insert');
+  async insert(arr){
+    return new Promise((resolve, reject) => {
+      this.id = 1;
+      let ext = this.valuesExtract(arr);
+      this.arr['into'] = ext['into'];
+      this.arr['values'] = ext['values'];
+      let query = this.run('insert');
       //   if($sql === false) return $this->error();
       //   $this->success = $sql;
       //   $this->id = mysqli_insert_id(Mysql::$conn);
-        // $this->affected = mysqli_affected_rows(Mysql::$conn);
-        // if(this.affected > 0) this.clearcache();
-        return this;
-      });
+      // $this->affected = mysqli_affected_rows(Mysql::$conn);
+      // if(this.affected > 0) this.clearcache();
+      return this;
+    });
   }
 
   insertIgnore(arr){
@@ -387,13 +394,14 @@ class Table {
 //       foreach(glob($file) as $key) unlink($key);
 //       return true;
 //     }
-//     private function error($sql=null){
+
+    error($sql){
 //       $bt = debug_backtrace();
 //       $caller = $bt[1];
 //       if(Candy::isDev() && defined('DEV_ERRORS')) printf("Candy Mysql Error: %s\n<br />".$caller['file'].' : '.$caller['line'], mysqli_error(Mysql::$conn));
 //       else Config::errorReport('MYSQL',mysqli_error(Mysql::$conn),$caller['file'],$caller['line'],$this->query);
-//       return false;
-//     }
+      return false;
+    }
 
   define(table){
     if(!Candy.Config.mysql.db) Candy.Config.mysql.db = {};
@@ -420,6 +428,8 @@ class Table {
     if(!this.types[col]) {
       this.types[col] = 'string';
       for (const key of Object.keys(this.table)) {
+        if(!this.table[key]) this.define(key);
+        if(!this.table[key]) throw new Error(`Table ${key} not found`);
         if(!this.arr.select && this.table[key].columns[col].Type){
           this.types[col] = this.table[key].columns[col].Type ?? this.types[col];
           break;
@@ -438,12 +448,12 @@ class Table {
       }
     }
     if(action == 'decode'){
-    //       if(Candy::var($this->types[$col])->isBegin('tinyint(1)')) $value = boolval($value);
-    //   elseif(Candy::var($this->types[$col])->contains('int'))       $value = intval($value);
-    //   elseif(Candy::var($this->types[$col])->isBegin('double'))     $value = doubleval($value);
-    //   elseif(Candy::var($this->types[$col])->isBegin('float'))      $value = floatval($value);
-    //   elseif(Candy::var($this->types[$col])->isBegin('boolean'))    $value = boolval($value);
-    //   elseif(Candy::var($this->types[$col])->isBegin('json'))       $value = json_decode($value);
+             if(Candy.var(this.types[col]).isBegin('tinyint(1)')) value = value ? true : false;
+        else if(Candy.var(this.types[col]).isBegin('int'))        value = parseInt(value);
+        else if(Candy.var(this.types[col]).isBegin('double'))     value = parseFloat(value);
+        else if(Candy.var(this.types[col]).isBegin('float'))      value = parseFloat(value);
+        else if(Candy.var(this.types[col]).isBegin('boolean'))    value = parseInt(value);
+        else if(Candy.var(this.types[col]).isBegin('json'))       value = JSON.parse(value);
     } else /* if(!is_string($value) && (!is_array($value) || ($value['ct'] ?? 0) != $GLOBALS['candy_token_mysql']))*/ {
            if(Candy.var(this.types[col]).isBegin('tinyint(1)')) value = parseInt(value);
       else if(Candy.var(this.types[col]).isBegin('int'))        value = parseInt(value);
@@ -466,14 +476,17 @@ module.exports = {
     if(!Candy.Config.mysql.db['default']) Candy.Config.mysql.db['default'] = {};
     let db = Candy.Config.mysql;
     Candy.Mysql.conn['default'] = mysql.createConnection({
-        host: db.host ?? "localhost",
+        host: db.host ?? "127.0.0.1",
         user: db.username,
         password: db.password,
         database: db.database
     });
     Candy.Mysql.conn['default'].connect();
     Candy.Mysql.conn['default'].query('SHOW TABLES', (err, result) => {
-      if(err) return;
+      if(err){
+        console.error('Mysql Connection Error', err);
+        return;
+      }
       for(let table of result) for(let key of Object.keys(table)){
         let t = new Table(table[key], Candy.Mysql.conn['default']);
       }

@@ -22,10 +22,7 @@ function get(id){
         loaded = true;
     }
     for (const service of services){
-        if(service.id == id || service.name == id || service.file == id){
-            service.id = services.indexOf(service);
-            return service;
-        }
+        if(service.id == id || service.name == id || service.file == id) return service;
     }
     return false;
 }
@@ -48,6 +45,7 @@ function add(file){
 
 function set(id, key, value){
     let service = get(id);
+    let index = services.indexOf(service);
     if(service){
         if(typeof key == 'object'){
             for(const k in key) service[k] = key[k];
@@ -57,7 +55,7 @@ function set(id, key, value){
     } else {
         return false;
     }
-    services[service.id] = service;
+    services[index] = service;
     Config.set('services', services);
 }
 
@@ -66,19 +64,19 @@ async function check(){
     for(const service of services) {
         if(service.active){
             if(!service.pid){
-                run(services.indexOf(service));
+                run(service.id);
             } else {
                 if(!watcher[service.pid]){
                     try {
                         process.kill(service.pid, 'SIGTERM');
                     } catch(e) {
                     }
-                    run(services.indexOf(service));
-                    services[services.indexOf(service)].pid = null;
+                    run(service.id);
+                    set(service.id, 'pid', null);
                 }
             }
         }
-        services[services.indexOf(service)] = service;
+        set(service.id, service);
         if(logs[service.id]) fs.writeFile(os.homedir() + '/.candypack/logs/' + service.name + '.log', logs[service.id], 'utf8', function(err) {
             if(err) console.log(err);
         });
@@ -91,17 +89,18 @@ async function check(){
 async function run(id){
     if(active[id]) return;
     active[id] = true;
-    let service = services[id];
+    let service = get(id);
     if(!service) return;
-    if(service.status == 'errored' && error_counts[id] > 10){
+    console.log(service.name, service.status, error_counts[id]);
+    if(error_counts[id] > 10){
         active[id] = false;
         return;
     }
-    if(service.status == 'errored' && (Date.now() - service.updated < error_counts[id] * 1000)){
+    if((service.status == 'errored' || service.status == 'stopped') && (Date.now() - service.updated < error_counts[id] * 1000)){
         active[id] = false;
         return;
     }
-    set(id, { updated: Date.now() });
+    set(id, 'updated', Date.now());
     var child = spawn('node', [service.file], { cwd: path.dirname(service.file), detached: true });
     let pid = child.pid;
     child.stdout.on('data', function(data) {
@@ -118,23 +117,25 @@ async function run(id){
             status: 'errored',
             updated: Date.now()
         });
-        watcher[pid] = false;
-        error_counts[id] = error_counts[id] ?? 0;
-        error_counts[id]++;
-        active[id] = false;
+        console.log(id + ': Errored');
+        // watcher[pid] = false;
+        // error_counts[id] = error_counts[id] ?? 0;
+        // error_counts[id]++;
+        // active[id] = false;
     });
     child.on('exit', function(code, signal) {
-        if(services[id].status == 'running'){
+        console.log(id + ': Stopped');
+        if(get(service.id).status == 'running'){
             set(id, {
                 pid: null,
                 started: null,
                 status: 'stopped',
                 updated: Date.now()
             });
-            watcher[pid] = false;
-            error_counts[id] = error_counts[id] ?? 0;
-            error_counts[id]++;
         }
+        watcher[pid] = false;
+        error_counts[id] = error_counts[id] ?? 0;
+        error_counts[id]++;
         active[id] = false;
     });
     set(id, {
@@ -143,6 +144,7 @@ async function run(id){
         started: Date.now(),
         status: 'running'
     });
+    console.log('Service ' + service.name + ' started with pid ' + pid);
     watcher[pid] = true;
 }
 
