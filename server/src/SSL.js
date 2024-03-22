@@ -122,7 +122,7 @@ module.exports = {
         checking = true;
         self();
         for (const domain of Object.keys(Config.get('websites'))) {
-            if(!Config.get('websites')[domain].ssl) await ssl(domain);
+            if(!Config.get('websites')[domain].ssl || Date.now() + (1000 * 60 * 60 * 24 * 7 * 30) > Config.get('websites')[domain].ssl.expiry) await ssl(domain);
         }
         checking = false;
     }
