@@ -152,18 +152,24 @@ function monitor(){
     if(c1 > 50) c1 = 50;
     result = color('\n' + spacing('CANDYPACK', width, 'center') + '\n\n', 'magenta', 'bold');
     result += color(' ┌', 'gray');
+    let service = -1;
     if(domains.length){
         result += color('─'.repeat(5), 'gray');
         let title = color(Lang.get('Websites'), null);
         result += ' ' + color(title) + ' ';
         result += color('─'.repeat(c1 - title.length - 7), 'gray');
+    } else if(services.length){
+        result += color('─'.repeat(5), 'gray');
+        let title = color(Lang.get('Services'), null);
+        result += ' ' + color(title) + ' ';
+        result += color('─'.repeat(c1 - title.length - 7), 'gray');
+        service++;
     } else {
         result += color('─'.repeat(c1), 'gray');
     }
     result += color('┬', 'gray');
     result += color('─'.repeat(width - c1), 'gray');
     result += color('┐ \n', 'gray');
-    let service = -1;
     for(let i = 0; i < height - 4; i++){
         if(domains[i]){
             result += color(' │', 'gray');
