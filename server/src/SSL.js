@@ -26,7 +26,6 @@ function self(){
 }
 
 async function ssl(domain){
-    // return;
     // let websites = Config.get('websites') ?? {};
     // let website = websites[domain];
     // if(!website) return;
@@ -110,7 +109,7 @@ async function ssl(domain){
     website.ssl = {
         key: os.homedir() + '/.candypack/ssl/' + domain + '.key',
         cert: os.homedir() + '/.candypack/ssl/' + domain + '.crt',
-        expiry: Date.now() + 86400000
+        expiry: Date.now() + (1000 * 60 * 60 * 24 * 30 * 3)
     };
     websites[domain] = website;
     Config.set('websites', websites);
@@ -122,7 +121,9 @@ module.exports = {
         checking = true;
         self();
         for (const domain of Object.keys(Config.get('websites'))) {
-            if(!Config.get('websites')[domain].ssl || Date.now() + (1000 * 60 * 60 * 24 * 7 * 30) > Config.get('websites')[domain].ssl.expiry) await ssl(domain);
+            console.log(Config.get('websites')[domain].ssl.expiry)
+            console.log(Date.now() + (1000 * 60 * 60 * 24 * 30));
+            if(!Config.get('websites')[domain].ssl || Date.now() + (1000 * 60 * 60 * 24 * 30) > Config.get('websites')[domain].ssl.expiry) await ssl(domain);
         }
         checking = false;
     }
