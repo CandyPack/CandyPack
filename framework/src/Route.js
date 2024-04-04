@@ -142,24 +142,18 @@ function init(){
 
 function params(req, res, id){
     return {
-        id      : id,
         Config  : require('./Config.js'),
         Mysql   : require('./Mysql.js'),
-        Request : new (require('./Request.js'))(req, res),
+        Request : new (require('./Request.js'))(req, res, id),
         Route   : require('./Route.js'),
         Server  : require('./Server.js'),
         View    : new (require('./View.js'))(),
-        var     : function(value){
-            const variable = require('./Var.js');
-            return variable.init(value);
-        },
-        return  : function(data){
-            if(typeof data === 'object'){
-                data = JSON.stringify(data);
-                this.Request.res.writeHead(200, { 'Content-Type': 'application/json' });
-            }
-            if(!res.finished) this.Request.res.end(data);
-        }
+        Var     : require('./Var.js'),
+
+        // shortcuts
+        cookie  : function(key, value){ return this.Request.cookie(key, value) },
+        return  : function(data)      { return this.Request.end(data)          },
+        var     : function(value)     { return this.Var.init(value);           },
     };
 }
 
@@ -179,50 +173,47 @@ module.exports = {
         if(!Candy.Route.routes[route]) route = 'www';
         if(!Candy.Route.routes[route]) return res.end();
         let result = null;
-        let status = 200;
         let page = '';
         let t = setTimeout(function(){
             if(!res.finished){
-                res.writeHead(408, { 'Content-Type': 'text/html' });
-                res.end();
+                param.Request.status(408);
+                param.Request.header('Content-Type', 'text/html');
+                param.Request.end();
             }
         }, Candy.Config.request.timeout);
         if(Candy.Route.routes[route][type] && Candy.Route.routes[route][type][url]){
-            status = 200;
             result = await Candy.Route.routes[route][type][url].cache(param);
         } else if(Candy.Route.routes[route]['page'] && Candy.Route.routes[route]['page'][url] && typeof Candy.Route.routes[route]['page'][url].cache === 'function'){
-            status = 200;
             page = Candy.Route.routes[route]['page'][url].file
             result = await Candy.Route.routes[route]['page'][url].cache(param);
         } else if(url && !url.includes('/../') && fs.existsSync(`${__dir}/public${url}`) && fs.lstatSync(`${__dir}/public${url}`).isFile()){
-            status = 200;
             result = fs.readFileSync(`${__dir}/public${url}`);
             let type = 'text/html';
             if(url.includes('.')){
                 let arr = url.split('.');
                 type = mime[arr[arr.length - 1]];
             }
-            res.writeHead(status, { 'Content-Type': mime });
-            res.end(result);
+            param.Request.header('Content-Type', type);
+            param.Request.end(result);
         } else if(Candy.Route.routes[route].error && Candy.Route.routes[route].error[404]){
-            status = 404;
+            param.Request.status(404);
             result = await Candy.Route.routes[route].error[404].cache(param);
         } else {
-            status = 404;
             result = '404 Not Found';
-            res.writeHead(status, { 'Content-Type': 'text/html' });
+            param.Request.header('Content-Type', 'text/html');
+            param.Request.status(404);
             param.return(result);
         }
         if(result){
             if(typeof result === 'object'){
                 result = JSON.stringify(result);
-                res.writeHead(status, { 'Content-Type': 'application/json' });
+                param.Request.header('Content-Type', 'application/json');
             } else {
-                res.writeHead(status, { 'Content-Type': 'text/html', 'Set-Cookie': 'candy=' + JSON.stringify({ page: page })});
+                param.Request.header('Content-Type', 'text/html');
+                param.Request.header('Set-Cookie', 'candy=' + JSON.stringify({ page: page }));
             }
-        } else if(status !== 200){
-            res.writeHead(status, { 'Content-Type': 'text/html' });
         }
+        param.Request.print(param);
         param.View.print(param);
         delete param;
     },
