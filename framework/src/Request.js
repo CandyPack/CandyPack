@@ -1,16 +1,21 @@
 class Request {
-    #cookies = [];
-    #headers = {};
-    #status = 200;
+    #cookies  = [];
+    #headers  = {'Powered-By': 'CandyPack'};
+    #status   = 200;
 
-    constructor(req, res, id) {
+    constructor(id, req, res) {
         this.req = req;
         this.res = res;
         this.id = id;
     }
 
-    cookie(key, value) {
-        this.#cookies.push(`${key}=${value}`);
+    cookie(key, value, options = {}) {
+        if(!options.expires) options.expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365);
+        if(!options.path) options.path = '/';
+        if(typeof value === 'object') value = JSON.stringify(value);
+        let cookie = `${key}=${value}`;
+        for(const option of Object.keys(options)) cookie += `; ${option}=${options[option]}`;
+        this.#cookies.push(cookie);
     }
 
     end(data) {

@@ -140,23 +140,6 @@ function init(){
     loading = false;
 }
 
-function params(req, res, id){
-    return {
-        Config  : require('./Config.js'),
-        Mysql   : require('./Mysql.js'),
-        Request : new (require('./Request.js'))(req, res, id),
-        Route   : require('./Route.js'),
-        Server  : require('./Server.js'),
-        View    : new (require('./View.js'))(),
-        Var     : require('./Var.js'),
-
-        // shortcuts
-        cookie  : function(key, value){ return this.Request.cookie(key, value) },
-        return  : function(data)      { return this.Request.end(data)          },
-        var     : function(value)     { return this.Var.init(value);           },
-    };
-}
-
 module.exports = {
     routes: {},
     init: function(){
@@ -165,7 +148,7 @@ module.exports = {
     },
     request: async function(req, res){
         let id = `${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
-        let param = params(req, res, id);
+        let param = Candy.instance(id, req, res);
         let route = req.headers.host.split('.')[0];
         let url = req.url.split('?')[0];
         if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
@@ -185,6 +168,7 @@ module.exports = {
             result = await Candy.Route.routes[route][type][url].cache(param);
         } else if(Candy.Route.routes[route]['page'] && Candy.Route.routes[route]['page'][url] && typeof Candy.Route.routes[route]['page'][url].cache === 'function'){
             page = Candy.Route.routes[route]['page'][url].file
+            param.cookie('candy', {candy: { page: page }, token: param.token()});
             result = await Candy.Route.routes[route]['page'][url].cache(param);
         } else if(url && !url.includes('/../') && fs.existsSync(`${__dir}/public${url}`) && fs.lstatSync(`${__dir}/public${url}`).isFile()){
             result = fs.readFileSync(`${__dir}/public${url}`);
@@ -210,7 +194,6 @@ module.exports = {
                 param.Request.header('Content-Type', 'application/json');
             } else {
                 param.Request.header('Content-Type', 'text/html');
-                param.Request.header('Set-Cookie', 'candy=' + JSON.stringify({ page: page }));
             }
         }
         param.Request.print(param);
