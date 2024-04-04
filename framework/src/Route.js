@@ -143,10 +143,9 @@ function init(){
 function params(req, res, id){
     return {
         id      : id,
-        res     : res,
-        req     : req,
         Config  : require('./Config.js'),
         Mysql   : require('./Mysql.js'),
+        Request : new (require('./Request.js'))(req, res),
         Route   : require('./Route.js'),
         Server  : require('./Server.js'),
         View    : new (require('./View.js'))(),
@@ -157,9 +156,9 @@ function params(req, res, id){
         return  : function(data){
             if(typeof data === 'object'){
                 data = JSON.stringify(data);
-                this.res.writeHead(200, { 'Content-Type': 'application/json' });
+                this.Request.res.writeHead(200, { 'Content-Type': 'application/json' });
             }
-            if(!res.finished) this.res.end(data);
+            if(!res.finished) this.Request.res.end(data);
         }
     };
 }
@@ -172,6 +171,7 @@ module.exports = {
     },
     request: async function(req, res){
         let id = `${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
+        let param = params(req, res, id);
         let route = req.headers.host.split('.')[0];
         let url = req.url.split('?')[0];
         if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
@@ -180,7 +180,7 @@ module.exports = {
         if(!Candy.Route.routes[route]) return res.end();
         let result = null;
         let status = 200;
-        let param = params(req, res, id);
+        let page = '';
         let t = setTimeout(function(){
             if(!res.finished){
                 res.writeHead(408, { 'Content-Type': 'text/html' });
@@ -192,6 +192,7 @@ module.exports = {
             result = await Candy.Route.routes[route][type][url].cache(param);
         } else if(Candy.Route.routes[route]['page'] && Candy.Route.routes[route]['page'][url] && typeof Candy.Route.routes[route]['page'][url].cache === 'function'){
             status = 200;
+            page = Candy.Route.routes[route]['page'][url].file
             result = await Candy.Route.routes[route]['page'][url].cache(param);
         } else if(url && !url.includes('/../') && fs.existsSync(`${__dir}/public${url}`) && fs.lstatSync(`${__dir}/public${url}`).isFile()){
             status = 200;
@@ -209,7 +210,7 @@ module.exports = {
         } else {
             status = 404;
             result = '404 Not Found';
-            param.res.writeHead(status, { 'Content-Type': 'text/html' });
+            res.writeHead(status, { 'Content-Type': 'text/html' });
             param.return(result);
         }
         if(result){
@@ -217,7 +218,7 @@ module.exports = {
                 result = JSON.stringify(result);
                 res.writeHead(status, { 'Content-Type': 'application/json' });
             } else {
-                res.writeHead(status, { 'Content-Type': 'text/html' });
+                res.writeHead(status, { 'Content-Type': 'text/html', 'Set-Cookie': 'candy=' + JSON.stringify({ page: page })});
             }
         } else if(status !== 200){
             res.writeHead(status, { 'Content-Type': 'text/html' });
