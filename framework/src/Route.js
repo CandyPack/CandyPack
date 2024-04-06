@@ -167,8 +167,7 @@ module.exports = {
         }, Candy.Config.request.timeout);
         if(Candy.Route.routes[route][type] && Candy.Route.routes[route][type][url]){
             if(['post', 'get'].includes(type) && Candy.Route.routes[route][type][url].token){
-                console.log('token');
-                if(!param.Request.request('token') || !param.token(param.Request.request('token'))){
+                if(!(await param.Request.request('token')) || !param.token(await param.Request.request('token'))){
                     param.Request.status(401);
                     return param.Request.end();
                 }

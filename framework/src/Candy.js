@@ -19,10 +19,10 @@ module.exports = {
         _candy.var     = function(value) { return _candy.Var.init(value); };
 
         if(req && res){
-            _candy.Request   = new (require('./Request.js'))(id, req, res);
-            _candy.Token     = new (require('./Token.js'))(id);
+            _candy.Request   = new (require('./Request.js'))  (id, req, res);
+            _candy.Token     = new (require('./Token.js'))    (_candy.Request);
             _candy.Validator = new (require('./Validator.js'))(_candy.Request);
-            _candy.View      = new (require('./View.js'))(id);
+            _candy.View      = new (require('./View.js'))     (_candy.Request);
 
             _candy.cookie    = function(key, value){ return _candy.Request.cookie(key, value)                         };
             _candy.return    = function(data)      { return _candy.Request.end(data)                                  };
