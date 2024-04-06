@@ -60,7 +60,7 @@ const mime = {
     'midi': 'audio/midi',
 }
 
-function set(type, url, file){
+function set(type, url, file, options = {}){
     if(typeof url != 'string') url.toString();
     if(url.length && url.substr(-1) === '/') url = url.substr(0, url.length - 1);
     let path = `${__dir}/route/${Candy.Route.buff}.js`;
@@ -88,6 +88,7 @@ function set(type, url, file){
         Candy.Route.routes[Candy.Route.buff][type][url].mtime = fs.statSync(path).mtimeMs;
         Candy.Route.routes[Candy.Route.buff][type][url].path = path;
         Candy.Route.routes[Candy.Route.buff][type][url].loaded = routes[Candy.Route.buff];
+        Candy.Route.routes[Candy.Route.buff][type][url].token = options.token ?? true;
     }
 }
 
@@ -165,10 +166,17 @@ module.exports = {
             }
         }, Candy.Config.request.timeout);
         if(Candy.Route.routes[route][type] && Candy.Route.routes[route][type][url]){
+            if(['post', 'get'].includes(type) && Candy.Route.routes[route][type][url].token){
+                console.log('token');
+                if(!param.Request.request('token') || !param.token(param.Request.request('token'))){
+                    param.Request.status(401);
+                    return param.Request.end();
+                }
+            }
             result = await Candy.Route.routes[route][type][url].cache(param);
         } else if(Candy.Route.routes[route]['page'] && Candy.Route.routes[route]['page'][url] && typeof Candy.Route.routes[route]['page'][url].cache === 'function'){
             page = Candy.Route.routes[route]['page'][url].file
-            param.cookie('candy', {candy: { page: page }, token: param.token()});
+            param.cookie('candy', {candy: { page: page, token: param.token()}});
             result = await Candy.Route.routes[route]['page'][url].cache(param);
         } else if(url && !url.includes('/../') && fs.existsSync(`${__dir}/public${url}`) && fs.lstatSync(`${__dir}/public${url}`).isFile()){
             result = fs.readFileSync(`${__dir}/public${url}`);
@@ -178,6 +186,7 @@ module.exports = {
                 type = mime[arr[arr.length - 1]];
             }
             param.Request.header('Content-Type', type);
+            param.Request.header('Cache-Control', 'public, max-age=31536000');
             param.Request.end(result);
         } else if(Candy.Route.routes[route].error && Candy.Route.routes[route].error[404]){
             param.Request.status(404);
@@ -195,6 +204,7 @@ module.exports = {
             } else {
                 param.Request.header('Content-Type', 'text/html');
             }
+            param.write(result);
         }
         param.Request.print(param);
         param.View.print(param);
@@ -203,22 +213,22 @@ module.exports = {
     page: function(path, file){
         set('page', path, file);
     },
-    post: function(path, file){
-        set('post', path, file);
+    post: function(path, file, options){
+        set('post', path, file, options);
     },
-    get: function(path, file){
-        set('get', path, file);
+    get: function(path, file, options){
+        set('get', path, file, options);
     },
     authPage: function(path, authFile, file){
-        set('authPage', path, authFile);
+        if(authFile) set('authPage', path, authFile);
         if(file) this.page(path, file);
     },
-    authPost: function(path, authFile, file){
-        set('authPost', path, authFile);
+    authPost: function(path, authFile, file, options){
+        if(authFile) set('authPost', path, authFile);
         if(file) this.post(path, file);
     },
-    authGet: function(path, authFile, file){
-        set('authGet', path, authFile);
+    authGet: function(path, authFile, file, options){
+        if(authFile) set('authGet', path, authFile);
         if(file) this.get(path, file);
     },
     error: function(code, file){

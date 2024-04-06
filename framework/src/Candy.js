@@ -9,21 +9,29 @@ module.exports = {
     },
 
     instance(id, req, res){
-        return {
-            // Classes
-            Config  : Candy.Config ?? require('./Config.js'),
-            Mysql   : Candy.Mysql  ?? require('./Mysql.js'),
-            Request : new (require('./Request.js'))(id, req, res),
-            Route   : Candy.Route  ?? require('./Route.js'),
-            Server  : Candy.Server ?? require('./Server.js'),
-            Token   : new (require('./Token.js'))(id),
-            View    : new (require('./View.js'))(id),
-    
-            // Shortcuts
-            cookie   : function(key, value){ return this.Request.cookie(key, value)                       },
-            return   : function(data)      { return this.Request.end(data)                                },
-            token    : function(hash)      { return hash ? this.Token.check(hash) : this.Token.generate() },
-            var      : function(value)     { return this.Var.init(value);                                 },
-        };
+        let _candy = {};
+
+        _candy.Config  = require('./Config.js');
+        _candy.Mysql   = require('./Mysql.js');
+        _candy.Route   = require('./Route.js');
+        _candy.Server  = require('./Server.js');
+
+        _candy.var     = function(value) { return _candy.Var.init(value); };
+
+        if(req && res){
+            _candy.Request   = new (require('./Request.js'))(id, req, res);
+            _candy.Token     = new (require('./Token.js'))(id);
+            _candy.Validator = new (require('./Validator.js'))(_candy.Request);
+            _candy.View      = new (require('./View.js'))(id);
+
+            _candy.cookie    = function(key, value){ return _candy.Request.cookie(key, value)                         };
+            _candy.return    = function(data)      { return _candy.Request.end(data)                                  };
+            _candy.request   = function(key)       { return _candy.Request.request(key)                               };
+            _candy.token     = function(hash)      { return hash ? _candy.Token.check(hash) : _candy.Token.generate() };
+            _candy.validator = function()          { return _candy.Validator                                          };
+            _candy.write     = function(value)     { return _candy.Request.write(value)                               };
+        }
+
+        return _candy;
     }
 }

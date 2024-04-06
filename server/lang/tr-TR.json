@@ -20,5 +20,6 @@
     "Service %s added.": "Service %s added.",
     "Running": "Running",
     "Name": "Name",
-    "Active": "Active"
+    "Active": "Active",
+    "Errored": "Errored"
 }
