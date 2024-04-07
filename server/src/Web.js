@@ -63,7 +63,7 @@ function request(req, res, secure){
         const proxy = httpProxy.createProxyServer({});
         proxy.web(req, res, { target: 'http://127.0.0.1:' + website.port });
         proxy.on('proxyReq', (proxyReq, req, res, options) => {
-            proxyReq.setHeader('candy-connection-remoteaddress', req.connection.remoteAddress);
+            proxyReq.setHeader('X-Candy-Connection-RemoteAddress', req.connection.remoteAddress);
         });
         proxy.on('error', (err, req, res) => {
             log(err);

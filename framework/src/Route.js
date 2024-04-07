@@ -156,12 +156,11 @@ module.exports = {
         if(!Candy.Route.routes[param.Request.route]) return res.end();
         let result = null;
         let page = '';
-        if(param.Request.url                        == '/'
-        && param.Request.method                     == 'POST'
-        && param.Request.header('X-Candy')          == 'token'
-        && param.Request.header('X-Requested-With') == 'xmlhttprequest'
-        && param.Request.header('http-refferer')    == param.Request.host
-        && param.Request.request('id')              == param.Request.cookie('candy_session')){
+        if(param.Request.url                      == '/'
+        && param.Request.method                   == 'GET'
+        && param.Request.header('X-Candy')        == 'token'
+        && param.Request.header('Referer')        == (param.Request.ssl ? 'https://' : 'http://') + param.Request.host + '/'
+        && param.Request.header('X-Candy-Client') == param.Request.cookie('candy_client')){
             param.Request.header('Access-Control-Allow-Origin', (param.Request.ssl ? 'https://' : 'http://') + param.Request.host);
             return param.Request.end({
                 token: param.token(),
@@ -175,7 +174,7 @@ module.exports = {
             result = await Candy.Route.routes[param.Request.route][type][url].cache(param);
         } else if(Candy.Route.routes[param.Request.route]['page'] && Candy.Route.routes[param.Request.route]['page'][url] && typeof Candy.Route.routes[param.Request.route]['page'][url].cache === 'function'){
             page = Candy.Route.routes[param.Request.route]['page'][url].file
-            param.cookie('candy_data', {candy: { page: page, token: param.token()}});
+            param.cookie('candy_data', {candy: { page: page, token: param.token()}}, {expires: null, httpOnly: false});
             result = await Candy.Route.routes[param.Request.route]['page'][url].cache(param);
         } else if(url && !url.includes('/../') && fs.existsSync(`${__dir}/public${url}`) && fs.lstatSync(`${__dir}/public${url}`).isFile()){
             result = fs.readFileSync(`${__dir}/public${url}`);
