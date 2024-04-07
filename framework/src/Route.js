@@ -150,33 +150,33 @@ module.exports = {
     request: async function(req, res){
         let id = `${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
         let param = Candy.instance(id, req, res);
-        let route = req.headers.host.split('.')[0];
         let url = req.url.split('?')[0];
         if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
         let type = req.method.toLowerCase();
-        if(!Candy.Route.routes[route]) route = 'www';
-        if(!Candy.Route.routes[route]) return res.end();
+        if(!Candy.Route.routes[param.Request.route]) return res.end();
         let result = null;
         let page = '';
-        let t = setTimeout(function(){
-            if(!res.finished){
-                param.Request.status(408);
-                param.Request.header('Content-Type', 'text/html');
-                param.Request.end();
-            }
-        }, Candy.Config.request.timeout);
-        if(Candy.Route.routes[route][type] && Candy.Route.routes[route][type][url]){
-            if(['post', 'get'].includes(type) && Candy.Route.routes[route][type][url].token){
-                if(!(await param.Request.request('token')) || !param.token(await param.Request.request('token'))){
-                    param.Request.status(401);
-                    return param.Request.end();
-                }
-            }
-            result = await Candy.Route.routes[route][type][url].cache(param);
-        } else if(Candy.Route.routes[route]['page'] && Candy.Route.routes[route]['page'][url] && typeof Candy.Route.routes[route]['page'][url].cache === 'function'){
-            page = Candy.Route.routes[route]['page'][url].file
-            param.cookie('candy', {candy: { page: page, token: param.token()}});
-            result = await Candy.Route.routes[route]['page'][url].cache(param);
+        if(param.Request.url                        == '/'
+        && param.Request.method                     == 'POST'
+        && param.Request.header('X-Candy')          == 'token'
+        && param.Request.header('X-Requested-With') == 'xmlhttprequest'
+        && param.Request.header('http-refferer')    == param.Request.host
+        && param.Request.request('id')              == param.Request.cookie('candy_session')){
+            param.Request.header('Access-Control-Allow-Origin', (param.Request.ssl ? 'https://' : 'http://') + param.Request.host);
+            return param.Request.end({
+                token: param.token(),
+                page : Candy.Route.routes[param.Request.route]['page'][url].file || Candy.Route.routes[param.Request.route].error[404].file || ''
+            });
+        } else if(Candy.Route.routes[param.Request.route][type] && Candy.Route.routes[param.Request.route][type][url]){
+            if(['post', 'get'].includes(type)
+            && Candy.Route.routes[param.Request.route][type][url].token
+            && (!(await param.Request.request('token'))
+            || !param.token(await param.Request.request('token')))) return param.Request.abort(401);
+            result = await Candy.Route.routes[param.Request.route][type][url].cache(param);
+        } else if(Candy.Route.routes[param.Request.route]['page'] && Candy.Route.routes[param.Request.route]['page'][url] && typeof Candy.Route.routes[param.Request.route]['page'][url].cache === 'function'){
+            page = Candy.Route.routes[param.Request.route]['page'][url].file
+            param.cookie('candy_data', {candy: { page: page, token: param.token()}});
+            result = await Candy.Route.routes[param.Request.route]['page'][url].cache(param);
         } else if(url && !url.includes('/../') && fs.existsSync(`${__dir}/public${url}`) && fs.lstatSync(`${__dir}/public${url}`).isFile()){
             result = fs.readFileSync(`${__dir}/public${url}`);
             let type = 'text/html';
@@ -187,15 +187,7 @@ module.exports = {
             param.Request.header('Content-Type', type);
             param.Request.header('Cache-Control', 'public, max-age=31536000');
             param.Request.end(result);
-        } else if(Candy.Route.routes[route].error && Candy.Route.routes[route].error[404]){
-            param.Request.status(404);
-            result = await Candy.Route.routes[route].error[404].cache(param);
-        } else {
-            result = '404 Not Found';
-            param.Request.header('Content-Type', 'text/html');
-            param.Request.status(404);
-            param.return(result);
-        }
+        } else param.Request.abort(404);
         if(result){
             if(typeof result === 'object'){
                 result = JSON.stringify(result);

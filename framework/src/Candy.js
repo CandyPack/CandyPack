@@ -16,7 +16,7 @@ module.exports = {
         _candy.Route   = require('./Route.js');
         _candy.Server  = require('./Server.js');
 
-        _candy.var     = function(value) { return _candy.Var.init(value); };
+        _candy.var     = function(value) { return new (require('./Var.js'))(value) };
 
         if(req && res){
             _candy.Request   = new (require('./Request.js'))  (id, req, res);

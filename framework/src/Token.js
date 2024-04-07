@@ -8,7 +8,6 @@ class Token {
     // - CHECK TOKEN
     check(token) {
         let tokens = this.Request.session('tokens') || [];
-        console.log(tokens);
         if(tokens.includes(token)){
             tokens = tokens.filter(t => t !== token);
             this.Request.session('tokens', tokens);
