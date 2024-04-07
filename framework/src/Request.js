@@ -4,7 +4,7 @@ class Request {
     #complete = false;
     #cookies  = [];
     #event    = {'data': [], 'end': [], 'error': [], 'timeout': []};
-    #headers  = {'Powered-By': 'CandyPack'};
+    #headers  = {'Server': 'CandyPack'};
     #request  = {};
     #status   = 200;
     #timeout  = null;
@@ -16,7 +16,7 @@ class Request {
         this.method = req.method;
         this.url    = req.url;
         this.host   = req.headers.host;
-        this.ssl    = req.connection.encrypted;
+        this.ssl    = this.header('X-Candy-Connection-SSL') === 'true';
         this.ip     = req.connection.remoteAddress === '127.0.0.1' ? (header('X-Candy-Connection-RemoteAddress') ?? req.connection.remoteAddress) : req.connection.remoteAddress;
         let route   = req.headers.host.split('.')[0];
         if(!Candy.Route.routes[route]) route = 'www';
@@ -119,19 +119,19 @@ class Request {
             let json = JSON.stringify(data);
             if(json.length > 0 && JSON.parse(json).type !== 'Buffer'){
                 data = json;
-                this.header('Content-Type', 'application/json; charset=utf-8');
+                this.header('Content-Type', 'application/json');
             }
         }
-        this.print();
         clearTimeout(this.#timeout);
+        this.print();
         this.res.end(data);
         this.req.connection.destroy();
     }
 
     // - SET HEADER
     header(key, value) {
-        if(value === null) delete this.#headers[key];
-        else if(this.#headers[key]) this.#headers[key] = value;
+              if(value === null) delete this.#headers[key];
+        else  if(value !== undefined) this.#headers[key] = value;
         else for(const header of Object.keys(this.req.headers)) if(header.toLowerCase() === key.toLowerCase()) return this.req.headers[header];
     }
 

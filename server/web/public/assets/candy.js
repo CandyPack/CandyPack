@@ -55,6 +55,17 @@ const Candy = {
         }
       });
     },
+
+    client: function(){
+      if(!document.cookie.includes('candy_client=')) return null;
+      return document.cookie.split('candy_client=')[1].split(';')[0];
+    },
+
+
+    data: function(){
+      if(!document.cookie.includes('candy_data=')) return null;
+      return JSON.parse(unescape(document.cookie.split('candy_data=')[1].split(';')[0]));
+    },
   
     form: function(obj, callback) {
       if(typeof obj != 'object') obj = { form: obj }
@@ -191,8 +202,9 @@ const Candy = {
           Candy.candy.token.data = true;
         } else {
           var req = new XMLHttpRequest();
-          req.open('GET', '?_candy=token', false);
-          req.setRequestHeader("X-Requested-With", "xmlhttprequest");
+          req.open('GET', '/', false);
+          req.setRequestHeader('X-Candy', 'token');
+          req.setRequestHeader('X-Candy-Client', this.client());
           req.send(null);
           var req_data = JSON.parse(req.response);
           Candy.candy.page = req_data.page;
@@ -201,10 +213,15 @@ const Candy = {
       }
       Candy.candy.token.hash.filter(n => n);
       var return_token = Candy.candy.token.hash.shift();
-      if(!Candy.candy.token.hash.length) $.get('?_candy=token',function(data){
-        var result = JSON.parse(JSON.stringify(data));
-        if(result.token) Candy.candy.token.hash.push(result.token);
-        Candy.candy.page = result.page;
+      if(!Candy.candy.token.hash.length) $.ajax({
+        url: '/',
+        type: 'GET',
+        headers: { 'X-Candy': 'token', 'X-Candy-Client': this.client()},
+        success: function (data) {
+          var result = JSON.parse(JSON.stringify(data));
+          if(result.token) Candy.candy.token.hash.push(result.token);
+          Candy.candy.page = result.page;
+        }
       });
       return return_token;
     },
@@ -216,11 +233,6 @@ const Candy = {
         else Candy.token(true);
       }
       return Candy.candy.page;
-    },
-  
-    data: function(){
-      if(!document.cookie.includes('candy=')) return null;
-      return JSON.parse(unescape(document.cookie.split('candy=')[1].split(';')[0]));
     },
   
     load: function(url,callback,push=true){
@@ -278,4 +290,4 @@ const Candy = {
         Candy.load(window.location.href,callback,false);
       });
     }
-  }  
+  }
