@@ -1,167 +1,181 @@
 class Validator {
-    // private $_name = '';
-    // private $_request = null;
-    // private $_error = false;
-    // private $_message = [];
-    // private $_method = [];
-    // private $_type = 'post';
-
-    // function __construct($name='',$request=null,$error=false,$message=[],$method=[]){
-    //     $this->_name = $name;
-    //     $this->_request = $request;
-    //     $this->_error = $error;
-    //     $this->_message = $message;
-    //     $this->_method = $method;
-    // }
-
+    #error   = false;
+    #message = {};
+    #method  = [];
+    #name    = '';
+    #type    = 'post';
 
     check(rules){
-    //     if(is_bool($c) || is_a($c,'Mysql_Table')){
-    //     $this->_error = $c === false;
-    //     }else{
-    //     foreach(explode('|',$c) as $key){
-    //         $vars = explode(':',$key);
-    //         $else = substr($vars[0],0,1) === '!';
-    //         if(!$this->_error && !isset($this->_message[$this->_name])){
-    //         switch($else ? substr($vars[0],1) : $vars[0]){
-    //             case 'required':
-    //             $this->_error = !isset($this->_method[$this->_name]) || $this->_method[$this->_name]=='' || $this->_method[$this->_name]==null;
-    //             break;
-    //             case 'accepted':
-    //             $this->_error = !isset($this->_method[$this->_name]) || ($this->_method[$this->_name]!=1 && $this->_method[$this->_name]!='on' && $this->_method[$this->_name]!='yes' && $this->_method[$this->_name]!=true);
-    //             break;
-    //             case 'numeric':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('numeric');
-    //             break;
-    //             case 'alpha':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('alpha');
-    //             break;
-    //             case 'alphaspace':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('alphaspace');
-    //             break;
-    //             case 'alphanumeric':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('alphanumeric');
-    //             break;
-    //             case 'alphanumericspace':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('alphanumericspace');
-    //             break;
-    //             case 'email':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('email');
-    //             break;
-    //             case 'ip':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('ip');
-    //             break;
-    //             case 'float':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('float');
-    //             break;
-    //             case 'mac':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('mac');
-    //             break;
-    //             case 'domain':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('domain');
-    //             break;
-    //             case 'url':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && !Candy::var($this->_method[$this->_name])->is('url');
-    //             break;
-    //             case 'username':
-    //             $this->_error = isset($this->_method[$this->_name]) && !(ctype_alnum($this->_method[$this->_name]));
-    //             break;
-    //             case 'xss':
-    //             $this->_error = isset($this->_method[$this->_name]) && (strip_tags($this->_method[$this->_name]) != $this->_method[$this->_name]);
-    //             break;
-    //             case 'usercheck':
-    //             $this->_error = isset($this->_method[$this->_name]) && !Auth::check();
-    //             break;
-    //             case 'array':
-    //             $this->_error = isset($this->_method[$this->_name]) && !is_array($this->_method[$this->_name]);
-    //             break;
-    //             case 'date':
-    //             $this->_error = isset($this->_method[$this->_name]) && (strtotime($this->_method[$this->_name]) === false || !(strtotime($this->_method[$this->_name])>strtotime(0)));
-    //             break;
-    //             case 'min':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && isset($vars[1]) && $this->_method[$this->_name]<$vars[1];
-    //             break;
-    //             case 'max':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && isset($vars[1]) && $this->_method[$this->_name]>$vars[1];
-    //             break;
-    //             case 'len':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && isset($vars[1]) && strlen($this->_method[$this->_name])!=$vars[1];
-    //             break;
-    //             case 'minlen':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && isset($vars[1]) && strlen($this->_method[$this->_name])<$vars[1];
-    //             break;
-    //             case 'maxlen':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && isset($vars[1]) && strlen($this->_method[$this->_name])>$vars[1];
-    //             break;
-    //             case 'mindate':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && isset($vars[1]) && strtotime($this->_method[$this->_name])<strtotime($vars[1]);
-    //             break;
-    //             case 'maxdate':
-    //             $this->_error = isset($this->_method[$this->_name]) && $this->_method[$this->_name]!='' && isset($vars[1]) && strtotime($this->_method[$this->_name])>strtotime($vars[1]);
-    //             break;
-    //             case 'same':
-    //             $this->_error = isset($this->_method[$this->_name]) && isset($this->_method[$vars[1]]) && $this->_method[$this->_name]!==$this->_method[$vars[1]];
-    //             break;
-    //             case 'different':
-    //             $this->_error = isset($this->_method[$this->_name]) && isset($this->_method[$vars[1]]) && $this->_method[$this->_name]==$this->_method[$vars[1]];
-    //             break;
-    //             case 'equal':
-    //             $this->_error = isset($this->_method[$this->_name]) && isset($vars[1]) && $this->_method[$this->_name]!==$vars[1];
-    //             break;
-    //             case 'notin':
-    //             $this->_error = isset($this->_method[$this->_name]) && isset($vars[1]) && (strpos($this->_method[$this->_name], $vars[1])!==false);
-    //             break;
-    //             case 'in':
-    //             $this->_error = isset($this->_method[$this->_name]) && isset($vars[1]) && (!(strpos($this->_method[$this->_name], $vars[1])!==false));
-    //             break;
-    //             case 'not':
-    //             $this->_error = isset($this->_method[$this->_name]) && isset($vars[1]) && $this->_method[$this->_name]==$vars[1];
-    //             break;
-    //             case 'regex':
-    //             $this->_error = isset($this->_method[$this->_name]) && isset($vars[1]) && empty(preg_match("/".$vars[1]."/", $this->_method[$this->_name]));
-    //             break;
-    //             case 'user':
-    //             $user_data = Auth::user($vars[1]);
-    //             if(Candy::string($user_data)->is('bcrypt')) $this->_error = isset($this->_method[$this->_name]) && (!Auth::check() || !Candy::hash($this->_method[$this->_name], $user_data));
-    //             else if(Candy::string($user_data)->is('md5'))    $this->_error = isset($this->_method[$this->_name]) && (!Auth::check() || !md5($this->_method[$this->_name]) == $user_data);
-    //             else $this->_error = isset($this->_method[$this->_name]) && (!Auth::check() || $this->_method[$this->_name] != Auth::user($vars[1]));
-    //             break;
-    //         }
-    //         if($else) $this->_error = !$this->_error;
-    //         }
-    //     }
-    //     }
-    //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
+        if(typeof rules === 'boolean'){
+            this.#error = rules === false;
+        } else {
+            for(const rule of rules.split('|')){
+                let vars = rule.split(':');
+                let inverse = vars[0].startsWith('!');
+                if(!this.#error && !this.#message[this.#name]){
+                    switch(inverse ? vars[0].substr(1) : vars[0]){
+                        case 'required':
+                            this.#error = !this.#method[this.#name] || this.#method[this.#name] === '' || this.#method[this.#name] === null;
+                            break;
+                        case 'accepted':
+                            this.#error = !this.#method[this.#name] || (this.#method[this.#name] !== 1 && this.#method[this.#name] !== 'on' && this.#method[this.#name] !== 'yes' && this.#method[this.#name] !== true);
+                            break;
+                        case 'numeric':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('numeric');
+                            break;
+                        case 'alpha':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('alpha');
+                            break;
+                        case 'alphaspace':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('alphaspace');
+                            break;
+                        case 'alphanumeric':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('alphanumeric');
+                            break;
+                        case 'alphanumericspace':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('alphanumericspace');
+                            break;
+                        case 'email':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('email');
+                            break;
+                        case 'ip':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('ip');
+                            break;
+                        case 'float':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('float');
+                            break;
+                        case 'mac':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('mac');
+                            break;
+                        case 'domain':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('domain');
+                            break;
+                        case 'url':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('url');
+                            break;
+                        case 'username':
+                            this.#error = this.#method[this.#name] && !(ctype_alnum(this.#method[this.#name]));
+                            break;
+                        case 'xss':
+                            this.#error = this.#method[this.#name] && (strip_tags(this.#method[this.#name]) !== this.#method[this.#name]);
+                            break;
+                        case 'usercheck':
+                            this.#error = this.#method[this.#name] && !Auth.check();
+                            break;
+                        case 'array':
+                            this.#error = this.#method[this.#name] && !Array.isArray(this.#method[this.#name]);
+                            break;
+                        case 'date':
+                            this.#error = this.#method[this.#name] && (strtotime(this.#method[this.#name]) === false || !(strtotime(this.#method[this.#name]) > strtotime(0)));
+                            break;
+                        case 'min':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && this.#method[this.#name] < vars[1];
+                            break;
+                        case 'max':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && this.#method[this.#name] > vars[1];
+                            break;
+                        case 'len':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strlen(this.#method[this.#name]) !== vars[1];
+                            break;
+                        case 'minlen':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strlen(this.#method[this.#name]) < vars[1];
+                            break;
+                        case 'maxlen':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strlen(this.#method[this.#name]) > vars[1];
+                            break;
+                        case 'mindate':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strtotime(this.#method[this.#name]) < strtotime(vars[1]);
+                            break;
+                        case 'maxdate':
+                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strtotime(this.#method[this.#name]) > strtotime(vars[1]);
+                            break;
+                        case 'same':
+                            this.#error = this.#method[this.#name] && this.#method[vars[1]] && this.#method[this.#name] !== this.#method[vars[1]];
+                            break;
+                        case 'different':
+                            this.#error = this.#method[this.#name] && this.#method[vars[1]] && this.#method[this.#name] === this.#method[vars[1]];
+                            break;
+                        case 'equal':
+                            this.#error = this.#method[this.#name] && vars[1] && this.#method[this.#name] !== vars[1];
+                            break;
+                        case 'notin':
+                            this.#error = this.#method[this.#name] && vars[1] && (strpos(this.#method[this.#name], vars[1]) !== false);
+                            break;
+                        case 'in':
+                            this.#error = this.#method[this.#name] && vars[1] && (!(strpos(this.#method[this.#name], vars[1]) !== false));
+                            break;
+                        case 'not':
+                            this.#error = this.#method[this.#name] && vars[1] && this.#method[this.#name] === vars[1];
+                            break;
+                        case 'regex':
+                            this.#error = this.#method[this.#name] && vars[1] && empty(preg_match("/" + vars[1] + "/", this.#method[this.#name]));
+                            break;
+                        case 'user':
+                            let user_data = Auth.user(vars[1]);
+                            if(Candy.string(user_data).is('bcrypt')) this.#error = this.#method[this.#name] && (!Auth.check() || !Candy.hash(this.#method[this.#name], user_data));
+                            else if(Candy.string(user_data).is('md5')) this.#error = this.#method[this.#name] && (!Auth.check() || !md5(this.#method[this.#name]) === user_data);
+                            else this.#error = this.#method[this.#name] && (!Auth.check() || this.#method[this.#name] !== Auth.user(vars[1]));
+                            break;
+                    }
+                    if(inverse) this.#error = !this.#error;
+                }
+            }
+        }
         return this;
     }
 
-    // function validator($m){
-    //     $this->_request = $m;
-    //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
-    // }
+    error(callback){
+        callback();
+        return this;
+    }
+
+    get(key){
+        this.#method = 'GET';
+        this.#name   = key;
+        this.#error  = false;
+        this.#type   = 'GET';
+        return this;
+    }
+
+    message(value){
+        if(this.#error && !this.#message[this.#name]){
+            this.#message[this.#name] = value ?? '';
+            this.#error = false;
+        }
+        return this;
+    }
+
+
+    post(key){
+        this.#method = 'POST';
+        this.#name   = key;
+        this.#error  = false;
+        this.#type   = 'POST';
+        return this;
+    }
+
+    result(message, data){
+        let result = {
+            success: { result : Object.keys(this.#message).length === 0,
+                       message: Object.keys(this.#message).length === 0 ? message : '' },
+            errors : this.#message['_candy_form'] ? { _candy_form: this.#message['_candy_form'] } : this.#message,
+            data   : Object.keys(this.#message).length === 0 ? (data ?? null) : null
+        };
+        return result;
+    }
+
+    success(callback){
+        if(this.#error) return this.result();
+        callback = callback();
+        if(typeof callback === 'string') return this.result(callback);
+        else return this.result(null, callback);
+    }
 
     // function var($n,$v=null){
     //     $this->_method = [$n => ($v === null ? $n : $v)];
     //     $this->_name = $n;
     //     $this->_error = false;
     //     $this->_type = $n;
-    //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
-    // }
-
-    post(key){
-    //     $this->_method=$_POST;
-    //     $this->_name=$n;
-    //     $this->_error = false;
-    //     $this->_type = 'POST';
-    //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
-        return this;
-    }
-
-    // function get($n){
-    //     $this->_method=$_GET;
-    //     $this->_name=$n;
-    //     $this->_error = false;
-    //     $this->_type = 'GET';
     //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
     // }
 
@@ -172,14 +186,6 @@ class Validator {
     //     $this->_type = 'FILES';
     //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
     // }
-
-    message(value){
-    //     if($this->_error && !isset($this->_message[$this->_name])){
-    //     $this->_message[$this->_name] = $m;
-    //     $this->_error = false;
-    //     }
-        return this;
-    }
 
     // function brute($try=5){
     //     $ip = $_SERVER['REMOTE_ADDR'];
@@ -201,33 +207,6 @@ class Validator {
     //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
     // }
 
-    // function validate($m=null,$data = []){
-    //     switch($this->_request){
-    //     case 'ajax':
-    //         if(!isset($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) != 'xmlhttprequest'){
-    //         Candy::abort(404);
-    //         }else{
-    //         $result['success']['result'] = count($this->_message)==0;
-    //         $result['success']['message'] = count($this->_message)==0 ? $m : '';
-    //         $result['data'] = count($this->_message)==0 ? $data : [];
-    //         $result['errors'] = isset($this->_message['_candy_form']) ? ['_candy_form' => $this->_message['_candy_form']] : $this->_message;
-    //         if(!$result['success']['result']){
-    //             Candy::return($result);
-    //             die();
-    //         }elseif($result['success']['message']!==null){
-    //             Candy::return($result);
-    //         }
-    //         }
-    //         break;
-    //     default:
-    //     }
-    //     $GLOBALS['_candy']['oneshot']['_validation'] = $this->_message;
-    //     return $this->_message;
-    // }
-    
-    result(v){
-    //     return isset($_SESSION['_candy']['oneshot']['_validation'][$v]) ? $_SESSION['_candy']['oneshot']['_validation'][$v] : false;
-    }
 };
 
 module.exports = Validator;

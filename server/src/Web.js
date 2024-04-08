@@ -42,29 +42,11 @@ function request(req, res, secure){
     if(!website) return index(req, res);
     if(!website.pid || !watcher[website.pid] || website.status != 'running') return index(req, res);
     try{
-        console.log('REQUEST', req.headers.host, req.url);
-        // if(secure){
-        //     if(website.ssl && website.ssl.key && website.ssl.cert && fs.existsSync(website.ssl.key) && fs.existsSync(website.ssl.cert)){
-        //         console.log('SSL CHANGE');
-        //         const sslOptions = {
-        //             key: fs.readFileSync(website.ssl.key),
-        //             cert: fs.readFileSync(website.ssl.cert)
-        //         };
-        //     } else {
-        //         const sslOptions = {
-        //             key: fs.readFileSync(ssl.key),
-        //             cert: fs.readFileSync(ssl.cert)
-        //         };
-
-        //     }
-        //     const secureContext = new Map([[`${req.headers.host}`, sslOptions]]);
-        //     req.connection.setSecureContext(secureContext);
-        // }
         const proxy = httpProxy.createProxyServer({});
         proxy.web(req, res, { target: 'http://127.0.0.1:' + website.port });
         proxy.on('proxyReq', (proxyReq, req, res, options) => {
             proxyReq.setHeader('X-Candy-Connection-RemoteAddress', req.connection.remoteAddress);
-            proxyReq.setHeader('X-Candy-Connection-SSL', secure);
+            proxyReq.setHeader('X-Candy-Connection-SSL', secure ? 'true' : 'false');
         });
         proxy.on('error', (err, req, res) => {
             log(err);
@@ -278,10 +260,6 @@ module.exports = {
                     cp.execSync('npm link candypack', { cwd: web.path });
                     if(fs.existsSync(web.path + 'node_modules/.bin')) fs.rmSync(web.path + 'node_modules/.bin', { recursive: true });
                     if(!fs.existsSync(web.path + '/node_modules')) fs.mkdirSync(web.path + '/node_modules');
-                    // fs.symlink(__dirname, web.path + '/node_modules/candypack','junction', (err) => {
-                    //     if (err) console.error('Kısayol oluşturulamadı:', err);
-                    //     else console.log('Kısayol oluşturuldu.');
-                    // });
                     fs.cpSync(__dirname + '/../web/', web.path, {recursive: true});
                     log(await Lang.get('%s Created.', web.domain));
                     return resolve();

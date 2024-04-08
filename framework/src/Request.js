@@ -5,7 +5,7 @@ class Request {
     #cookies  = [];
     #event    = {'data': [], 'end': [], 'error': [], 'timeout': []};
     #headers  = {'Server': 'CandyPack'};
-    #request  = {};
+    #request  = {post: {}, get: {}};
     #status   = 200;
     #timeout  = null;
 
@@ -76,7 +76,7 @@ class Request {
                         if(data[i].indexOf('Content-Disposition') === -1) continue;
                         let key = data[i].split('name="')[1].split('"')[0];
                         let val = data[i].split('\r\n\r\n')[1].split('\r\n')[0];
-                        this.#request[key] = val;
+                        this.#request.post[key] = val;
                     }
                 } else {
                     let data = body.split('&');
@@ -84,7 +84,7 @@ class Request {
                         if(data[i].indexOf('=') === -1) continue;
                         let key = data[i].split('=')[0];
                         let val = data[i].split('=')[1];
-                        this.#request[key] = val;
+                        this.#request.post[key] = val;
                     }
                 }
             }
@@ -96,14 +96,14 @@ class Request {
         this.req.on('end', () => {
             if(!body) return this.#complete = true;
             if(body.startsWith('{') && body.endsWith('}')){
-                this.#request = JSON.parse(body);
+                this.#request.post = JSON.parse(body);
             } else {
                 let data = body.split('&');
                 for(let i = 0; i < data.length; i++){
                     if(data[i].indexOf('=') === -1) continue;
                     let key = data[i].split('=')[0];
                     let val = data[i].split('=')[1];
-                    this.#request[key] = val;
+                    this.#request.post[key] = val;
                 }
             }
             this.#complete = true;
@@ -149,13 +149,17 @@ class Request {
     }
 
     // - GET REQUEST
-    async request(key) {
-        if(this.#request[key] !== undefined) return this.#request[key];
+    async request(key, method) {
+        if(method) method = method.upperCase();
+        if(this.#request.post[key] !== undefined && method !== 'GET')  return this.#request.post[key];
+        if(this.#request.get[key]  !== undefined && method !== 'POST') return this.#request.get[key];
         return new Promise((resolve, reject) => {
             let interval = setInterval(() => {
-                if(this.#request[key] !== undefined || this.#complete){
+                if(this.#request.post[key] !== undefined || this.#request.get[key] !== undefined || this.#complete){
                     clearInterval(interval);
-                    resolve(this.#request[key] ?? null);
+                         if(this.#request.post[key] !== undefined && method !== 'GET') resolve(this.#request.post[key]);
+                    else if(this.#request.get[key]  !== undefined && method !== 'GET') resolve(this.#request.get[key]);
+                    else reject();
                 }
             }, 10);
         });
@@ -174,7 +178,7 @@ class Request {
             this.cookie('candy_session', `${pub}`);
         }
         if(!Candy.Request.session[pub + '-' + pri]) Candy.Request.session[pub + '-' + pri] = {};
-        if(value === undefined) return value;
+        if(value === undefined) return Candy.Request.session[pub + '-' + pri][key] ?? null;
         else if(value === null) delete Candy.Request.session[pub + '-' + pri][key];
         else Candy.Request.session[pub + '-' + pri][key] = value;
     }
