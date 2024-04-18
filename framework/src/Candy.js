@@ -6,6 +6,7 @@ module.exports = {
         global.Candy.Route.init();
         global.Candy.Server.init();
         global.Candy.instance = this.instance;
+        global.__ = (value) => { return value };
     },
 
     instance(id, req, res){

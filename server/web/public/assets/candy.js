@@ -115,16 +115,16 @@ const Candy = {
           processData: processData,
           cache: cache,
           success: function(data) {
-            if(!data.success) return false
+            if(!data.result) return false
             if(obj.messages == undefined || obj.messages) {
-              if(data.success.result && (obj.messages == undefined || obj.messages.includes('success') || obj.messages == true)){
-                if (form.find('*[candy-form-success]').length) form.find('*[candy-form-success]').html(data.success.message).fadeIn();
-                else form.append(`<span candy-form-success="${obj.form}">${data.success.message}</span>`);
+              if(data.result.success && (obj.messages == undefined || obj.messages.includes('success') || obj.messages == true)){
+                if (form.find('*[candy-form-success]').length) form.find('*[candy-form-success]').html(data.result.message).fadeIn();
+                else form.append(`<span candy-form-success="${obj.form}">${data.result.message}</span>`);
               }else{
                 var invalid_input_class = '_candy_error';
-                var invalid_input_style = '' //'border-color:red';
+                var invalid_input_style = '';
                 var invalid_span_class = '_candy_form_info';
-                var invalid_span_style = '' //'color:red';
+                var invalid_span_style = '';
                 let actions = Candy.candy.actions
                 if(actions.candy && actions.candy.form){
                   if(actions.candy.form.input){
@@ -158,7 +158,7 @@ const Candy = {
             }
             if(callback!==undefined){
               if(typeof callback === "function") callback(data);
-              else if(data.success.result) window.location.replace(callback);
+              else if(data.result.success) window.location.replace(callback);
             }
           },
           xhr: function() {
@@ -233,6 +233,12 @@ const Candy = {
         else Candy.token(true);
       }
       return Candy.candy.page;
+    },
+
+    storage: function(key,value){
+        if(value === undefined) return localStorage.getItem(key);
+        else if(value === null) return localStorage.removeItem(key);
+        else localStorage.setItem(key,value);
     },
   
     load: function(url,callback,push=true){

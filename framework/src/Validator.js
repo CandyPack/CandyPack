@@ -1,147 +1,38 @@
 class Validator {
-    #error   = false;
-    #message = {};
-    #method  = [];
-    #name    = '';
-    #type    = 'post';
+    #check     = '';
+    #checklist = {};
+    #completed = false;
+    #message   = {};
+    #method    = 'POST';
+    #name      = '';
+    #request;
+
+    constructor(Request){
+        this.#request = Request;
+    }
 
     check(rules){
-        if(typeof rules === 'boolean'){
-            this.#error = rules === false;
-        } else {
-            for(const rule of rules.split('|')){
-                let vars = rule.split(':');
-                let inverse = vars[0].startsWith('!');
-                if(!this.#error && !this.#message[this.#name]){
-                    switch(inverse ? vars[0].substr(1) : vars[0]){
-                        case 'required':
-                            this.#error = !this.#method[this.#name] || this.#method[this.#name] === '' || this.#method[this.#name] === null;
-                            break;
-                        case 'accepted':
-                            this.#error = !this.#method[this.#name] || (this.#method[this.#name] !== 1 && this.#method[this.#name] !== 'on' && this.#method[this.#name] !== 'yes' && this.#method[this.#name] !== true);
-                            break;
-                        case 'numeric':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('numeric');
-                            break;
-                        case 'alpha':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('alpha');
-                            break;
-                        case 'alphaspace':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('alphaspace');
-                            break;
-                        case 'alphanumeric':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('alphanumeric');
-                            break;
-                        case 'alphanumericspace':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('alphanumericspace');
-                            break;
-                        case 'email':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('email');
-                            break;
-                        case 'ip':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('ip');
-                            break;
-                        case 'float':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('float');
-                            break;
-                        case 'mac':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('mac');
-                            break;
-                        case 'domain':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('domain');
-                            break;
-                        case 'url':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && !Candy.var(this.#method[this.#name]).is('url');
-                            break;
-                        case 'username':
-                            this.#error = this.#method[this.#name] && !(ctype_alnum(this.#method[this.#name]));
-                            break;
-                        case 'xss':
-                            this.#error = this.#method[this.#name] && (strip_tags(this.#method[this.#name]) !== this.#method[this.#name]);
-                            break;
-                        case 'usercheck':
-                            this.#error = this.#method[this.#name] && !Auth.check();
-                            break;
-                        case 'array':
-                            this.#error = this.#method[this.#name] && !Array.isArray(this.#method[this.#name]);
-                            break;
-                        case 'date':
-                            this.#error = this.#method[this.#name] && (strtotime(this.#method[this.#name]) === false || !(strtotime(this.#method[this.#name]) > strtotime(0)));
-                            break;
-                        case 'min':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && this.#method[this.#name] < vars[1];
-                            break;
-                        case 'max':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && this.#method[this.#name] > vars[1];
-                            break;
-                        case 'len':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strlen(this.#method[this.#name]) !== vars[1];
-                            break;
-                        case 'minlen':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strlen(this.#method[this.#name]) < vars[1];
-                            break;
-                        case 'maxlen':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strlen(this.#method[this.#name]) > vars[1];
-                            break;
-                        case 'mindate':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strtotime(this.#method[this.#name]) < strtotime(vars[1]);
-                            break;
-                        case 'maxdate':
-                            this.#error = this.#method[this.#name] && this.#method[this.#name] !== '' && vars[1] && strtotime(this.#method[this.#name]) > strtotime(vars[1]);
-                            break;
-                        case 'same':
-                            this.#error = this.#method[this.#name] && this.#method[vars[1]] && this.#method[this.#name] !== this.#method[vars[1]];
-                            break;
-                        case 'different':
-                            this.#error = this.#method[this.#name] && this.#method[vars[1]] && this.#method[this.#name] === this.#method[vars[1]];
-                            break;
-                        case 'equal':
-                            this.#error = this.#method[this.#name] && vars[1] && this.#method[this.#name] !== vars[1];
-                            break;
-                        case 'notin':
-                            this.#error = this.#method[this.#name] && vars[1] && (strpos(this.#method[this.#name], vars[1]) !== false);
-                            break;
-                        case 'in':
-                            this.#error = this.#method[this.#name] && vars[1] && (!(strpos(this.#method[this.#name], vars[1]) !== false));
-                            break;
-                        case 'not':
-                            this.#error = this.#method[this.#name] && vars[1] && this.#method[this.#name] === vars[1];
-                            break;
-                        case 'regex':
-                            this.#error = this.#method[this.#name] && vars[1] && empty(preg_match("/" + vars[1] + "/", this.#method[this.#name]));
-                            break;
-                        case 'user':
-                            let user_data = Auth.user(vars[1]);
-                            if(Candy.string(user_data).is('bcrypt')) this.#error = this.#method[this.#name] && (!Auth.check() || !Candy.hash(this.#method[this.#name], user_data));
-                            else if(Candy.string(user_data).is('md5')) this.#error = this.#method[this.#name] && (!Auth.check() || !md5(this.#method[this.#name]) === user_data);
-                            else this.#error = this.#method[this.#name] && (!Auth.check() || this.#method[this.#name] !== Auth.user(vars[1]));
-                            break;
-                    }
-                    if(inverse) this.#error = !this.#error;
-                }
-            }
-        }
+        if(!this.#checklist[this.#method]) this.#checklist[this.#method] = {};
+        this.#checklist[this.#method][this.#name] = {rules: rules, message: null};
+        this.#check = rules;
         return this;
     }
 
-    error(callback){
-        callback();
-        return this;
+    async error(){
+        return new Promise(async (resolve, reject) => {
+            if(!this.#completed) await this.#validate();
+            return resolve(Object.keys(this.#message).length > 0);
+        });
     }
 
     get(key){
         this.#method = 'GET';
         this.#name   = key;
-        this.#error  = false;
-        this.#type   = 'GET';
         return this;
     }
 
     message(value){
-        if(this.#error && !this.#message[this.#name]){
-            this.#message[this.#name] = value ?? '';
-            this.#error = false;
-        }
+        this.#checklist[this.#method][this.#name].message = value;
         return this;
     }
 
@@ -149,26 +40,159 @@ class Validator {
     post(key){
         this.#method = 'POST';
         this.#name   = key;
-        this.#error  = false;
-        this.#type   = 'POST';
         return this;
     }
 
-    result(message, data){
-        let result = {
-            success: { result : Object.keys(this.#message).length === 0,
-                       message: Object.keys(this.#message).length === 0 ? message : '' },
-            errors : this.#message['_candy_form'] ? { _candy_form: this.#message['_candy_form'] } : this.#message,
-            data   : Object.keys(this.#message).length === 0 ? (data ?? null) : null
-        };
-        return result;
+    async result(message, data){
+        return new Promise(async (resolve, reject) => {
+            if(!this.#completed) await this.#validate();
+            let result = {};
+            result.result = {};
+            result.result.success = Object.keys(this.#message).length === 0;
+            if(result.result.success){
+                result.result.message = (message ?? '');
+                result.data = data ?? null;
+            } else {
+                result.errors = this.#message['_candy_form'] ? { _candy_form: this.#message['_candy_form'] } : this.#message;
+            }
+            return resolve(result);
+        });
     }
 
     success(callback){
-        if(this.#error) return this.result();
-        callback = callback();
         if(typeof callback === 'string') return this.result(callback);
         else return this.result(null, callback);
+    }
+
+
+    async #validate(){
+        return new Promise(async (resolve, reject) => {
+            for(const method of Object.keys(this.#checklist)){
+                for(const key of Object.keys(this.#checklist[method])){
+                    let error = false;
+                    let rules = this.#checklist[method][key].rules;
+                    let value = await this.#request.request(key, method);
+                    if(typeof rules === 'boolean'){
+                        error = rules === false;
+                    } else {
+                        for(const rule of (rules.includes('|') ? rules.split('|') : [rules])){
+                            let vars = rule.split(':');
+                            let inverse = vars[0].startsWith('!');
+                            if(!error && !this.#message[this.#name]){
+                                switch(inverse ? vars[0].substr(1) : vars[0]){
+                                    case 'required':
+                                        error = value === undefined || value === '' || value === null;
+                                        break;
+                                    case 'accepted':
+                                        error = !value || (value !== 1 && value !== 'on' && value !== 'yes' && value !== true);
+                                        break;
+                                    case 'numeric':
+                                        error = value && value !== '' && !Candy.var(value).is('numeric');
+                                        break;
+                                    case 'alpha':
+                                        error = value && value !== '' && !Candy.var(value).is('alpha');
+                                        break;
+                                    case 'alphaspace':
+                                        error = value && value !== '' && !Candy.var(value).is('alphaspace');
+                                        break;
+                                    case 'alphanumeric':
+                                        error = value && value !== '' && !Candy.var(value).is('alphanumeric');
+                                        break;
+                                    case 'alphanumericspace':
+                                        error = value && value !== '' && !Candy.var(value).is('alphanumericspace');
+                                        break;
+                                    case 'email':
+                                        error = value && value !== '' && !Candy.var(value).is('email');
+                                        break;
+                                    case 'ip':
+                                        error = value && value !== '' && !Candy.var(value).is('ip');
+                                        break;
+                                    case 'float':
+                                        error = value && value !== '' && !Candy.var(value).is('float');
+                                        break;
+                                    case 'mac':
+                                        error = value && value !== '' && !Candy.var(value).is('mac');
+                                        break;
+                                    case 'domain':
+                                        error = value && value !== '' && !Candy.var(value).is('domain');
+                                        break;
+                                    case 'url':
+                                        error = value && value !== '' && !Candy.var(value).is('url');
+                                        break;
+                                    case 'username':
+                                        error = value && !(ctype_alnum(value));
+                                        break;
+                                    case 'xss':
+                                        error = value && (strip_tags(value) !== value);
+                                        break;
+                                    case 'usercheck':
+                                        error = value && !Auth.check();
+                                        break;
+                                    case 'array':
+                                        error = value && !Array.isArray(value);
+                                        break;
+                                    case 'date':
+                                        error = value && (strtotime(value) === false || !(strtotime(value) > strtotime(0)));
+                                        break;
+                                    case 'min':
+                                        error = value && value !== '' && vars[1] && value < vars[1];
+                                        break;
+                                    case 'max':
+                                        error = value && value !== '' && vars[1] && value > vars[1];
+                                        break;
+                                    case 'len':
+                                        error = value && value !== '' && vars[1] && strlen(value) !== vars[1];
+                                        break;
+                                    case 'minlen':
+                                        error = value && value !== '' && vars[1] && strlen(value) < vars[1];
+                                        break;
+                                    case 'maxlen':
+                                        error = value && value !== '' && vars[1] && strlen(value) > vars[1];
+                                        break;
+                                    case 'mindate':
+                                        error = value && value !== '' && vars[1] && strtotime(value) < strtotime(vars[1]);
+                                        break;
+                                    case 'maxdate':
+                                        error = value && value !== '' && vars[1] && strtotime(value) > strtotime(vars[1]);
+                                        break;
+                                    case 'same':
+                                        error = value && this.#method[vars[1]] && value !== this.#method[vars[1]];
+                                        break;
+                                    case 'different':
+                                        error = value && this.#method[vars[1]] && value === this.#method[vars[1]];
+                                        break;
+                                    case 'equal':
+                                        error = value && vars[1] && value !== vars[1];
+                                        break;
+                                    case 'notin':
+                                        error = value && vars[1] && (strpos(value, vars[1]) !== false);
+                                        break;
+                                    case 'in':
+                                        error = value && vars[1] && (!(strpos(value, vars[1]) !== false));
+                                        break;
+                                    case 'not':
+                                        error = value && vars[1] && value === vars[1];
+                                        break;
+                                    case 'regex':
+                                        error = value && vars[1] && empty(preg_match("/" + vars[1] + "/", value));
+                                        break;
+                                    case 'user':
+                                        let user_data = Auth.user(vars[1]);
+                                        if(Candy.string(user_data).is('bcrypt')) error = value && (!Auth.check() || !Candy.hash(value, user_data));
+                                        else if(Candy.string(user_data).is('md5')) error = value && (!Auth.check() || !md5(value) === user_data);
+                                        else error = value && (!Auth.check() || value !== Auth.user(vars[1]));
+                                        break;
+                                }
+                                if(inverse) error = !error;
+                            }
+                        }
+                    }
+                    if(error) this.#message[key] = this.#checklist[method][key].message;
+                }
+            }
+            this.#completed = true;
+            return resolve();
+        });
     }
 
     // function var($n,$v=null){

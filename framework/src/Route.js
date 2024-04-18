@@ -162,40 +162,40 @@ module.exports = {
         && param.Request.header('Referer')        == (param.Request.ssl ? 'https://' : 'http://') + param.Request.host + '/'
         && param.Request.header('X-Candy-Client') == param.Request.cookie('candy_client')){
             param.Request.header('Access-Control-Allow-Origin', (param.Request.ssl ? 'https://' : 'http://') + param.Request.host);
+            param.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
             return param.Request.end({
                 token: param.token(),
                 page : Candy.Route.routes[param.Request.route]['page'][url].file || Candy.Route.routes[param.Request.route].error[404].file || ''
             });
         } else if(Candy.Route.routes[param.Request.route][type] && Candy.Route.routes[param.Request.route][type][url]){
+            param.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
             if(['post', 'get'].includes(type)
             && Candy.Route.routes[param.Request.route][type][url].token
             && (!(await param.Request.request('token'))
             || !param.token(await param.Request.request('token')))) return param.Request.abort(401);
+            if(typeof Candy.Route.routes[param.Request.route][type][url].cache === 'function')
             result = await Candy.Route.routes[param.Request.route][type][url].cache(param);
         } else if(Candy.Route.routes[param.Request.route]['page'] && Candy.Route.routes[param.Request.route]['page'][url] && typeof Candy.Route.routes[param.Request.route]['page'][url].cache === 'function'){
             page = Candy.Route.routes[param.Request.route]['page'][url].file
             param.cookie('candy_data', {candy: { page: page, token: param.token()}}, {expires: null, httpOnly: false});
             result = await Candy.Route.routes[param.Request.route]['page'][url].cache(param);
-        } else if(url && !url.includes('/../') && fs.existsSync(`${__dir}/public${url}`) && fs.lstatSync(`${__dir}/public${url}`).isFile()){
+        } else if(url && !url.includes('/../') && fs.existsSync(`${__dir}/public${url}`)){
+            let stat = fs.lstatSync(`${__dir}/public${url}`);
+            if(!stat.isFile()) return param.Request.abort(404);
             result = fs.readFileSync(`${__dir}/public${url}`);
             let type = 'text/html';
             if(url.includes('.')){
                 let arr = url.split('.');
                 type = mime[arr[arr.length - 1]];
             }
-            param.Request.header('Content-Type', type);
-            param.Request.header('Cache-Control', 'public, max-age=31536000');
-            param.Request.end(result);
+
+            param.Request.header('Content-Type',   type);
+            param.Request.header('Cache-Control',  'public, max-age=31536000');
+            param.Request.header('Content-Length', stat.size);
+
+            return param.Request.end(result);
         } else param.Request.abort(404);
-        if(result){
-            if(typeof result === 'object'){
-                result = JSON.stringify(result);
-                param.Request.header('Content-Type', 'application/json');
-            } else {
-                param.Request.header('Content-Type', 'text/html');
-            }
-            param.write(result);
-        }
+        if(result) param.Request.end(result);
         param.Request.print(param);
         param.View.print(param);
         delete param;

@@ -3,8 +3,8 @@ const crypto = require('crypto');
 class Request {
     #complete = false;
     #cookies  = [];
-    #event    = {'data': [], 'end': [], 'error': [], 'timeout': []};
-    #headers  = {'Server': 'CandyPack'};
+    #event    = {data: [], end: []};
+    #headers  = {Server: 'CandyPack'};
     #request  = {post: {}, get: {}};
     #status   = 200;
     #timeout  = null;
@@ -125,7 +125,7 @@ class Request {
         clearTimeout(this.#timeout);
         this.print();
         this.res.end(data);
-        this.req.connection.destroy();
+        // this.req.connection.destroy();
     }
 
     // - SET HEADER
@@ -150,7 +150,7 @@ class Request {
 
     // - GET REQUEST
     async request(key, method) {
-        if(method) method = method.upperCase();
+        if(method) method = method.toUpperCase();
         if(this.#request.post[key] !== undefined && method !== 'GET')  return this.#request.post[key];
         if(this.#request.get[key]  !== undefined && method !== 'POST') return this.#request.get[key];
         return new Promise((resolve, reject) => {
@@ -168,7 +168,7 @@ class Request {
     // - SESSION
     session(key, value){
         if(!Candy.Request.session) Candy.Request.session = {};
-        let pri = crypto.createHash('md5').update(this.req.headers['user-agent']).digest('hex');
+        let pri = crypto.createHash('md5').update(this.req.headers['user-agent'] ?? '.').digest('hex');
         let pub = this.cookie('candy_session');
         if(!pub || !Candy.Request.session[pub + '-' + pri]){
             do {
