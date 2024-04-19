@@ -114,6 +114,7 @@ class Request {
 
     // - RETURN REQUEST
     end(data) {
+        if(data instanceof Promise) return data.then(result => this.end(result));
         if(this.res.finished) return;
         if(typeof data === 'object' && data.type !== 'Buffer'){
             let json = JSON.stringify(data);
@@ -125,7 +126,7 @@ class Request {
         clearTimeout(this.#timeout);
         this.print();
         this.res.end(data);
-        // this.req.connection.destroy();
+        this.req.connection.destroy();
     }
 
     // - SET HEADER

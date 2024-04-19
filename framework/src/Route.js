@@ -195,7 +195,7 @@ module.exports = {
 
             return param.Request.end(result);
         } else param.Request.abort(404);
-        if(result) param.Request.end(result);
+        if(await result) param.Request.end(result);
         param.Request.print(param);
         param.View.print(param);
         delete param;
