@@ -145,14 +145,16 @@ const Candy = {
                   }
                 }
                 $.each(data.errors, function(name, message) {
-                  if (form.find(`[candy-form-error="${name}"]`).length) form.find(`[candy-form-error="${name}"]`).html(message).fadeIn();
-                  else form.find('*[name="'+name+'"]').after(`<span candy-form-error="${name}" class="${invalid_span_class}" style="${invalid_span_style}">${message}</span>`);
-                  form.find('*[name="'+name+'"]').addClass(invalid_input_class);
-                  form.find('*[name="'+name+'"]').on('focus.candy', function(){
-                    $(this).removeClass(invalid_input_class);
-                    form.find(`[candy-form-error="${name}"]`).fadeOut();
-                    form.find('*[name="'+name+'"]').unbind('focus.candy');
-                  })
+                    if(message){
+                        if (form.find(`[candy-form-error="${name}"]`).length) form.find(`[candy-form-error="${name}"]`).html(message).fadeIn();
+                        else form.find('*[name="'+name+'"]').after(`<span candy-form-error="${name}" class="${invalid_span_class}" style="${invalid_span_style}">${message}</span>`);
+                    }
+                    form.find('*[name="'+name+'"]').addClass(invalid_input_class);
+                    form.find('*[name="'+name+'"]').on('focus.candy', function(){
+                        $(this).removeClass(invalid_input_class);
+                        form.find(`[candy-form-error="${name}"]`).fadeOut();
+                        form.find('*[name="'+name+'"]').unbind('focus.candy');
+                    })
                 });
               }
             }

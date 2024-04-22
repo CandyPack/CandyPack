@@ -26,6 +26,7 @@ class Validator {
     }
 
     get(key){
+        if(this.#completed) this.#completed = false;
         this.#method = 'GET';
         this.#name   = key;
         return this;
@@ -38,6 +39,7 @@ class Validator {
 
 
     post(key){
+        if(this.#completed) this.#completed = false;
         this.#method = 'POST';
         this.#name   = key;
         return this;

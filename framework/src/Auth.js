@@ -5,28 +5,33 @@ class Auth {
     async check(where) {
         return new Promise(async (resolve, reject) => {
             if(Candy.Config.auth.table) this.#table = Candy.Config.auth.table;
+            console.log(1);
             if(!this.#table) return resolve(false);
             if(where) {
                 let sql = Candy.Mysql.table(this.#table);
                 for(let key in where) sql = sql.where(key, (where[key] instanceof Promise ? await where[key] : where[key]));
+                console.log(2);
                 if(!sql.rows()) return resolve(false);
                 let get = await sql.get();
+                let equal = false;
                 for(let user of get) {
-                    let equal = Object.keys(where).length > 0;
+                    equal = Object.keys(where).length > 0;
                     for(let key in Object.keys(where)) {
                         if(!user[key]) equal = false;
                         if(user[key] === where[key]) equal = equal && true;
-                        else if(Candy.String(user[key]).is('bcrypt')) equal = equal && Candy.Hash(where[key], user[key]);
-                        else if(Candy.String(user[key]).is('md5')) equal = equal && md5(where[key]) === user[key];
+                        else if(Candy.var(user[key]).is('bcrypt')) equal = equal && Candy.hash(where[key], user[key]);
+                        else if(Candy.var(user[key]).is('md5'))    equal = equal && md5(where[key]) === user[key];
                     }
                     if(equal) break;
                 }
+                console.log(3);
                 if(!equal) return resolve(false);
                 return resolve(user);
             } else if(this.#user) {
                 return resolve(true);
             } else {
                 let check_table = Candy.Mysql.query('SHOW TABLES LIKE "' + this.#table + '"', true);
+                console.log(4);
                 if(check_table.rows == 0) return resolve(false);
                 if(!this.request.cookies.token1 || !this.request.cookies.token2 || !this.request.headers['user-agent']) return false;
                 let token1 = this.request.cookies('token1');

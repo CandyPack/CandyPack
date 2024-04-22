@@ -1,55 +1,64 @@
+const fs = require('fs');
 const crypto = require('crypto');
 
-module.exports = {
-    
-    init: function(value){
-        this._value = value;
-        return this;
-    },
+class Var {
+    #value = null;
+    #any   = false;
 
-    // public function clear($arr){
-    //     $replace = [];
-    //     $arr = is_array($arr) ? $arr : func_get_args();
-    //     if(is_array($this->str)) {
-    //       foreach ($arr as $val) if(($key = array_search($val, $this->str)) !== false) unset($this->str[$key]);
-    //       return $this->str;
-    //     } else {
-    //       foreach ($arr as $key) $replace[$key] = '';
-    //       return self::replace($replace);
-    //     }
-    //   }
+    constructor(value){
+        this.#value = value;
+    }
+
+    #parse(value){
+        if(typeof value !== 'array') return [value];
+        if(value.length == 1 && typeof value[0] == 'array') return value[0];
+        return value;
+    }
+
+    clear(...args){
+        let args = this.#parse(args);
+        let str = this._value;
+        for(const arg of args) str = str.replace(new RegExp(arg, 'g'), '');
+        return str;
+    }
     
-    //   public function contains($val){
-    //     $any = $this->any;
-    //     $this->any = false;
-    //     if(!is_array($val)) $val = func_get_args();
-    //     $result = !$any;
-    //     foreach($val as $key){
-    //       if($any) $result = $result || (strpos($this->str, $key) !== false);
-    //       else     $result = $result && (strpos($this->str, $key) !== false);
-    //     }
-    //     return $result;
-    //   }
+    contains(...args){
+        let args = this.#parse(args);
+        let any = this.#any;
+        this.#any = false;
+        let result = !any;
+        for(const key of args){
+            if(any) result = result || this._value.includes(key);
+            else    result = result && this._value.includes(key);
+        }
+        return result;
+    }
+
+    containsAny(...args){
+        let args = this.#parse(args);
+        this.#any = true;
+        return this.contains(args);
+    }
     
     date(format){
         if(!format) format = 'Y-m-d H:i:s';
-        let date = new Date(this._value);
-        let year = date.getFullYear();
-        let month = date.getMonth() + 1;
-        let day = date.getDate();
-        let hour = date.getHours();
+        let date   = new Date(this._value);
+        let year   = date.getFullYear();
+        let month  = date.getMonth() + 1;
+        let day    = date.getDate();
+        let hour   = date.getHours();
         let minute = date.getMinutes();
         let second = date.getSeconds();
         return Candy.var(format).replace({'Y': year,
-                                          'm': month < 10 ? `0${month}` : month,
-                                          'd': day < 10 ? `0${day}` : day,
-                                          'H': hour < 10 ? `0${hour}` : hour,
+                                          'm': month  < 10 ? `0${month}`  : month,
+                                          'd': day    < 10 ? `0${day}`    : day,
+                                          'H': hour   < 10 ? `0${hour}`   : hour,
                                           'i': minute < 10 ? `0${minute}` : minute,
                                           's': second < 10 ? `0${second}` : second,
                                           'y': year.toString().substr(2,2)});
-    },
+    }
 
-    decrypt: function(key){
+    decrypt(key){
         if(!key) key = Candy.Config.encrypt.key;
         const iv = '2dea8a25e5e8f004';
         try{
@@ -62,63 +71,65 @@ module.exports = {
             console.log(e);
             return null;
         }
-    },
+    }
 
-    encrypt: function(key){
+    encrypt(key){
         if(!key) key = Candy.Config.encrypt.key;
         const iv = '2dea8a25e5e8f004';
         const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
         let encrypted = cipher.update(this._value);
         encrypted = Buffer.concat([encrypted, cipher.final()]);
         return encrypted.toString('base64');
-    },
+    }
     
-    //   public function containsAny($val){
-    //     $this->any = true;
-    //     return $this->contains(count(func_get_args()) > 0 ? func_get_args() : $val);
-    //   }
+    is(...args){
+        let args = this.#parse(args);
+        let any = this.#any;
+        this.#any = false;
+        let val = args;
+        let result = !any;
+        //     if(\Candy::config('locale')->get() == 'tr') $this->str = \Candy::var($this->str)->clear('Ç','ç','Ğ','ğ','İ','ı','Ö','ö','Ş','ş','Ü','ü');
+        if(args.includes('alpha'))              result = ((result || any) && ((any && result) || /^[A-Za-z]+$/.test(this.#value)));
+        if(args.includes('alphaspace'))         result = ((result || any) && ((any && result) || /^[A-Za-z\s]+$/.test(this.#value)));
+        if(args.includes('alphanumeric'))       result = ((result || any) && ((any && result) || /^[A-Za-z0-9]+$/.test(this.#value)));
+        if(args.includes('alphanumericspace'))  result = ((result || any) && ((any && result) || /^[A-Za-z0-9\s]+$/.test(this.#value)));
+        if(args.includes('bcrypt'))             result = ((result || any) && ((any && result) || /^\$2[ayb]\$.{56}$/.test(this.#value)));
+        if(args.includes('date'))               result = ((result || any) && ((any && result) || !isNaN(Date.parse(this.#value))));
+        if(args.includes('domain'))             result = ((result || any) && ((any && result) || /^([a-z0-9\-]+\.){1,2}[a-z]{2,6}$/i.test(this.#value)));
+        if(args.includes('email'))              result = ((result || any) && ((any && result) || /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6}$/i.test(this.#value)));
+        if(args.includes('float'))              result = ((result || any) && ((any && result) || !isNaN(parseFloat(this.#value))));
+        if(args.includes('host'))               result = ((result || any) && ((any && result) || /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/.test(this.#value)));
+        if(args.includes('ip'))                 result = ((result || any) && ((any && result) || /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/.test(this.#value)));
+        if(args.includes('json'))               result = ((result || any) && ((any && result) || (JSON.parse(this.#value) && JSON.parse(this.#value).length >= 0)));
+        if(args.includes('mac'))                result = ((result || any) && ((any && result) || /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/.test(this.#value)));
+        if(args.includes('md5'))                result = ((result || any) && ((any && result) || /^[a-f0-9A-F]{32}$/.test(this.#value)));
+        if(args.includes('numeric'))            result = ((result || any) && ((any && result) || !isNaN(this.#value)));
+        if(args.includes('url'))                result = ((result || any) && ((any && result) || /^[a-z0-9]+:\/\/[a-z0-9]+\.[a-z]{2,6}/i.test(this.#value)));
+        if(args.includes('emoji'))              result = ((result || any) && ((any && result) || /([0-9#][\u20E3])|[\u00ae\u00a9\u203C\u2047\u2048\u2049\u3030\u303D\u2139\u2122\u3297\u3299][\uFE00-\uFEFF]?|[\u2190-\u21FF][\uFE00-\uFEFF]?|[\u2300-\u23FF][\uFE00-\uFEFF]?|[\u2460-\u24FF][\uFE00-\uFEFF]?|[\u25A0-\u25FF][\uFE00-\uFEFF]?|[\u2600-\u27BF][\uFE00-\uFEFF]?|[\u2900-\u297F][\uFE00-\uFEFF]?|[\u2B00-\u2BF0][\uFE00-\uFEFF]?|[\u1F000-\u1F6FF][\uFE00-\uFEFF]?/u.test(this.#value)));
+        if(args.includes('xss'))                result = ((result || any) && ((any && result) || this.#value == this.#value.replace(/<[^>]*>/g, '')));
+        return result;
+    }
     
-    //   public function is($val){
-    //     $any = $this->any;
-    //     $this->any = false;
-    //     $val = is_array($val) ? $val : func_get_args();
-    //     $result = !$any;
-    //     if(\Candy::config('locale')->get() == 'tr') $this->str = \Candy::var($this->str)->clear('Ç','ç','Ğ','ğ','İ','ı','Ö','ö','Ş','ş','Ü','ü');
-    //     if(in_array('alpha',            $val)) $result = (($result || $any) && (($any && $result) || ctype_alpha($this->str) ));
-    //     if(in_array('alphaspace',       $val)) $result = (($result || $any) && (($any && $result) || ctype_alpha(\Candy::var($this->str)->clear(' ')) ));
-    //     if(in_array('alphanumeric',     $val)) $result = (($result || $any) && (($any && $result) || ctype_alnum($this->str) ));
-    //     if(in_array('alphanumericspace',$val)) $result = (($result || $any) && (($any && $result) || ctype_alnum(\Candy::var($this->str)->clear(' ')) ));
-    //     if(in_array('date',             $val)) $result = (($result || $any) && (($any && $result) || !empty(strtotime($this->str)) ));
-    //     if(in_array('domain',           $val)) $result = (($result || $any) && (($any && $result) || preg_match('/([a-z0-9\-]+\.){1,2}[a-z]{2,6}/i', $this->str) ));
-    //     if(in_array('email',            $val)) $result = (($result || $any) && (($any && $result) || filter_var($this->str, FILTER_VALIDATE_EMAIL) ));
-    //     if(in_array('float',            $val)) $result = (($result || $any) && (($any && $result) || filter_var($this->str, FILTER_VALIDATE_FLOAT) ));
-    //     if(in_array('host',             $val)) $result = (($result || $any) && (($any && $result) || filter_var((\Candy::string($this->str)->is('ip') ? $this->str : gethostbyname($this->str)), FILTER_VALIDATE_IP) ));
-    //     if(in_array('ip',               $val)) $result = (($result || $any) && (($any && $result) || filter_var($this->str, FILTER_VALIDATE_IP) ));
-    //     if(in_array('json',             $val)) $result = (($result || $any) && (($any && $result) || (json_decode($this->str) && json_last_error() === JSON_ERROR_NONE) ));
-    //     if(in_array('mac',              $val)) $result = (($result || $any) && (($any && $result) || filter_var($this->str, FILTER_VALIDATE_MAC) ));
-    //     if(in_array('md5',              $val)) $result = (($result || $any) && (($any && $result) || (bool)preg_match('/^[a-f0-9A-F]{32}$/', $this->str) ));
-    //     if(in_array('numeric',          $val)) $result = (($result || $any) && (($any && $result) || is_numeric($this->str) ));
-    //     if(in_array('url',            $val)) $result = (($result || $any) && (($any && $result) || filter_var($this->str, FILTER_VALIDATE_URL) ));
-    //     if(in_array('emoji',            $val)) $result = (($result || $any) && (($any && $result) || preg_match('/([0-9#][\x{20E3}])|[\x{00ae}\x{00a9}\x{203C}\x{2047}\x{2048}\x{2049}\x{3030}\x{303D}\x{2139}\x{2122}\x{3297}\x{3299}][\x{FE00}-\x{FEFF}]?|[\x{2190}-\x{21FF}][\x{FE00}-\x{FEFF}]?|[\x{2300}-\x{23FF}][\x{FE00}-\x{FEFF}]?|[\x{2460}-\x{24FF}][\x{FE00}-\x{FEFF}]?|[\x{25A0}-\x{25FF}][\x{FE00}-\x{FEFF}]?|[\x{2600}-\x{27BF}][\x{FE00}-\x{FEFF}]?|[\x{2900}-\x{297F}][\x{FE00}-\x{FEFF}]?|[\x{2B00}-\x{2BF0}][\x{FE00}-\x{FEFF}]?|[\x{1F000}-\x{1F6FF}][\x{FE00}-\x{FEFF}]?/u',$this->str) ));
-    //     if(in_array('xss',              $val)) $result = (($result || $any) && (($any && $result) || strip_tags($this->str) == $this->str ));
-    //     return $result;
-    //   }
-    
-    //   public function isAny($val){
-    //     $this->any = true;
-    //     return $this->is(is_array($val) ? $val : func_get_args());
-    //   }
+    isAny(...args){
+        let args = this.#parse(args);
+        this.#any = true;
+        return this.is(args);
+    }
 
-    isBegin: function(...args){
+    isBegin(...args){
+        let args = this.#parse(args);
         for(const arg of args) if(this._value.startsWith(arg)) return true;
-    },
+        return false;
+    }
 
-    // public function isEnd($var){
-    //     $str = $this->str;
-    //     return substr($str,0 - strlen($var)) == $var;
-    //   }
+    isEnd(...args){
+        let args = this.#parse(args);
+        for(const arg of args) if(this._value.endsWith(arg)) return true;
+        return false;
+    }
     
     replace(...args){
+        let args = this.#parse(args);
         if(args.length == 1) args = args[0];
         if(['array','object'].includes(typeof this._value)){
             let new_value = {};
@@ -129,46 +140,45 @@ module.exports = {
         return this._value;
     }
     
-    //   public function save($path){
-    //     if(\Candy::var($path)->contains('/')){
-    //       $exp = explode('/',$path);
-    //       unset($exp[count($exp) - 1]);
-    //       $dir = '';
-    //       foreach($exp as $key){
-    //         $dir .= ($dir === '' ? '' : '/').$key;
-    //         if(!file_exists($dir) || !is_dir($dir)) mkdir($dir);
-    //       }
-    //     }
-    //     return file_put_contents($path,$this->str);
-    //   }
+    save(path){
+        if(this._value.includes('/')){
+            let exp = path.split('/');
+            exp.pop();
+            let dir = '';
+            for(const key of exp){
+                dir += (dir === '' ? '' : '/') + key;
+                if(!fs.existsSync(dir) || !fs.lstatSync(dir).isDirectory()) fs.mkdirSync(dir);
+            }
+        }
+        return fs.writeFileSync(path, this._value);
+    }
     
-    //   public function slug($separator = '-'){
-    //     $str = $this->str;
-    //     $str = preg_replace('~[^\pL\d]+~u', $separator, $str);
-    //     $str = iconv('utf-8', 'us-ascii//TRANSLIT', $str);
-    //     $str = preg_replace('~[^-\w]+~', '', $str);
-    //     $str = trim($str, $separator);
-    //     $str = preg_replace('~-+~', $separator, $str);
-    //     $str = strtolower($str);
-    //     if(empty($str)) return '';
-    //     return $str;
-    //   }
+    slug(separator = '-'){
+        let str = this._value;
+        str = str.replace(/[^a-zA-Z0-9\s]/g, separator);
+        str = str.replace(/[\s]/g, separator);
+        str = str.replace(/[-]+/g, separator);
+        str = str.toLowerCase();
+        return str;
+    }
     
-    //   public function format($format){
-    //     $str = $this->str;
-    //     $result = '';
-    //     $letter = 0;
-    //     for ($i=0; $i < strlen($format); $i++) {
-    //       if(substr($format,$i,1)=='?'){
-    //         $result .= substr($str,$letter,1);
-    //         $letter = $letter + 1;
-    //       }elseif(substr($format,$i,1)=='*'){
-    //         $result .= substr($str,$letter);
-    //         $letter = $letter + strlen(substr($str,$letter));
-    //       }else{
-    //         $result .= substr($format,$i,1);
-    //       }
-    //     }
-    //     return $result;
-    //   }
+    format(format){
+        let str = this._value;
+        let result = '';
+        let letter = 0;
+        for(let i = 0; i < format.length; i++){
+            if(format[i] == '?'){
+                result += str[letter];
+                letter++;
+            } else if(format[i] == '*'){
+                result += str.substr(letter);
+                letter += str.substr(letter).length;
+            } else {
+                result += format[i];
+            }
+        }
+        return result;
+    }
 };
+
+module.exports = Var;

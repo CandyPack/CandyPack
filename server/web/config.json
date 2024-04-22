@@ -1,3 +1,5 @@
 {
-    
+    "route": {
+        "/assets/js/candy.js": "${candy}/server/web/public/assets/js/candy.js"
+    }
 }

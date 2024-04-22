@@ -13,6 +13,6 @@ module.exports = {
             console.log(`CandyPack Server requires a port.`);
             process.exit(0);
         }
-        http.createServer(Candy.Route.request).listen(parseInt(args[0]));
+        http.createServer(Candy.Route.request).listen(port);
     }
 };

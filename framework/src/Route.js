@@ -188,11 +188,9 @@ module.exports = {
                 let arr = url.split('.');
                 type = mime[arr[arr.length - 1]];
             }
-
             param.Request.header('Content-Type',   type);
             param.Request.header('Cache-Control',  'public, max-age=31536000');
             param.Request.header('Content-Length', stat.size);
-
             return param.Request.end(result);
         } else param.Request.abort(404);
         if(await result) param.Request.end(result);
