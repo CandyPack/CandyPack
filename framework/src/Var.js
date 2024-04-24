@@ -1,5 +1,6 @@
 const fs = require('fs');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 class Var {
     #value = null;
@@ -9,40 +10,34 @@ class Var {
         this.#value = value;
     }
 
-    #parse(value){
-        if(typeof value !== 'array') return [value];
-        if(value.length == 1 && typeof value[0] == 'array') return value[0];
-        return value;
-    }
-
     clear(...args){
-        let args = this.#parse(args);
-        let str = this._value;
+        args = this.#parse(args);
+        let str = this.#value;
         for(const arg of args) str = str.replace(new RegExp(arg, 'g'), '');
         return str;
     }
     
     contains(...args){
-        let args = this.#parse(args);
+        args = this.#parse(args);
         let any = this.#any;
         this.#any = false;
         let result = !any;
         for(const key of args){
-            if(any) result = result || this._value.includes(key);
-            else    result = result && this._value.includes(key);
+            if(any) result = result || this.#value.includes(key);
+            else    result = result && this.#value.includes(key);
         }
         return result;
     }
 
     containsAny(...args){
-        let args = this.#parse(args);
+        args = this.#parse(args);
         this.#any = true;
         return this.contains(args);
     }
     
     date(format){
         if(!format) format = 'Y-m-d H:i:s';
-        let date   = new Date(this._value);
+        let date   = new Date(this.#value);
         let year   = date.getFullYear();
         let month  = date.getMonth() + 1;
         let day    = date.getDate();
@@ -62,7 +57,7 @@ class Var {
         if(!key) key = Candy.Config.encrypt.key;
         const iv = '2dea8a25e5e8f004';
         try{
-            const encryptedText = Buffer.from(this._value, 'base64');
+            const encryptedText = Buffer.from(this.#value, 'base64');
             const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
             let decrypted = decipher.update(encryptedText);
             decrypted = Buffer.concat([decrypted, decipher.final()]);
@@ -77,13 +72,21 @@ class Var {
         if(!key) key = Candy.Config.encrypt.key;
         const iv = '2dea8a25e5e8f004';
         const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-        let encrypted = cipher.update(this._value);
+        let encrypted = cipher.update(this.#value);
         encrypted = Buffer.concat([encrypted, cipher.final()]);
         return encrypted.toString('base64');
     }
     
+    hash(salt = 10){
+        return bcrypt.hashSync(this.#value, bcrypt.genSaltSync(salt));
+    }
+
+    hashCheck(check){
+        return bcrypt.compareSync(check, this.#value);
+    }
+    
     is(...args){
-        let args = this.#parse(args);
+        args = this.#parse(args);
         let any = this.#any;
         this.#any = false;
         let val = args;
@@ -111,37 +114,47 @@ class Var {
     }
     
     isAny(...args){
-        let args = this.#parse(args);
+        args = this.#parse(args);
         this.#any = true;
         return this.is(args);
     }
 
     isBegin(...args){
-        let args = this.#parse(args);
-        for(const arg of args) if(this._value.startsWith(arg)) return true;
+        args = this.#parse(args);
+        for(const arg of args) if(this.#value.startsWith(arg)) return true;
         return false;
     }
 
     isEnd(...args){
-        let args = this.#parse(args);
-        for(const arg of args) if(this._value.endsWith(arg)) return true;
+        args = this.#parse(args);
+        for(const arg of args) if(this.#value.endsWith(arg)) return true;
         return false;
+    }
+
+    md5(){
+        return crypto.createHash('md5').update(this.#value).digest('hex');
+    }
+
+    #parse(value){
+        if(!['array','object'].includes(typeof value))  return [value];
+        if(value.length == 1 && typeof value[0] == 'array') return value[0];
+        return value;
     }
     
     replace(...args){
-        let args = this.#parse(args);
+        args = this.#parse(args);
         if(args.length == 1) args = args[0];
-        if(['array','object'].includes(typeof this._value)){
+        if(['array','object'].includes(typeof this.#value)){
             let new_value = {};
-            for(const key of Object.keys(this._value)) new_value[key] = Candy.var(this._value[key]).replace(args);
+            for(const key of Object.keys(this.#value)) new_value[key] = Candy.var(this.#value[key]).replace(args);
             return new_value;
         }
-        for(const arg of Object.keys(args)) this._value = this._value.replace(arg, args[arg]);
-        return this._value;
+        for(const arg of Object.keys(args)) this.#value = this.#value.replace(arg, args[arg]);
+        return this.#value;
     }
     
     save(path){
-        if(this._value.includes('/')){
+        if(this.#value.includes('/')){
             let exp = path.split('/');
             exp.pop();
             let dir = '';
@@ -150,11 +163,11 @@ class Var {
                 if(!fs.existsSync(dir) || !fs.lstatSync(dir).isDirectory()) fs.mkdirSync(dir);
             }
         }
-        return fs.writeFileSync(path, this._value);
+        return fs.writeFileSync(path, this.#value);
     }
     
     slug(separator = '-'){
-        let str = this._value;
+        let str = this.#value;
         str = str.replace(/[^a-zA-Z0-9\s]/g, separator);
         str = str.replace(/[\s]/g, separator);
         str = str.replace(/[-]+/g, separator);
@@ -163,7 +176,7 @@ class Var {
     }
     
     format(format){
-        let str = this._value;
+        let str = this.#value;
         let result = '';
         let letter = 0;
         for(let i = 0; i < format.length; i++){

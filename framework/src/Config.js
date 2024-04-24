@@ -2,8 +2,12 @@ const crypto = require('crypto');
 const fs = require('fs');
 
 module.exports = {
+    auth: {
+        key  : 'id',
+        token: 'candy_auth'
+    },
     request: {
-        timeout: 1000
+        timeout: 10000
     },
     encrypt: {
         key: 'candy'

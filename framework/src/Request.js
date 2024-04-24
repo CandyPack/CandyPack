@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 class Request {
     #complete = false;
-    #cookies  = [];
+    #cookies  = {'received': [], 'sent': []};
     #event    = {data: [], end: []};
     #headers  = {Server: 'CandyPack'};
     #request  = {post: {}, get: {}};
@@ -13,11 +13,11 @@ class Request {
         this.id     = id;
         this.req    = req;
         this.res    = res;
-        this.method = req.method;
+        this.method = req.method.toLowerCase();
         this.url    = req.url;
         this.host   = req.headers.host;
         this.ssl    = this.header('X-Candy-Connection-SSL') === 'true';
-        this.ip     = req.connection.remoteAddress === '127.0.0.1' ? (header('X-Candy-Connection-RemoteAddress') ?? req.connection.remoteAddress) : req.connection.remoteAddress;
+        this.ip     = (this.header('X-Candy-Connection-RemoteAddress') ?? req.connection.remoteAddress).replace('::ffff:', '');
         let route   = req.headers.host.split('.')[0];
         if(!Candy.Route.routes[route]) route = 'www';
         this.route = route;
@@ -37,15 +37,18 @@ class Request {
         let result = { 401: 'Unauthorized',
                        404: 'Not Found',
                        408: 'Request Timeout'}[code] ?? null
-        if(Candy.Route.routes[this.route].error && Candy.Route.routes[this.route].error[code]) result = await Candy.Route.routes[this.route].error[404].cache(param);
+        if(Candy.Route.routes[this.route].error && Candy.Route.routes[this.route].error[code]) result = await Candy.Route.routes[this.route].error[code].cache(param);
         this.end(result);
     }
 
     // - SET COOKIE
     cookie(key, value, options = {}) {
         if(value === undefined){
+            if(this.#cookies.sent[key])     return this.#cookies.sent[key];
+            if(this.#cookies.received[key]) return this.#cookies.received[key];
             value = this.req.headers.cookie?.split('; ').find(c => c.startsWith(key + '='))?.split('=')[1] ?? null;
             if(value && value.startsWith('{') && value.endsWith('}')) value = JSON.parse(value);
+            this.#cookies.received[key] = value;
             return value;
         }
         if(options.path     === undefined) options.path     = '/';
@@ -56,7 +59,7 @@ class Request {
         if(typeof value === 'object') value = JSON.stringify(value);
         let cookie = `${key}=${value}`;
         for(const option of Object.keys(options)) if(options[option]) cookie += `; ${option}=${options[option]}`;
-        this.#cookies.push(cookie);
+        this.#cookies.sent.push(cookie);
     }
 
     #data() {
@@ -145,7 +148,7 @@ class Request {
     // - PRINT HEADERS
     print(){
         if(this.res.headersSent) return;
-        this.#headers['Set-Cookie'] = this.#cookies;
+        this.#headers['Set-Cookie'] = this.#cookies.sent;
         this.res.writeHead(this.#status, this.#headers);
     }
 
