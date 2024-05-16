@@ -1,17 +1,15 @@
+const ps    = require('ps-node');
 const spawn = require('child_process').spawn;
-const { Console, log } = require('console');
-const { Transform } = require('stream');
-const { resolve } = require('path');
-const ps = require('ps-node');
-const os = require("os");
+const os    = require("os");
 
+const Cli     = require('./Cli.js');
+const Config  = require('./Config.js');
+const DNS     = require('./DNS.js');
+const Lang    = require('./Lang.js');
+const Mail    = require('./Mail.js');
 const Service = require('./Service.js');
-const Config = require('./Config.js');
-const Lang = require('./Lang.js');
-const SSL = require('./SSL.js');
-const DNS = require('./DNS.js');
-const Web = require('./Web.js');
-const Cli = require('./Cli.js');
+const SSL     = require('./SSL.js');
+const Web     = require('./Web.js');
 
 async function check(){
     return new Promise((resolve, reject) => {
@@ -26,7 +24,7 @@ async function check(){
 }
 
 async function watchdog(){
-    log(await Lang.get('Starting CandyPack Server...'));
+    console.log(await Lang.get('Starting CandyPack Server...'));
     let child = spawn('node', [__dirname + '/../watchdog.js', 'start'], { detached: true });
     Config.set('watchdog', child.pid);
     Config.set('started', Date.now());
@@ -58,6 +56,7 @@ async function start(){
     Service.init();
     DNS.init();
     Web.init();
+    Mail.init();
     setTimeout(function(){
         let t = setInterval(function(){
             Config.load();
@@ -90,7 +89,7 @@ module.exports = {
             var args = process.argv.slice(2);
             switch(args[0]){
                 case 'restart':
-                    log(await Lang.get('Restarting CandyPack Server...'));
+                    Cli.log(await Lang.get('Restarting CandyPack Server...'));
                     await stop();
                     init();
                     return resolve();
@@ -155,7 +154,7 @@ module.exports = {
                     break;
                 }
                 case 'create':
-                    log('\n\x1b[35mCandyPack \x1b[0m');
+                    Cli.log('\n\x1b[35mCandyPack \x1b[0m');
                     await Web.create();
                     break;
                 case 'monit':

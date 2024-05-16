@@ -84,6 +84,10 @@ class Var {
     hashCheck(check){
         return bcrypt.compareSync(check, this.#value);
     }
+
+    html(){
+        return this.#value.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
     
     is(...args){
         args = this.#parse(args);

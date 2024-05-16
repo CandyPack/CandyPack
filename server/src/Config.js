@@ -51,7 +51,6 @@ async function load() {
                 if(!config.updated || (data.updated && data.updated > config.updated)) config = data;
                 loaded = true;
             } catch(e) {
-                console.log(e);
                 loaded = true;
                 if(data.length > 2){
                     var backup = dir + '/config-bak.json';

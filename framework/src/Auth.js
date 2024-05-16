@@ -42,7 +42,7 @@ class Auth {
                 let sql_token = await Candy.Mysql.table(Candy.Config.auth.token).where(['token_x', candy_x], ['browser', browser]).get();
                 if(sql_token.length !== 1) return resolve(false);
                 if(!Candy.var(sql_token[0].token_y).hashCheck(candy_y)) return resolve(false);
-                this.#user = await Candy.Mysql.table(this.#table).where(Candy.Config.auth.key, sql_token[0].user).get();
+                this.#user = await Candy.Mysql.table(this.#table).where(Candy.Config.auth.key, sql_token[0].user).first();
                 // Candy.Mysql.table(Candy.Config.auth.token).where(sql_token[0].id).set({'ip': this.#request.ip,'active': Date.now()});
                 return resolve(true);
             }
@@ -104,13 +104,11 @@ class Auth {
     //     setcookie("token2", "", time() - 3600);
     //   }
     
-    //   public static function user($col = null){
-    //     if(empty(self::$user)) self::check();
-    //     if(empty(self::$user)) return false;
-    //     if($col === null) return self::$user;
-    //     else return self::$user->$col;
-    //   }    
-    
+    user(col) {
+        if(!this.#user) return false;
+        if(col === null) return this.#user;
+        else return this.#user[col];
+    }
 }
 
 module.exports = Auth;

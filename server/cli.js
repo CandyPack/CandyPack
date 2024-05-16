@@ -3,29 +3,31 @@
 if(!global.trigger) global.trigger = 'cli';
 global.completed = false;
 
-const { log } = require('console');
-
+const Cli    = require('./src/Cli.js');
 const Config = require('./src/Config.js');
 const Lang   = require('./src/Lang.js');
 const Server = require('./src/Server.js');
 
 const commands = [
-    'restart',
-    'login',
-    'start',
+    'auth',
     'create',
+    'monit',
+    'restart',
     'services',
-    'websites',
-    'monit'
+    'start',
+    'websites'
 ];
 
 const command_descriptions = {
-    start: {
-        description: 'Start a CandyPack Service',
-        args: ['service']
+    auth: {
+        description: 'Define your server to your CandyPack account',
+        args: ['key']
     },
     create: {
         description: 'Create a new Website'
+    },
+    monit: {
+        description: 'Monitor Website or Service'
     },
     restart: {
         description: 'Restart CandyPack Server'
@@ -33,11 +35,12 @@ const command_descriptions = {
     services: {
         description: 'List all CandyPack Services'
     },
+    start: {
+        description: 'Start a CandyPack Service',
+        args: ['service']
+    },
     websites: {
         description: 'List all CandyPack Websites'
-    },
-    monit: {
-        description: 'Monitor Website or Service'
     }
 };
 
@@ -64,7 +67,7 @@ async function print(){
     var args = process.argv.slice(2);
     if(global.trigger == 'candy'){
         if(args.length == 0){
-            log('\n\x1b[35mCandyPack \x1b[0m');
+            Cli.log('CandyPack');
             let length = 0;
             for(let i = 0; i < 2; i++){
                 for (let iterator of ['Status', 'Uptime', 'Websites', 'Services', 'Auth']) {
@@ -75,27 +78,27 @@ async function print(){
                         for(let j = 0; j < length - title.length; j++) space += ' ';
                         switch(iterator){
                             case 'Status':
-                                log(title + space + ' : ' + (status.online ? '\x1b[32m ' + await Lang.get('Online')    : '\x1b[33m ' + await Lang.get('Offline'))       + '\x1b[0m');
+                                Cli.log(title + space + ' : ' + (status.online ? '\x1b[32m ' + await Lang.get('Online')    : '\x1b[33m ' + await Lang.get('Offline'))       + '\x1b[0m');
                                 break;
                             case 'Uptime':
-                                if(status.online) log(title + space + ' : ' + '\x1b[32m ' + status.uptime + '\x1b[0m');
+                                if(status.online) Cli.log(title + space + ' : ' + '\x1b[32m ' + status.uptime + '\x1b[0m');
                                 break;
                             case 'Websites':
-                                if(status.online) log(title + space + ' : ' + '\x1b[32m ' + status.websites + '\x1b[0m');
+                                if(status.online) Cli.log(title + space + ' : ' + '\x1b[32m ' + status.websites + '\x1b[0m');
                                 break;
                             case 'Services':
-                                if(status.online) log(title + space + ' : ' + '\x1b[32m ' + status.services + '\x1b[0m');
+                                if(status.online) Cli.log(title + space + ' : ' + '\x1b[32m ' + status.services + '\x1b[0m');
                                 break;
                             case 'Auth':
-                                log(title + space + ' : ' + (status.auth   ? '\x1b[32m ' + await Lang.get('Logged in') : '\x1b[33m ' + await Lang.get('Not logged in')) + '\x1b[0m');
+                                Cli.log(title + space + ' : ' + (status.auth   ? '\x1b[32m ' + await Lang.get('Logged in') : '\x1b[33m ' + await Lang.get('Not logged in')) + '\x1b[0m');
                                 break;
                         }
                     }
                 }
             }
-            if(!status.auth) log(await Lang.get('Login on %s to manage all your server operations.', '\x1b[95mhttps://candypack.dev\x1b[0m'));
-            log();
-            log('Commands:');
+            if(!status.auth) Cli.log(await Lang.get('Login on %s to manage all your server operations.', '\x1b[95mhttps://candypack.dev\x1b[0m'));
+            Cli.log();
+            Cli.log('Commands:');
             length = 0;
             for (let index = 0; index < 2; index++) {
                 for(var i in command_descriptions){
@@ -108,13 +111,13 @@ async function print(){
                     if(index){
                         let space = '';
                         for(let j = 0; j < length - (command.length + args.length); j++) space += ' ';
-                        log('\x1b[91m' + command + '\x1b[0m\x1b[90m' + args + '\x1b[0m' + space + ' : ' + await Lang.get(description));
+                        Cli.log('\x1b[91m' + command + '\x1b[0m\x1b[90m' + args + '\x1b[0m' + space + ' : ' + await Lang.get(description));
                     }
                 }
             }
-            log('');
+            Cli.log('');
         } else if(!commands.includes(args[0])) {
-            log('\n\x1b[35mCandyPack \x1b[0m\x1b[91m' + args[0] + '\x1b[0m is not a valid command.\n');
+            Cli.log('\n\x1b[35mCandyPack \x1b[0m\x1b[91m' + args[0] + '\x1b[0m is not a valid command.\n');
         }
         setTimeout(() => { global.completed = true; }, 100);
     }

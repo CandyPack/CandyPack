@@ -91,7 +91,6 @@ async function run(id){
     active[id] = true;
     let service = get(id);
     if(!service) return;
-    console.log(service.name, service.status, error_counts[id]);
     if(error_counts[id] > 10){
         active[id] = false;
         return;
@@ -117,14 +116,12 @@ async function run(id){
             status: 'errored',
             updated: Date.now()
         });
-        console.log(id + ': Errored');
         // watcher[pid] = false;
         // error_counts[id] = error_counts[id] ?? 0;
         // error_counts[id]++;
         // active[id] = false;
     });
     child.on('exit', function(code, signal) {
-        console.log(id + ': Stopped');
         if(get(service.id).status == 'running'){
             set(id, {
                 pid: null,

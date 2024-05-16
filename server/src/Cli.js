@@ -8,6 +8,7 @@ const Config = require('./Config.js');
 const Lang = require('./Lang.js');
 
 var rl;
+var current = '';
 var selected = 0;
 var websites = {};
 var services = [];
@@ -207,9 +208,12 @@ function monitor(){
     result += color('┴', 'gray');
     result += color('─'.repeat(width - c1), 'gray');
     result += color('┘ \n', 'gray');
-    process.stdout.clearLine(0);
-    process.stdout.write('\033c');
-    process.stdout.write(result);
+    if(result !== current){
+        current = result;
+        process.stdout.clearLine(0);
+        process.stdout.write('\033c');
+        process.stdout.write(result);
+    }
     printing = false;
 }
 

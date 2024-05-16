@@ -8,6 +8,7 @@ class Request {
     #request  = {post: {}, get: {}};
     #status   = 200;
     #timeout  = null;
+    variables = {};
 
     constructor(id, req, res) {
         this.id     = id;
@@ -132,6 +133,11 @@ class Request {
         this.req.connection.destroy();
     }
 
+    // - GET
+    get(key) {
+        return this.variables[key] ? this.variables[key].value : null;
+    }
+
     // - SET HEADER
     header(key, value) {
               if(value === null) delete this.#headers[key];
@@ -150,6 +156,12 @@ class Request {
         if(this.res.headersSent) return;
         this.#headers['Set-Cookie'] = this.#cookies.sent;
         this.res.writeHead(this.#status, this.#headers);
+    }
+
+    // - REDIRECT
+    redirect(url) {
+        this.header('Location', url);
+        this.status(302);
     }
 
     // - GET REQUEST
@@ -185,6 +197,12 @@ class Request {
         if(value === undefined) return Candy.Request.session[pub + '-' + pri][key] ?? null;
         else if(value === null) delete Candy.Request.session[pub + '-' + pri][key];
         else Candy.Request.session[pub + '-' + pri][key] = value;
+    }
+
+    // - SET
+    set(key, value, ajax = false) {
+        if(typeof key === 'object') for(const k in key) this.variables[k] = {value: key[k], ajax: ajax};
+        else this.variables[key] = {value: value, ajax: ajax};
     }
 
     // - HTTP CODE

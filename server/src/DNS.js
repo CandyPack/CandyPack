@@ -12,7 +12,6 @@ function publish(){
     loaded = true;
     server.on('request', function (request, response) {
         response.question[0].name = response.question[0].name.toLowerCase();
-        console.log(response.question[0].name);
         let domain = response.question[0].name;
         while(!Config.get('websites',domain) && domain.includes('.')) domain = domain.split('.').slice(1).join('.');
         if(!Config.get('websites',domain)) return response.send();

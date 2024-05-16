@@ -52,7 +52,6 @@ async function ssl(domain){
         challengePriority: ['dns-01', 'http-01'],
         challengeCreateFn: async (authz, challenge, keyAuthorization) => {
             return new Promise((resolve, reject) => {
-                console.log(authz, keyAuthorization);
                 if(challenge.type == 'dns-01'){
                     let websites = Config.get('websites') ?? {};
                     let website = websites[domain];
@@ -121,8 +120,6 @@ module.exports = {
         checking = true;
         self();
         for (const domain of Object.keys(Config.get('websites'))) {
-            console.log(Config.get('websites')[domain].ssl.expiry)
-            console.log(Date.now() + (1000 * 60 * 60 * 24 * 30));
             if(!Config.get('websites')[domain].ssl || Date.now() + (1000 * 60 * 60 * 24 * 30) > Config.get('websites')[domain].ssl.expiry) await ssl(domain);
         }
         checking = false;

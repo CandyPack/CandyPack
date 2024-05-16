@@ -1,7 +1,5 @@
-const { Console } = require('console');
 const fs = require('fs');
 
-var loading = false;
 var routes2 = {};
 const mime = {  'html'  : 'text/html',
                 'css'   : 'text/css',
@@ -70,7 +68,7 @@ class Route {
             if(Candy.Request.url                      == '/'
             && Candy.Request.method                   == 'get'
             && Candy.Request.header('X-Candy')        == 'token'
-            && Candy.Request.header('Referer')        == (Candy.Request.ssl ? 'https://' : 'http://') + Candy.Request.host + '/'
+            && Candy.Request.header('Referer').startsWith((Candy.Request.ssl ? 'https://' : 'http://') + Candy.Request.host + '/')
             && Candy.Request.header('X-Candy-Client') == Candy.Request.cookie('candy_client')){
                 Candy.Request.header('Access-Control-Allow-Origin', (Candy.Request.ssl ? 'https://' : 'http://') + Candy.Request.host);
                 Candy.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -78,6 +76,23 @@ class Route {
                     token: Candy.token(),
                     page : this.routes[Candy.Request.route]['page'][url].file || this.routes[Candy.Request.route].error[404].file || ''
                 });
+            }
+            if(Candy.Config.route && Candy.Config.route[url]){
+                Candy.Config.route[url] = Candy.Config.route[url].replace('${candy}', `${__dir}/node_modules/candypack`);
+                if(fs.existsSync(Candy.Config.route[url])){
+                    let stat = fs.lstatSync(Candy.Config.route[url]);
+                    if(stat.isFile()){
+                        let type = 'text/html';
+                        if(Candy.Config.route[url].includes('.')){
+                            let arr = Candy.Config.route[url].split('.');
+                            type = mime[arr[arr.length - 1]];
+                        }
+                        Candy.Request.header('Content-Type',   type);
+                        Candy.Request.header('Cache-Control',  'public, max-age=31536000');
+                        Candy.Request.header('Content-Length', stat.size);
+                        return resolve(fs.readFileSync(Candy.Config.route[url]));
+                    }
+                }
             }
             if(this.routes[Candy.Request.route]['#'+Candy.Request.method] && this.routes[Candy.Request.route]['#'+Candy.Request.method][url]){
                 if(await Candy.Auth.check()){
@@ -93,7 +108,7 @@ class Route {
             if(this.routes[Candy.Request.route]['#page'] && this.routes[Candy.Request.route]['#page'][url] && typeof this.routes[Candy.Request.route]['#page'][url].cache === 'function'){
                 if(await Candy.Auth.check()){
                     Candy.Request.page = this.routes[Candy.Request.route]['#page'][url].file
-                    Candy.cookie('candy_data', {candy: { page: Candy.Request.page, token: Candy.token()}}, {expires: null, httpOnly: false});
+                    Candy.cookie('candy_data', { page: Candy.Request.page, token: Candy.token()}, {expires: null, httpOnly: false});
                     return resolve(this.routes[Candy.Request.route]['#page'][url].cache(Candy));
                 }
             }
@@ -108,7 +123,7 @@ class Route {
             }
             if(this.routes[Candy.Request.route]['page'] && this.routes[Candy.Request.route]['page'][url] && typeof this.routes[Candy.Request.route]['page'][url].cache === 'function'){
                 Candy.Request.page = this.routes[Candy.Request.route]['page'][url].file
-                Candy.cookie('candy_data', {candy: { page: Candy.Request.page, token: Candy.token()}}, {expires: null, httpOnly: false});
+                Candy.cookie('candy_data', { page: Candy.Request.page, token: Candy.token()}, {expires: null, httpOnly: false});
                 return resolve(this.routes[Candy.Request.route]['page'][url].cache(Candy));
             }
             if(url && !url.includes('/../') && fs.existsSync(`${__dir}/public${url}`)){
@@ -158,7 +173,7 @@ class Route {
                 routes2[Candy.Route.buff] = mtime;
                 require(`${__dir}/route/${file}`);
             }
-            for(const type of ['page', 'post', 'get', 'error']){
+            for(const type of ['page','#page','post','#post','get','#get','error']){
                 if(!this.routes[Candy.Route.buff]) continue;
                 if(!this.routes[Candy.Route.buff][type]) continue;
                 for (const route in this.routes[Candy.Route.buff][type]) {
@@ -168,7 +183,7 @@ class Route {
                     } else if(this.routes[Candy.Route.buff][type][route]){
                         if(typeof this.routes[Candy.Route.buff][type][route].type === 'function') continue;
                         if(this.routes[Candy.Route.buff][type][route].mtime < fs.statSync(this.routes[Candy.Route.buff][type][route].path).mtimeMs){
-                            set(type, route, this.routes[Candy.Route.buff][type][route].file);
+                            this.set(type, route, this.routes[Candy.Route.buff][type][route].file);
                         }
                     }
                 }

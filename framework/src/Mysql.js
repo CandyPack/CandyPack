@@ -2,11 +2,8 @@
 const mysql = require('mysql2');
 
 class Raw {
-    constructor(query){
-        this.query = query;
-    }
-    raw(){
-        return this.query;
+    constructor(value){
+        this.value = value;
     }
 }
 
@@ -16,7 +13,6 @@ class Mysql {
     #table          = [];
     #arr            = {};
     #statements     = ['=','>','>=','<','<=','!=','LIKE','NOT LIKE','IN','NOT IN','BETWEEN','NOT BETWEEN','IS','IS NOT'];
-    #val_statements = ['IS NULL','IS NOT NULL'];
 
     constructor(table, conn){
         this.#conn  = conn;
@@ -110,7 +106,7 @@ class Mysql {
 
     escape(v, type){
         if(!type) type = 'value';
-        if(v && v.raw && typeof v.raw == 'function') return ' ' + v.raw() + ' ';
+        if(v && v instanceof Raw) return ' ' + v.value + ' ';
         if(type == 'value'){
             if(v === null) return 'NULL';
             //     if(is_array($v)) return ' ("'.implode('","',array_map(function($val){return(Mysql::escape($val));},$v)).'") ';
@@ -184,13 +180,46 @@ class Mysql {
             //   $this->id = mysqli_insert_id(Mysql::$conn);
             // $this->affected = mysqli_affected_rows(Mysql::$conn);
             // if(this.affected > 0) this.clearcache();
-            return this;
+            return resolve(this);
         });
     }
 
     insertIgnore(arr){
         this.#arr.ignore = true;
         return this.insert(arr);
+    }
+
+    order(v1,v2='asc'){
+      // if(is_array($v1) && (!isset($v1['ct']) || $v1['ct'] != $GLOBALS['candy_token_mysql'])){
+      //   $order = [];
+      //   foreach($v1 as $key => $val)
+      //   if(!is_int($key)) $order[] = $this->escape($key,'col').(strtolower($val) == 'desc' ? ' DESC' : ' ASC');
+      //   else $order[] = $this->escape($val,'col').' ASC';
+      //   $this->arr['order by'] = implode(',',$order);
+      // }else $this->arr['order by'] = $this->escape($v1,'col').(strtolower($v2) == 'desc' ? ' DESC' : ' ASC');
+      return this;
+    }
+
+    orWhere(...args){
+        this.#arr.where = this.#arr.where && this.#arr.where.trim() != '' ? `${this.#arr.where} OR ${this.#whereExtract(args)}` : this.#whereExtract(args);
+        return this;
+    }
+
+
+    async replace(arr){
+        return new Promise(async (resolve, reject) => {
+            //       $this->id = 1;
+            let ext = await this.#valuesExtract(arr);
+            this.#arr['into'] = ext['into'];
+            this.#arr['values'] = ext['values'];
+            let query = this.query('replace');
+            let run = this.run(query);
+            //       if($sql === false) return $this->error();
+            //       $this->success = $sql;
+            //       $this->id = mysqli_insert_id(Mysql::$conn);
+            //       self::clearcache();
+            return resolve(this);
+        });
     }
 
     async rows(b){
@@ -218,6 +247,7 @@ class Mysql {
     run(query){
         return new Promise((resolve, reject) => {
             if(!query) return false;
+            if(this.#conn.state == 'disconnected') Candy.Mysql.init();
             this.#conn.query(query, (err, result) => {
                 if(err){
                     console.error(err);
@@ -241,19 +271,6 @@ class Mysql {
         //       return new static($this->table,$this->arr, ['affected' => $this->affected]);
     }
 
-    //     function replace($arr){
-    //       $this->id = 1;
-    //       $ext = $this->valuesExtract($arr);
-    //       $this->arr['into'] = $ext['into'];
-    //       $this->arr['values'] = $ext['values'];
-    //       $query = $this->query('replace');
-    //       $sql = mysqli_query(Mysql::$conn, $query);
-    //       if($sql === false) return $this->error();
-    //       $this->success = $sql;
-    //       $this->id = mysqli_insert_id(Mysql::$conn);
-    //       self::clearcache();
-    //       return new static($this->table,$this->arr, ['id' => $this->id]);
-    //     }
 
     //     function select(){
     //       $this->arr['select'] = isset($this->arr['select']) ? $this->arr['select'] : '';
@@ -275,22 +292,6 @@ class Mysql {
     //       $this->arr['select'] = implode(', ',$select);
     //       return new static($this->table,$this->arr);
     //     }
-
-    order(v1,v2='asc'){
-      // if(is_array($v1) && (!isset($v1['ct']) || $v1['ct'] != $GLOBALS['candy_token_mysql'])){
-      //   $order = [];
-      //   foreach($v1 as $key => $val)
-      //   if(!is_int($key)) $order[] = $this->escape($key,'col').(strtolower($val) == 'desc' ? ' DESC' : ' ASC');
-      //   else $order[] = $this->escape($val,'col').' ASC';
-      //   $this->arr['order by'] = implode(',',$order);
-      // }else $this->arr['order by'] = $this->escape($v1,'col').(strtolower($v2) == 'desc' ? ' DESC' : ' ASC');
-      return this;
-    }
-
-    orWhere(...args){
-        this.#arr.where = this.#arr.where && this.#arr.where.trim() != '' ? `${this.#arr.where} OR ${this.#whereExtract(args)}` : this.#whereExtract(args);
-        return this;
-    }
 
     //     function groupBy(){
     //       $this->arr['group by'] = isset($this->arr['group by']) ? $this->arr['group by'] : '';
@@ -446,7 +447,7 @@ class Mysql {
     }
 
     where(...args){
-        if(args.length == 1 && !['array','object'].includes(typeof args[0])){
+        if(args.length == 1 && !['array','object'].includes(typeof args[0]) && !(args[0] instanceof Raw)){
             this.#arr.where = this.#whereExtract([this.#table[this.#arr.table].primary, args[0]]);
         }else if(args.length > 0){
             this.#arr.where = this.#arr.where && this.#arr.where.trim() != '' ? `${this.#arr.where} AND ${this.#whereExtract(args)}` : this.#whereExtract(args);
@@ -461,7 +462,7 @@ class Mysql {
         let state = '=';
         let last = 0;
         for (const key of arr) {
-            if(['array','object'].includes(typeof key) && (state != 'IN' && state != 'NOT IN') && !typeof key.raw !== 'function'){
+            if(key && ['array','object'].includes(typeof key) && (state != 'IN' && state != 'NOT IN') && !(key instanceof Raw)){
                 q += last == 1 ? ' AND ' + this.#whereExtract(key) : this.#whereExtract(key);
                 in_arr = true;
                 last = 1;
@@ -484,7 +485,7 @@ class Mysql {
                 q += this.escape(key,(loop==1 ? 'table' : 'value'));
                 last = 1;
             }
-                loop++;
+            loop++;
         }
         return `(${q})`;
     }
