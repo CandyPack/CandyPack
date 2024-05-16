@@ -64,7 +64,6 @@ class Route {
         return new Promise(async (resolve, reject) => {
             let url = Candy.Request.url.split('?')[0];
             if(url.substr(-1) === '/') url = url.substr(0, url.length - 1);
-
             if(Candy.Request.url                      == '/'
             && Candy.Request.method                   == 'get'
             && Candy.Request.header('X-Candy')        == 'token'
@@ -94,15 +93,18 @@ class Route {
                     }
                 }
             }
-            if(this.routes[Candy.Request.route]['#'+Candy.Request.method] && this.routes[Candy.Request.route]['#'+Candy.Request.method][url]){
+            let controller = this.#controller(Candy.Request.route, '#'+Candy.Request.method, url);
+            if(controller){
                 if(await Candy.Auth.check()){
                     Candy.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
                     if(['post', 'get'].includes(Candy.Request.method)
-                    && this.routes[Candy.Request.route]['#'+Candy.Request.method][url].token
-                    && (!(await Candy.Request.request('token'))
-                    || !Candy.token(await Candy.Request.request('token')))) return resolve(Candy.Request.abort(401));
-                    if(typeof this.routes[Candy.Request.route]['#'+Candy.Request.method][url].cache === 'function')
-                    return resolve(this.routes[Candy.Request.route]['#'+Candy.Request.method][url].cache(Candy));
+                    && controller.token
+                    && (!(await Candy.request('_token'))
+                    || !Candy.token(await Candy.Request.request('_token')))) return resolve(Candy.Request.abort(401));
+                    if(typeof controller.cache === 'function'){
+                        if(controller.params) for(let key in controller.params) Candy.Request.data.url[key] = controller.params[key];
+                        return resolve(controller.cache(Candy));
+                    }
                 }
             }
             if(this.routes[Candy.Request.route]['#page'] && this.routes[Candy.Request.route]['#page'][url] && typeof this.routes[Candy.Request.route]['#page'][url].cache === 'function'){
@@ -116,8 +118,8 @@ class Route {
                 Candy.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
                 if(['post', 'get'].includes(Candy.Request.method)
                 && this.routes[Candy.Request.route][Candy.Request.method][url].token
-                && (!(await Candy.Request.request('token'))
-                || !Candy.token(await Candy.Request.request('token')))) return resolve(Candy.Request.abort(401));
+                && (!(await Candy.Request.request('_token'))
+                || !Candy.token(await Candy.Request.request('_token')))) return resolve(Candy.Request.abort(401));
                 if(typeof this.routes[Candy.Request.route][Candy.Request.method][url].cache === 'function')
                 return resolve(this.routes[Candy.Request.route][Candy.Request.method][url].cache(Candy));
             }
@@ -142,6 +144,30 @@ class Route {
             }
             return resolve(Candy.Request.abort(404));
         });
+    }
+
+    #controller(route, method, url){
+        if(!this.routes[route] || !this.routes[route][method]) return false;
+        if(this.routes[route][method][url]) return this.routes[route][method][url];
+        let arr = url.split('/');
+        for(let key in this.routes[route][method]){
+            if(!key.includes('{') || !key.includes('}')) continue;
+            let route_arr = key.split('/');
+            if(route_arr.length !== arr.length) continue;
+            let params = {};
+            for(let i = 0; i < route_arr.length; i++){
+                if(route_arr[i].includes('{') && route_arr[i].includes('}')){
+                    params[route_arr[i].replace('{','').replace('}','')] = arr[i];
+                    arr[i] = route_arr[i];
+                }
+            }
+            if(arr.join('/') === key) return {
+                params: params,
+                cache: this.routes[route][method][key].cache,
+                token: this.routes[route][method][key].token
+            };
+        }
+        return false;
     }
 
     #init(){

@@ -3,9 +3,9 @@ const crypto = require('crypto');
 class Request {
     #complete = false;
     #cookies  = {'received': [], 'sent': []};
+    data      = {post: {}, get: {}, url: {}};
     #event    = {data: [], end: []};
     #headers  = {Server: 'CandyPack'};
-    #request  = {post: {}, get: {}};
     #status   = 200;
     #timeout  = null;
     variables = {};
@@ -64,6 +64,16 @@ class Request {
     }
 
     #data() {
+        let split = this.url.split('?');
+        if(split[1]){
+            let data = split[1].split('&');
+            for(let i = 0; i < data.length; i++){
+                if(data[i].indexOf('=') === -1) continue;
+                let key = data[i].split('=')[0];
+                let val = data[i].split('=')[1];
+                this.data.get[key] = val;
+            }
+        }
         let body = '';
         this.req.on('data', (chunk) => {
             body += chunk.toString();
@@ -80,7 +90,7 @@ class Request {
                         if(data[i].indexOf('Content-Disposition') === -1) continue;
                         let key = data[i].split('name="')[1].split('"')[0];
                         let val = data[i].split('\r\n\r\n')[1].split('\r\n')[0];
-                        this.#request.post[key] = val;
+                        this.data.post[key] = val;
                     }
                 } else {
                     let data = body.split('&');
@@ -88,7 +98,7 @@ class Request {
                         if(data[i].indexOf('=') === -1) continue;
                         let key = data[i].split('=')[0];
                         let val = data[i].split('=')[1];
-                        this.#request.post[key] = val;
+                        this.data.post[key] = val;
                     }
                 }
             }
@@ -100,14 +110,14 @@ class Request {
         this.req.on('end', () => {
             if(!body) return this.#complete = true;
             if(body.startsWith('{') && body.endsWith('}')){
-                this.#request.post = JSON.parse(body);
+                this.data.post = JSON.parse(body);
             } else {
                 let data = body.split('&');
                 for(let i = 0; i < data.length; i++){
                     if(data[i].indexOf('=') === -1) continue;
                     let key = data[i].split('=')[0];
                     let val = data[i].split('=')[1];
-                    this.#request.post[key] = val;
+                    this.data.post[key] = val;
                 }
             }
             this.#complete = true;
@@ -167,15 +177,16 @@ class Request {
     // - GET REQUEST
     async request(key, method) {
         if(method) method = method.toUpperCase();
-        if(this.#request.post[key] !== undefined && method !== 'GET')  return this.#request.post[key];
-        if(this.#request.get[key]  !== undefined && method !== 'POST') return this.#request.get[key];
+        if((!method || method === 'post') && (this.data.post[key] ?? null)) return this.data.post[key];
+        if((!method || method === 'get' ) && (this.data.get[key]  ?? null)) return this.data.get[key];
+        if((!method || method === 'url' ) && (this.data.url[key]  ?? null)) return this.data.url[key];
         return new Promise((resolve, reject) => {
             let interval = setInterval(() => {
-                if(this.#request.post[key] !== undefined || this.#request.get[key] !== undefined || this.#complete){
+                if(this.data.post[key] !== undefined || this.data.get[key] !== undefined || this.#complete){
                     clearInterval(interval);
-                         if(this.#request.post[key] !== undefined && method !== 'GET') resolve(this.#request.post[key]);
-                    else if(this.#request.get[key]  !== undefined && method !== 'GET') resolve(this.#request.get[key]);
-                    else reject();
+                         if(this.data.post[key] !== undefined && method !== 'GET') resolve(this.data.post[key]);
+                    else if(this.data.get[key]  !== undefined && method !== 'GET') resolve(this.data.get[key]);
+                    else resolve();
                 }
             }, 10);
         });

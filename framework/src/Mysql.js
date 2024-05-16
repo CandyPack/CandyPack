@@ -213,7 +213,7 @@ class Mysql {
             this.#arr['into'] = ext['into'];
             this.#arr['values'] = ext['values'];
             let query = this.query('replace');
-            let run = this.run(query);
+            let run = await this.run(query);
             //       if($sql === false) return $this->error();
             //       $this->success = $sql;
             //       $this->id = mysqli_insert_id(Mysql::$conn);

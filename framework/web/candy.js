@@ -62,11 +62,6 @@ class candy{
 //       }
 //     },
   
-//     client: function(){
-//       if(!document.cookie.includes('candy_client=')) return null;
-//       return document.cookie.split('candy_client=')[1].split(';')[0];
-//     },
-  
   
 //     form: function(obj, callback) {
 //       if(typeof obj != 'object') obj = { form: obj }
@@ -278,10 +273,20 @@ class candy{
         }
     }
 
+    client(){
+      if(!document.cookie.includes('candy_client=')) return null;
+      return document.cookie.split('candy_client=')[1].split(';')[0];
+    }
+
     data(){
         if(this.#data) return this.#data;
         if(!document.cookie.includes('candy_data=')) return null;
         return JSON.parse(unescape(document.cookie.split('candy_data=')[1].split(';')[0]));
+    }
+
+    get(url,callback){
+        url = url + '?_token=' + this.token();
+        $.get(url, callback);
     }
 
     page(){
@@ -315,8 +320,8 @@ class candy{
         }
         if(!this.#token.hash.length){
             if(!this.#token.data && data) {
-                this.#page = data.candy.page;
-                this.#token.hash.push(data.candy.token);
+                this.#page = data.page;
+                this.#token.hash.push(data.token);
                 this.#token.data = true;
             } else {
                 var req = new XMLHttpRequest();
@@ -334,7 +339,7 @@ class candy{
             url: '/',
             type: 'GET',
             headers: { 'X-Candy': 'token', 'X-Candy-Client': this.client()},
-            success: function (data) {
+            success: (data) => {
                 var result = JSON.parse(JSON.stringify(data));
                 if(result.token) this.#token.hash.push(result.token);
             }
