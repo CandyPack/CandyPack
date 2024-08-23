@@ -3,6 +3,7 @@ const spawn = require('child_process').spawn;
 const os    = require("os");
 
 const Cli     = require('./Cli.js');
+const Client  = require('./Client.js');
 const Config  = require('./Config.js');
 const DNS     = require('./DNS.js');
 const Lang    = require('./Lang.js');
@@ -159,6 +160,9 @@ module.exports = {
                     break;
                 case 'monit':
                     Cli.monitor();
+                    break;
+                case 'auth':
+                    Client.auth(args[1]);
                     break;
             }
             if(!(await check())) init();

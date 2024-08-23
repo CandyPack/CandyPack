@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 
 class Request {
+    #candy;
     #complete = false;
     #cookies  = {'received': [], 'sent': []};
     data      = {post: {}, get: {}, url: {}};
@@ -10,10 +11,11 @@ class Request {
     #timeout  = null;
     variables = {};
 
-    constructor(id, req, res) {
+    constructor(id, req, res, candy) {
         this.id     = id;
         this.req    = req;
         this.res    = res;
+        this.#candy  = candy;
         this.method = req.method.toLowerCase();
         this.url    = req.url;
         this.host   = req.headers.host;
@@ -38,7 +40,7 @@ class Request {
         let result = { 401: 'Unauthorized',
                        404: 'Not Found',
                        408: 'Request Timeout'}[code] ?? null
-        if(Candy.Route.routes[this.route].error && Candy.Route.routes[this.route].error[code]) result = await Candy.Route.routes[this.route].error[code].cache(param);
+        if(Candy.Route.routes[this.route].error && Candy.Route.routes[this.route].error[code]) result = await Candy.Route.routes[this.route].error[code].cache(this.#candy);
         this.end(result);
     }
 

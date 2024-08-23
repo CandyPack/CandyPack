@@ -20,7 +20,7 @@ module.exports = {
         _candy.var     = function(value) { return new (require('./Var.js'))(value) };
 
         if(req && res){
-            _candy.Request   = new (require('./Request.js')) (id, req, res);
+            _candy.Request   = new (require('./Request.js')) (id, req, res, _candy);
             _candy.Auth      = new (require('./Auth.js'))    (_candy.Request);
             _candy.Token     = new (require('./Token.js'))   (_candy.Request);
             _candy.View      = new (require('./View.js'))    (_candy.Request);

@@ -7,178 +7,6 @@ class candy{
 //       interval: {}
 //     },
   
-//     action: function(arr){
-//         if (typeof arr !== 'object') return this.candy.actions
-//         this.candy.actions = arr;
-//         for (var key in arr) {
-//             let val = arr[key];
-//             switch (key) {
-//             case 'load':
-//                 $(function() { val(); });
-//                 break;
-//             case 'page':
-//                 console.log(val)
-//                 for (var key2 in val) {
-//                     if (key2 == Candy.page()) $(function() {
-//                         if(val[key2]) val[key2](Candy.data());
-//                         for (var key3 in Candy.candy.interval) {
-//                             if(Candy.candy.interval[key3].page){
-//                                 console.log(Candy.candy.interval[key3], key2)
-//                                 if(Candy.candy.interval[key3].page == key2) Candy.candy.interval[key3]._ = setInterval(Candy.candy.interval[key3].run, Candy.candy.interval[key3].time ?? 1000);
-//                                 else if(Candy.candy.interval[key3].page && Candy.candy.interval[key3].page != key2) clearInterval(Candy.candy.interval[key3]._);
-//                             }
-//                         }
-//                     });
-//                 }
-//                 break;
-//             case 'interval':
-//                 for (var key2 in val) {
-//                     this.candy.interval[key2] = val[key2];
-//                     this.candy._ = setInterval(val[key2].run, val[key2].time ?? 1000);
-//                 }
-//                 break;
-//             case 'function', 'candy': break;
-//             default:
-//                 $.each(val, function(key2, val2) {
-//                 if ((typeof val[key2]) == 'function') {
-//                     $(document).on(key, key2, val[key2]);
-//                 } else {
-//                     var func = '';
-//                     var split = '';
-//                     if (val[key2].includes('.')) split = '.';
-//                     else if (val[key2].includes('#')) split = '#';
-//                     else if (val[key2].includes(' ')) split = ' ';
-//                     func = split != '' ? val[key2].split(split) : [val[key2]];
-//                     if (func != '') {
-//                     var getfunc = arr;
-//                     func.forEach(function(item) {
-//                         getfunc = getfunc[item] !== undefined ? getfunc[item] : getfunc[split + item];
-//                     });
-//                     $(document).on(key, key2, getfunc);
-//                     }
-//                 }
-//                 });
-//             }
-//       }
-//     },
-  
-  
-//     form: function(obj, callback) {
-//       if(typeof obj != 'object') obj = { form: obj }
-//       $(obj.form).unbind('submit.candy');
-//       $(document).off("submit.candy", obj.form);
-//       $(document).on("submit.candy", obj.form, function(e){
-//         e.preventDefault();
-//         let form = $(this);
-//         form.find('button, input[type="button"], input[type="submit"]').prop('disabled',true);
-//         let actions = Candy.candy.actions
-//         actions.candy && actions.candy.form && actions.candy.form.input && actions.candy.form.input.class && actions.candy.form.input.class.invalid  && (
-//           form.find(`select.${actions.candy.form.input.class.invalid},input.${actions.candy.form.input.class.invalid},textarea.${actions.candy.form.input.class.invalid}`).removeClass(actions.candy.form.input.class.invalid)
-//         )
-//         if(obj.messages !== false) {
-//           if(obj.messages == undefined || obj.messages == true || obj.messages.includes('error')) form.find('*[candy-form-error]').hide();
-//           if(obj.messages == undefined || obj.messages == true || obj.messages.includes('success')) form.find('*[candy-form-success]').hide();
-//         }
-//         if(form.find('input[type=file]').length > 0){
-//           var datastring = new FormData();
-//           form.find('input, select, textarea').each(function(index){
-//             if($(this).prop('disabled') === false){
-//               if($(this).attr('type')=='file') {
-//                 datastring.append($(this).attr('name'), $(this).prop('files')[0]);
-//               } else if(['checkbox','radio'].includes($(this).attr('type'))) {
-//                 if($(this).is(':checked')) datastring.append($(this).attr('name'), $(this).val());
-//               } else {
-//                 datastring.append($(this).attr('name'), $(this).val());
-//               }
-//             }
-//           });
-//           datastring.append('token', Candy.token());
-//           var cache = false;
-//           var contentType = false;
-//           var processData = false;
-//         }else{
-//           var datastring = form.serialize()+'&token='+Candy.token();
-//           var cache = true;
-//           var contentType = "application/x-www-form-urlencoded; charset=UTF-8";
-//           var processData = true;
-//         }
-//         $.ajax({
-//           type: form.attr('method'),
-//           url: form.attr('action'),
-//           data: datastring,
-//           dataType: "json",
-//           contentType: contentType,
-//           processData: processData,
-//           cache: cache,
-//           success: function(data) {
-//             if(!data.result) return false
-//             if(obj.messages == undefined || obj.messages) {
-//               if(data.result.success && (obj.messages == undefined || obj.messages.includes('success') || obj.messages == true)){
-//                 if (form.find('*[candy-form-success]').length) form.find('*[candy-form-success]').html(data.result.message).fadeIn();
-//                 else form.append(`<span candy-form-success="${obj.form}">${data.result.message}</span>`);
-//               }else{
-//                 var invalid_input_class = '_candy_error';
-//                 var invalid_input_style = '';
-//                 var invalid_span_class = '_candy_form_info';
-//                 var invalid_span_style = '';
-//                 let actions = Candy.candy.actions
-//                 if(actions.candy && actions.candy.form){
-//                   if(actions.candy.form.input){
-//                     if(actions.candy.form.input.class){
-//                       if(actions.candy.form.input.class.invalid) invalid_input_class = actions.candy.form.input.class.invalid
-//                     }
-//                     if(actions.candy.form.input.style){
-//                       if(actions.candy.form.input.style.invalid) invalid_input_style = actions.candy.form.input.style.invalid
-//                     }
-//                   }
-//                   if(actions.candy.form.span){
-//                     if(actions.candy.form.span.class){
-//                       if(actions.candy.form.span.class.invalid) invalid_span_class = actions.candy.form.span.class.invalid
-//                     }
-//                     if(actions.candy.form.span.style){
-//                       if(actions.candy.form.span.style.invalid) invalid_span_style = actions.candy.form.span.style.invalid
-//                     }
-//                   }
-//                 }
-//                 $.each(data.errors, function(name, message) {
-//                     if(message){
-//                         if (form.find(`[candy-form-error="${name}"]`).length) form.find(`[candy-form-error="${name}"]`).html(message).fadeIn();
-//                         else form.find('*[name="'+name+'"]').after(`<span candy-form-error="${name}" class="${invalid_span_class}" style="${invalid_span_style}">${message}</span>`);
-//                     }
-//                     form.find('*[name="'+name+'"]').addClass(invalid_input_class);
-//                     form.find('*[name="'+name+'"]').on('focus.candy', function(){
-//                         $(this).removeClass(invalid_input_class);
-//                         form.find(`[candy-form-error="${name}"]`).fadeOut();
-//                         form.find('*[name="'+name+'"]').unbind('focus.candy');
-//                     })
-//                 });
-//               }
-//             }
-//             if(callback!==undefined){
-//               if(typeof callback === "function") callback(data);
-//               else if(data.result.success) window.location.replace(callback);
-//             }
-//           },
-//           xhr: function() {
-//             var xhr = new window.XMLHttpRequest();
-//             xhr.upload.addEventListener("progress", function(evt){
-//               if (evt.lengthComputable) {
-//                 var percent = parseInt((100 / evt.total) * evt.loaded);
-//                 if(obj.loading) obj.loading(percent);
-//               }
-//             }, false);
-//             return xhr;
-//           },
-//           error: function() {
-//             console.error('CandyJS:',"Somethings went wrong...","\nForm: "+obj.form+"\nRequest: "+form.attr('action'));
-//           },
-//           complete: function() {
-//             form.find('button, input[type="button"], input[type="submit"]').prop('disabled',false);
-//           }
-//         })
-//       })
-//     },
-  
 //     load: function(url,callback,push=true){
 //       var url_now = window.location.href;
 //       if(url.substr(0,4) != 'http') {
@@ -206,8 +34,8 @@ class candy{
 //             });
 //           });
 //           var _t = setTimeout(function(){
-//             if(typeof Candy.candy.actions.load == 'function') Candy.candy.actions.load(Candy.page(),_data.variables);
-//             if(Candy.candy.actions.page !== undefined && typeof Candy.candy.actions.page[Candy.candy.page] == "function") Candy.candy.actions.page[Candy.candy.page](Candy.data());
+//             if(typeof this.actions.load == 'function') this.actions.load(Candy.page(),_data.variables);
+//             if(this.actions.page !== undefined && typeof this.actions.page[Candy.candy.page] == "function") this.actions.page[Candy.candy.page](Candy.data());
 //             if(callback!==undefined) callback(Candy.page(),_data.variables);
 //             $("html, body").animate({ scrollTop: 0 });
 //           }, 500);
@@ -236,7 +64,7 @@ class candy{
 //     }
 //   }
 
-    #actions = {};
+    actions = {};
     #config = {};
     #data = null;
     fn = {};
@@ -251,24 +79,46 @@ class candy{
         if(obj.function) for(let func in obj.function) this.fn[func] = obj.function[func];
         if(obj.start) $(function() { obj.start(); });
         if(obj.load){
-            if(!this.#actions.load) this.#actions.load = [];
-            this.#actions.load.push(obj.load);
+            if(!this.actions.load) this.actions.load = [];
+            this.actions.load.push(obj.load);
             $(function() { obj.load(); });
         }
         if(obj.page){
-            if(!this.#actions.page) this.#actions.page = {};
+            if(!this.actions.page) this.actions.page = {};
             for(let page in obj.page){
-                if(!this.#actions.page[page]) this.#actions.page[page] = [];
-                this.#actions.page[page].push(obj.page[page]);
+                if(!this.actions.page[page]) this.actions.page[page] = [];
+                this.actions.page[page].push(obj.page[page]);
                 if(this.page() == page) $(function() { obj.page[page](); });
             }
         }
         if(obj.interval){
-            if(!this.#actions.interval) this.#actions.interval = {};
+            if(!this.actions.interval) this.actions.interval = {};
             for(let interval in obj.interval){
-                this.#actions.interval[interval] = obj.interval[interval];
+                this.actions.interval[interval] = obj.interval[interval];
                 if(obj.interval[interval].page && obj.interval[interval].page != this.page()) continue;
-                this.#actions.interval[interval]._ = setInterval(obj.interval[interval].function, obj.interval[interval].interval ?? 1000);
+                this.actions.interval[interval]._ = setInterval(obj.interval[interval].function, obj.interval[interval].interval ?? 1000);
+            }
+        }
+        for(let key in obj){
+            if(['function','start','load','page','interval'].includes(key)) continue;
+            for(let key2 in obj[key]){
+                if(typeof obj[key][key2] == 'function'){
+                  $(document).on(key, key2, obj[key][key2]);
+                } else {
+                    let func = '';
+                    let split = '';
+                    if(obj[key][key2].includes('.')) split = '.';
+                    else if(obj[key][key2].includes('#')) split = '#';
+                    else if(obj[key][key2].includes(' ')) split = ' ';
+                    func = split != '' ? obj[key][key2].split(split) : [obj[key][key2]];
+                    if(func != ''){
+                        let getfunc = obj;
+                        func.forEach(function(item){
+                            getfunc = getfunc[item] !== undefined ? getfunc[item] : getfunc[split + item];
+                        });
+                        $(document).on(key, key2, getfunc);
+                    }
+                }
             }
         }
     }
@@ -282,6 +132,123 @@ class candy{
         if(this.#data) return this.#data;
         if(!document.cookie.includes('candy_data=')) return null;
         return JSON.parse(unescape(document.cookie.split('candy_data=')[1].split(';')[0]));
+    }
+
+
+    form(obj,callback){
+      if(typeof obj != 'object') obj = { form: obj }
+      $(obj.form).unbind('submit.candy');
+      $(document).off("submit.candy", obj.form);
+      $(document).on("submit.candy", obj.form, function(e){
+        e.preventDefault();
+        let form = $(this);
+        form.find('button, input[type="button"], input[type="submit"]').prop('disabled',true);
+        let actions = Candy.actions
+        actions.candy && actions.candy.form && actions.candy.form.input && actions.candy.form.input.class && actions.candy.form.input.class.invalid  && (
+          form.find(`select.${actions.candy.form.input.class.invalid},input.${actions.candy.form.input.class.invalid},textarea.${actions.candy.form.input.class.invalid}`).removeClass(actions.candy.form.input.class.invalid)
+        )
+        if(obj.messages !== false) {
+          if(obj.messages == undefined || obj.messages == true || obj.messages.includes('error')) form.find('*[candy-form-error]').hide();
+          if(obj.messages == undefined || obj.messages == true || obj.messages.includes('success')) form.find('*[candy-form-success]').hide();
+        }
+        if(form.find('input[type=file]').length > 0){
+          var datastring = new FormData();
+          form.find('input, select, textarea').each(function(index){
+            if($(this).prop('disabled') === false){
+              if($(this).attr('type')=='file') {
+                datastring.append($(this).attr('name'), $(this).prop('files')[0]);
+              } else if(['checkbox','radio'].includes($(this).attr('type'))) {
+                if($(this).is(':checked')) datastring.append($(this).attr('name'), $(this).val());
+              } else {
+                datastring.append($(this).attr('name'), $(this).val());
+              }
+            }
+          });
+          datastring.append('token', Candy.token());
+          var cache = false;
+          var contentType = false;
+          var processData = false;
+        }else{
+          var datastring = form.serialize()+'&_token='+Candy.token();
+          var cache = true;
+          var contentType = "application/x-www-form-urlencoded; charset=UTF-8";
+          var processData = true;
+        }
+        $.ajax({
+          type: form.attr('method'),
+          url: form.attr('action'),
+          data: datastring,
+          dataType: "json",
+          contentType: contentType,
+          processData: processData,
+          cache: cache,
+          success: function(data) {
+            if(!data.result) return false
+            if(obj.messages == undefined || obj.messages) {
+              if(data.result.success && (obj.messages == undefined || obj.messages.includes('success') || obj.messages == true)){
+                if (form.find('*[candy-form-success]').length) form.find('*[candy-form-success]').html(data.result.message).fadeIn();
+                else form.append(`<span candy-form-success="${obj.form}">${data.result.message}</span>`);
+              }else{
+                var invalid_input_class = '_candy_error';
+                var invalid_input_style = '';
+                var invalid_span_class = '_candy_form_info';
+                var invalid_span_style = '';
+                let actions = Candy.actions;
+                if(actions.candy && actions.candy.form){
+                  if(actions.candy.form.input){
+                    if(actions.candy.form.input.class){
+                      if(actions.candy.form.input.class.invalid) invalid_input_class = actions.candy.form.input.class.invalid
+                    }
+                    if(actions.candy.form.input.style){
+                      if(actions.candy.form.input.style.invalid) invalid_input_style = actions.candy.form.input.style.invalid
+                    }
+                  }
+                  if(actions.candy.form.span){
+                    if(actions.candy.form.span.class){
+                      if(actions.candy.form.span.class.invalid) invalid_span_class = actions.candy.form.span.class.invalid
+                    }
+                    if(actions.candy.form.span.style){
+                      if(actions.candy.form.span.style.invalid) invalid_span_style = actions.candy.form.span.style.invalid
+                    }
+                  }
+                }
+                $.each(data.errors, function(name, message) {
+                    if(message){
+                        if (form.find(`[candy-form-error="${name}"]`).length) form.find(`[candy-form-error="${name}"]`).html(message).fadeIn();
+                        else form.find('*[name="'+name+'"]').after(`<span candy-form-error="${name}" class="${invalid_span_class}" style="${invalid_span_style}">${message}</span>`);
+                    }
+                    form.find('*[name="'+name+'"]').addClass(invalid_input_class);
+                    form.find('*[name="'+name+'"]').on('focus.candy', function(){
+                        $(this).removeClass(invalid_input_class);
+                        form.find(`[candy-form-error="${name}"]`).fadeOut();
+                        form.find('*[name="'+name+'"]').unbind('focus.candy');
+                    })
+                });
+              }
+            }
+            if(callback!==undefined){
+              if(typeof callback === "function") callback(data);
+              else if(data.result.success) window.location.replace(callback);
+            }
+          },
+          xhr: function() {
+            var xhr = new window.XMLHttpRequest();
+            xhr.upload.addEventListener("progress", function(evt){
+              if (evt.lengthComputable) {
+                var percent = parseInt((100 / evt.total) * evt.loaded);
+                if(obj.loading) obj.loading(percent);
+              }
+            }, false);
+            return xhr;
+          },
+          error: function() {
+            console.error('CandyJS:',"Somethings went wrong...","\nForm: "+obj.form+"\nRequest: "+form.attr('action'));
+          },
+          complete: function() {
+            form.find('button, input[type="button"], input[type="submit"]').prop('disabled',false);
+          }
+        })
+      })
     }
 
     get(url,callback){
@@ -349,4 +316,4 @@ class candy{
 
 }
 
-const Candy = new candy();
+window.Candy = new candy();

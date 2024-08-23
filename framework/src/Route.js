@@ -236,6 +236,7 @@ class Route {
     }
 
     set(type, url, file, options = {}){
+        if(!options) options = {};
         if(typeof url != 'string') url.toString();
         if(url.length && url.substr(-1) === '/') url = url.substr(0, url.length - 1);
         let path = `${__dir}/route/${Candy.Route.buff}.js`;

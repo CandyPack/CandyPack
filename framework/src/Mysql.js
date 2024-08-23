@@ -233,14 +233,14 @@ class Mysql {
             //       }
             let query = this.query('get');
             let sql = await this.run(query);
-            if(sql === false) return this.#error();
+            if(sql === false) return resolve(this.#error());
             let rows = sql.length;
             //       if(isset($cache)){
             //         $cache->data = $rows;
             //         $cache->date = time();
             //         Candy::storage($file)->set('cache', $cache);
             //       }
-            return rows;
+            return resolve(rows);
         });
     }
 
@@ -259,16 +259,18 @@ class Mysql {
     }
 
     async set(arr, val){
-        let vars = '';
-        if(!['array','object'].includes(typeof arr) && val !== undefined) vars += this.escape(arr,'col') + ' = ' + this.escape(await this.type(arr, val, 'encode')) + ',';
-        else for(let [key, value] of Object.entries(arr)) vars += this.escape(key,'col') + ' = ' + this.escape(await this.type(key, value, 'encode')) + ',';
-        this.#arr.set = vars.substring(0, vars.length - 1);
-        let query = this.query('set');
-        let run = this.run(query);
-        //       if($sql === false) return $this->error();
-        //       $this->affected = mysqli_affected_rows(Mysql::$conn);
-        //       if($this->affected > 0) self::clearcache();
-        //       return new static($this->table,$this->arr, ['affected' => $this->affected]);
+        return new Promise(async (resolve, reject) => {
+            let vars = '';
+            if(!['array','object'].includes(typeof arr) && val !== undefined) vars += this.escape(arr,'col') + ' = ' + this.escape(await this.type(arr, val, 'encode')) + ',';
+            else for(let [key, value] of Object.entries(arr)) vars += this.escape(key,'col') + ' = ' + this.escape(await this.type(key, value, 'encode')) + ',';
+            this.#arr.set = vars.substring(0, vars.length - 1);
+            let query = this.query('set');
+            let run = await this.run(query);
+            if(run === false) return resolve(this.#error());
+            this.affected = run.affectedRows;
+            if(this.affected > 0) this.#clearcache();
+            return resolve(this);
+        });
     }
 
 
@@ -340,13 +342,13 @@ class Mysql {
     //       return new static($this->table,$this->arr);
     //     }
 
-    //     private function clearcache(){
+    #clearcache(){
     //       if(!isset($this->arr['table'])) return false;
     //       $md5_table = md5($this->arr['table']);
     //       $file = "storage/cache/mysql/".md5(Mysql::$name)."/$md5_table*";
     //       foreach(glob($file) as $key) unlink($key);
-    //       return true;
-    //     }
+        return true;
+    }
 
     query(type = 'get'){
         const arr_q = ['inner join', 'right join', 'left join', 'where','group by','having','order by','limit'];
