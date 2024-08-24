@@ -22,5 +22,10 @@
     "Name": "Name",
     "Active": "Active",
     "Errored": "Errored",
-    "Define your server to your CandyPack account": "Define your server to your CandyPack account"
+    "Define your server to your CandyPack account": "Define your server to your CandyPack account",
+    "List all available commands": "List all available commands",
+    "SUBDOMAIN": "SUBDOMAIN",
+    "Create a new subdomain": "Create a new subdomain",
+    "WEBSITE": "WEBSITE",
+    "Create a new website": "Create a new website"
 }

@@ -19,5 +19,15 @@
     "Website %s doesn't have index.js file.": "Website %s doesn't have index.js file.",
     "Monitor Website or Service": "Monitor Website or Service",
     "Offline": "Offline",
-    "Define your server to your CandyPack account": "Define your server to your CandyPack account"
+    "Restarting CandyPack Server...": "Restarting CandyPack Server...",
+    "Define your server to your CandyPack account": "Define your server to your CandyPack account",
+    "Insert Domain (example.com): ": "Insert Domain (example.com): ",
+    "Commands:": "Commands:",
+    "Create a new Subdomain": "Create a new Subdomain",
+    "List all available commands": "List all available commands",
+    "Website Management": "Website Management",
+    "Help": "Help",
+    "Add a new subdomain": "Add a new subdomain",
+    "WEBSITE MANAGEMENT": "WEBSITE MANAGEMENT",
+    "HELP": "HELP"
 }

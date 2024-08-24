@@ -33,27 +33,28 @@ async function check(){
         }
         fs.readFile(os.homedir() + '/.candypack/config.json', 'utf8', function(err, data) {
             if(err){
-                data = {};
-                data.watchdog = watchdog;
+                data = { server: {} };
+                data.server.watchdog = watchdog;
                 fs.writeFile(os.homedir() + '/.candypack/config.json', JSON.stringify(data, null, 4), 'utf8', function(err) {
                     if(err) console.log(err);
                 });
                 return resolve(false);
             }
             data = JSON.parse(data);
-            if(data.watchdog && data.watchdog != watchdog){
+            if(!data.server) data.server = {};
+            if(data.server.watchdog && data.server.watchdog != watchdog){
                 try {
-                    console.log(data.watchdog);
-                    process.kill(data.watchdog, 'SIGTERM');
+                    console.log(data.server.watchdog);
+                    process.kill(data.server.watchdog, 'SIGTERM');
                 } catch(e) { }
             }
-            if(data.pid){
+            if(data.server.pid){
                 try {
                     process.kill(data.pid, 'SIGTERM');
                 } catch(e) { }
             }
-            data.watchdog = watchdog;
-            data.started = Date.now();
+            data.server.watchdog = watchdog;
+            data.server.started = Date.now();
             fs.writeFile(os.homedir() + '/.candypack/config.json', JSON.stringify(data, null, 4), 'utf8', function(err) {
                 if(err) console.log(err);
             });

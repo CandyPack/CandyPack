@@ -1,12 +1,3 @@
-const { Console, log } = require('console');
-const { Transform } = require('stream');
-const readline = require('readline');
-const fs = require('fs');
-const os = require("os");
-
-const Config = require('./Config.js');
-const Lang = require('./Lang.js');
-
 var rl;
 var current = '';
 var selected = 0;
@@ -39,7 +30,7 @@ function format(text, raw){
     }
     if(!raw){
         if(text == 'CandyPack') output = color(output, 'magenta');
-        if(text == Lang.get('Running')) output = color(output, 'green');
+        if(text == __('Running')) output = color(output, 'green');
         if(text == '\u2713') output = color(output, 'green');
         if(text == '\u2717') output = color(output, 'red');
     }
@@ -107,19 +98,19 @@ async function getLog(){
     logs.selected = selected;
     let file = null;
     if(selected < domains.length){
-        file = os.homedir() + '/.candypack/logs/' + domains[selected] + '.log';
+        file = Candy.ext.os.homedir() + '/.candypack/logs/' + domains[selected] + '.log';
     } else if(selected - domains.length < services.length){
-        file = os.homedir() + '/.candypack/logs/' + services[selected - domains.length].name + '.log';
+        file = Candy.ext.os.homedir() + '/.candypack/logs/' + services[selected - domains.length].name + '.log';
     } else {
         logging = false;
         return;
     }
     let log = '';
     let mtime = null;
-    if(fs.existsSync(file)){
-        mtime = fs.statSync(file).mtime;
+    if(Candy.ext.fs.existsSync(file)){
+        mtime = Candy.ext.fs.statSync(file).mtime;
         if(selected == logs.selected && mtime == logs.mtime) return;
-        log = fs.readFileSync(file, 'utf8');
+        log = Candy.ext.fs.readFileSync(file, 'utf8');
     }
     logs.content = log.trim().replace(/\r\n/g, '\n').split('\n').map(function(line){
         if('[LOG]' == line.substr(0, 5)){
@@ -141,9 +132,8 @@ async function getLog(){
 function monitor(){
     if(printing) return;
     printing = true;
-    Config.load();
-    websites = Config.get('websites') ?? [];
-    services = Config.get('services') ?? [];
+    websites = Candy.config.websites ?? [];
+    services = Candy.config.services ?? [];
     domains = Object.keys(websites);
     width = process.stdout.columns - 5;
     height = process.stdout.rows - 2;
@@ -156,12 +146,12 @@ function monitor(){
     let service = -1;
     if(domains.length){
         result += color('─'.repeat(5), 'gray');
-        let title = color(Lang.get('Websites'), null);
+        let title = color(__('Websites'), null);
         result += ' ' + color(title) + ' ';
         result += color('─'.repeat(c1 - title.length - 7), 'gray');
     } else if(services.length){
         result += color('─'.repeat(5), 'gray');
-        let title = color(Lang.get('Services'), null);
+        let title = color(__('Services'), null);
         result += ' ' + color(title) + ' ';
         result += color('─'.repeat(c1 - title.length - 7), 'gray');
         service++;
@@ -180,7 +170,7 @@ function monitor(){
         } else if(services.length && service == -1){
             result += color(' ├','gray');
             result += color('─'.repeat(5), 'gray');
-            let title = color(Lang.get('Services'), null);
+            let title = color(__('Services'), null);
             result += ' ' + color(title) + ' ';
             result += color('─'.repeat(c1 - title.length - 7), 'gray');
             result += color('┤','gray');
@@ -268,7 +258,7 @@ module.exports = {
         process.stdout.write(process.platform === 'win32' ? `title CandyPack Monitor\n` : `\x1b]2;CandyPack Monitor\x1b\x5c`);
         await monitor();
         setInterval(monitor, 250);
-        rl = readline.createInterface({
+        rl = Candy.ext.readline.createInterface({
             input: process.stdin,
             output: process.stdout
         });

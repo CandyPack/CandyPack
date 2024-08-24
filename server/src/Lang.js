@@ -1,6 +1,3 @@
-const fs = require('fs');
-const { log } = require('console');
-
 var locale = Intl.DateTimeFormat().resolvedOptions().locale;
 var file = __dirname + '/../lang/' + locale + '.json';
 var strings = {};
@@ -16,7 +13,7 @@ async function save() {
     }
     saving = true;
     return new Promise((resolve, reject) => {
-        fs.writeFile(file, JSON.stringify(strings, null, 4), 'utf8', function(err) {
+        Candy.ext.fs.writeFile(file, JSON.stringify(strings, null, 4), 'utf8', function(err) {
             if(err) log(err);
             saving = false;
             return resolve();
@@ -26,7 +23,7 @@ async function save() {
 
 async function load() {
     return new Promise((resolve, reject) => {
-        fs.readFile(file, 'utf8', function(err, data) {
+        Candy.ext.fs.readFile(file, 'utf8', function(err, data) {
             if(err){
                 save();
                 resolve();
@@ -43,7 +40,7 @@ async function load() {
 
 module.exports = {
     init: async function() {
-        if(!fs.existsSync(file)) save();
+        if(!Candy.ext.fs.existsSync(file)) save();
         else await load();
     },
     get: function(key, ...args) {

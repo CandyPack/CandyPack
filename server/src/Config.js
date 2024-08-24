@@ -1,82 +1,75 @@
-const { log } = require('console');
-const fs = require('fs');
-const os = require("os");
-const readline = require('readline');
+class Config {
+    #dir;
+    #file;
+    #loaded = false;
+    #saving = false;
+    #changed = false;
 
-const userHomeDir = os.homedir();
-const dir  = userHomeDir + '/.candypack';
-const file = dir + '/config.json';
-
-var config = {};
-var loaded = false;
-global.saving = false;
-
-async function init() {
-    if(!fs.existsSync(dir)) fs.mkdirSync(dir);
-    if(!fs.existsSync(file)) save();
-    else await load();
-    let t = setInterval(function(){
-        save(true);
-        if(global.trigger == 'candy' && global.completed && !global.saving) clearInterval(t);
-    }, 500);
-}
-
-function save(b) {
-    if(!global.saving || !loaded){
-        if(!b) global.saving = true;
-        return;
-    }
-    let json = JSON.stringify(config, null, 4);
-    if(json.length < 3) json = '{}';
-    fs.writeFileSync(file, json, 'utf8');
-    global.saving = false;
-}
-
-async function load() {
-    return new Promise((resolve, reject) => {
-        if(global.saving && loaded) return resolve();
-        if(!fs.existsSync(file)){
-            loaded = true;
-            return resolve();
-        }
-        fs.readFile(file, 'utf8', function(err, data) {
-            if(err){
-                console.log(err);
-                loaded = true;
-                save(true);
-                return resolve();
-            }
-            try {
-                data = JSON.parse(data);
-                if(!config.updated || (data.updated && data.updated > config.updated)) config = data;
-                loaded = true;
-            } catch(e) {
-                loaded = true;
-                if(data.length > 2){
-                    var backup = dir + '/config-bak.json';
-                    fs.copyFileSync(file, backup);
+    async init() {
+        return new Promise(async (resolve, reject) => {
+            this.#dir = Candy.ext.os.homedir() + '/.candypack';
+            this.#file = this.#dir + '/config.json';
+            Candy.config = {};
+            if(!Candy.ext.fs.existsSync(this.#dir))  Candy.ext.fs.mkdirSync(this.#dir);
+            if(!Candy.ext.fs.existsSync(this.#file)) this.#save();
+            else await this.#load();
+            if(global.trigger === 'cli') setInterval(() => this.#save(), 500);
+            Candy.config = new Proxy(Candy.config, {
+                set: (target, name, value) => {
+                    this.#changed = true;
+                    target[name] = value;
+                    return true;
+                },
+                deleteProperty: (target, name) => {
+                    this.#changed = true;
+                    delete target[name];
+                    return true;
                 }
-                save(true);
-            }
+            });
             return resolve();
         });
-    });
+    }
+
+    async #load() {
+        return new Promise((resolve, reject) => {
+            if(this.#saving && this.#loaded) return resolve();
+            if(!Candy.ext.fs.existsSync(this.#file)){
+                this.#loaded = true;
+                return resolve();
+            }
+            Candy.ext.fs.readFile(this.#file, 'utf8', (err, data) => {
+                if(err){
+                    console.log(err);
+                    this.#loaded = true;
+                    this.#save();
+                    return resolve();
+                }
+                try {
+                    data = JSON.parse(data);
+                    this.#loaded = true;
+                } catch(e) {
+                    this.#loaded = true;
+                    if(data.length > 2){
+                        var backup = dir + '/config-bak.json';
+                        Candy.ext.fs.copyFileSync(file, backup);
+                    }
+                    this.save(true);
+                }
+                Candy.config = data;
+                return resolve();
+            });
+        });
+    }
+
+    #save() {
+        if(this.#saving || !this.#changed) return;
+        this.#changed = false;
+        this.#saving = true;
+        let json = JSON.stringify(Candy.config, null, 4);
+        if(json.length < 3) json = '{}';
+        Candy.ext.fs.writeFileSync(this.#file, json, 'utf8');
+        this.#saving = false;
+    }
 }
 
-module.exports = {
-    init: init,
-    get: function(...keys) {
-        let value = config;
-        for(let key of keys){
-            if(!value[key]) return null;
-            value = value[key];
-        }
-        return value;
-    },
-    set: function(key, value) {
-        config[key] = value;
-        config.updated = Date.now();
-        save();
-    },
-    load: load
-};
+module.exports = new Config();

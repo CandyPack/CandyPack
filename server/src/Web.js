@@ -1,19 +1,3 @@
-const { X509Certificate } = require('crypto');
-const { log, error } = require('console');
-const selfsigned = require('selfsigned');
-const httpProxy = require('http-proxy');
-const cp = require('child_process');
-const https = require('https');
-const http = require(`http`);
-const path = require('path');
-const tls = require('tls');
-const net = require('net');
-const fs = require('fs');
-const os = require("os");
-
-const Config = require('./Config.js');
-const Lang = require('./Lang.js');
-
 var error_counts = {};
 var websites = {};
 var watcher = {};
@@ -31,7 +15,7 @@ class Web {
     
     async check() {
         if(!loaded) return;
-        websites = Config.get('websites') ?? {};
+        websites = Candy.config.websites ?? {};
         for (const domain of Object.keys(websites)) {
             let website = websites[domain];
             if(!website.pid){
@@ -46,12 +30,12 @@ class Web {
                 this.start(domain);
             }
             if(logs.log[domain]){
-                fs.writeFile(os.homedir() + '/.candypack/logs/' + domain + '.log', logs.log[domain], function(err) {
+                Candy.ext.fs.writeFile(Candy.ext.os.homedir() + '/.candypack/logs/' + domain + '.log', logs.log[domain], function(err) {
                     if(err) log(err);
                 });
             }
             if(logs.err[domain]){
-                fs.writeFile(website.path + '/error.log', logs.err[domain], function(err) {
+                Candy.ext.fs.writeFile(website.path + '/error.log', logs.err[domain], function(err) {
                     if(err) log(err);
                 });
             }
@@ -61,7 +45,7 @@ class Web {
 
     async checkPort(port){
         return new Promise((resolve) => {
-            const server = net.createServer();
+            const server = Candy.ext.net.createServer();
             server.once('error', (err) => {
                 if (err.code === 'EADDRINUSE') resolve(false);
                 else resolve(false);
@@ -75,33 +59,33 @@ class Web {
     }
 
     async create() {
-        return new Promise(async function(resolve, reject){
+        return new Promise(async (resolve, reject) =>{
             this.init();
             const readline = require('readline').createInterface({
                 input: process.stdin,
                 output: process.stdout
             });
             let web = {};
-            readline.question(await Lang.get('Insert Domain (example.com): '), async function(domain) {
+            readline.question(await __('Insert Domain (example.com): '), async function(domain) {
                 for(const iterator of ['http://', 'https://', 'ftp://', 'www.']) {
                     if(domain.startsWith(iterator)) domain = domain.replace(iterator, '');
                 }
                 if(domain.length < 3 || !domain.includes('.')){
-                    log(await Lang.get('Invalid domain.'));
+                    log(await __('Invalid domain.'));
                     readline.close();
                     return resolve();
                 }
                 if(websites[domain]){
-                    log(await Lang.get('Website %s already exists.', domain));
+                    log(await __('Website %s already exists.', domain));
                     readline.close();
                     return resolve();
                 }
                 web.domain = domain;
-                web.path = path.resolve().replace(/\\/g, '/') + '/' + domain + '/';
-                readline.question(await Lang.get('Insert Path (%s): ', web.path), async function(path) {
-                    if(path.length > 0) web.path = path;
-                    log(await Lang.get('%s Creating...', web.domain));
-                    if(!fs.existsSync(web.path)) fs.mkdirSync(web.path, { recursive: true });
+                web.path = Candy.ext.path.resolve().replace(/\\/g, '/') + '/' + domain + '/';
+                readline.question(await __('Insert Path (%s): ', web.path), async function(path) {
+                    if(Candy.ext.path.length > 0) web.path = path;
+                    log(await __('%s Creating...', web.domain));
+                    if(!Candy.ext.fs.existsSync(web.path)) Candy.ext.fs.mkdirSync(web.path, { recursive: true });
                     web.DNS = {
                         A: [
                             { name: web.domain },
@@ -110,14 +94,14 @@ class Web {
                     };
                     web.subdomain = ['www'];
                     websites[web.domain] = web;
-                    Config.set('websites', websites);
+                    Candy.config.websites = websites;
                     readline.close();
-                    log(await Lang.get('Candy Framework Initializing...'));
-                    cp.execSync('npm link candypack', { cwd: web.path });
-                    if(fs.existsSync(web.path + 'node_modules/.bin')) fs.rmSync(web.path + 'node_modules/.bin', { recursive: true });
-                    if(!fs.existsSync(web.path + '/node_modules')) fs.mkdirSync(web.path + '/node_modules');
-                    fs.cpSync(__dirname + '/../web/', web.path, {recursive: true});
-                    log(await Lang.get('%s Created.', web.domain));
+                    log(await __('Candy Framework Initializing...'));
+                    Candy.ext.ChildProcess.execSync('npm link candypack', { cwd: web.path });
+                    if(Candy.ext.fs.existsSync(web.path + 'node_modules/.bin')) Candy.ext.fs.rmSync(web.path + 'node_modules/.bin', { recursive: true });
+                    if(!Candy.ext.fs.existsSync(web.path + '/node_modules')) Candy.ext.fs.mkdirSync(web.path + '/node_modules');
+                    Candy.ext.fs.cpSync(__dirname + '/../web/', web.path, {recursive: true});
+                    log(await __('%s Created.', web.domain));
                     return resolve();
                 });
             });
@@ -130,7 +114,7 @@ class Web {
     }
 
     async init(){
-        websites = Config.get('websites') ?? {};
+        websites = Candy.config.websites ?? {};
         loaded = true;
         this.server();
     }
@@ -143,10 +127,10 @@ class Web {
         if(!website) return this.index(req, res);
         if(!website.pid || !watcher[website.pid] || website.status != 'running') return this.index(req, res);
         try{
-            const proxy = httpProxy.createProxyServer({});
+            const proxy = Candy.ext.httpProxy.createProxyServer({});
             proxy.web(req, res, { target: 'http://127.0.0.1:' + website.port });
             proxy.on('proxyReq', (proxyReq, req, res, options) => {
-                proxyReq.setHeader('X-Candy-Connection-RemoteAddress', req.connection.remoteAddress);
+                proxyReq.setHeader('X-Candy-Connection-RemoteAddress', req.socket.remoteAddress);
                 proxyReq.setHeader('X-Candy-Connection-SSL', secure ? 'true' : 'false');
             });
             proxy.on('error', (err, req, res) => {
@@ -162,26 +146,26 @@ class Web {
     server(){
         if(!loaded) return setTimeout(server, 1000);
         if(Object.keys(websites).length == 0) return;
-        if(!server_http) server_http = http.createServer((req,res) => this.request(req,res,false)).listen(80);
-        let ssl = Config.get('ssl') ?? {};
-        if(!server_https && ssl && ssl.key && ssl.cert && fs.existsSync(ssl.key) && fs.existsSync(ssl.cert)){
-            server_https = https.createServer({
+        if(!server_http) server_http = Candy.ext.http.createServer((req,res) => this.request(req,res,false)).listen(80);
+        let ssl = Candy.config.ssl ?? {};
+        if(!server_https && ssl && ssl.key && ssl.cert && Candy.ext.fs.existsSync(ssl.key) && Candy.ext.fs.existsSync(ssl.cert)){
+            server_https = Candy.ext.https.createServer({
                 SNICallback: (hostname, callback) => {
                     let sslOptions;
                     while(!websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.');
                     let website = websites[hostname];
-                    if(website && website.ssl && website.ssl.key && website.ssl.cert && fs.existsSync(website.ssl.key) && fs.existsSync(website.ssl.cert)){
+                    if(website && website.ssl && website.ssl.key && website.ssl.cert && Candy.ext.fs.existsSync(website.ssl.key) && Candy.ext.fs.existsSync(website.ssl.cert)){
                         sslOptions = {
-                            key: fs.readFileSync(website.ssl.key),
-                            cert: fs.readFileSync(website.ssl.cert)
+                            key: Candy.ext.fs.readFileSync(website.ssl.key),
+                            cert: Candy.ext.fs.readFileSync(website.ssl.cert)
                         };
                     } else {
                         sslOptions = {
-                            key: fs.readFileSync(ssl.key),
-                            cert: fs.readFileSync(ssl.cert)
+                            key: Candy.ext.fs.readFileSync(ssl.key),
+                            cert: Candy.ext.fs.readFileSync(ssl.cert)
                         };
                     }            
-                    const ctx = tls.createSecureContext(sslOptions);
+                    const ctx = Candy.ext.tls.createSecureContext(sslOptions);
                     callback(null, ctx);
                 }
             }, (req, res) => {
@@ -192,7 +176,7 @@ class Web {
 
     set(domain, data){
         websites[domain] = websites[domain] = data;
-        Config.set('websites', websites);
+        Candy.config.websites = websites;
     }
 
     async start(domain){
@@ -222,18 +206,18 @@ class Web {
         } while(using);
         website.port = port;
         ports[port] = true;
-        if(!fs.existsSync(website.path + '/index.js')){
-            log(Lang.get("Website %s doesn't have index.js file.", domain));
+        if(!Candy.ext.fs.existsSync(website.path + '/index.js')){
+            log(__("Website %s doesn't have index.js file.", domain));
             return;
         }
-        var child = cp.spawn('node', [website.path + '/index.js', port], { cwd: website.path, detached: true });
+        var child = Candy.ext.ChildProcess.spawn('node', [website.path + '/index.js', port], { cwd: website.path, detached: true });
         let pid = child.pid;
         child.stdout.on('data', function(data) {
             if(!logs.log[domain]) logs.log[domain] = '';
             logs.log[domain] += '[LOG][' + Date.now() + '] ' + data.toString().trim().split('\n').join('\n[LOG][' + Date.now() + '] ') + '\n';
             if(logs.log[domain].length > 1000000) logs.log[domain] = logs.log[domain].substr(logs.log[domain].length - 1000000);
         });
-        child.stderr.on('data', function(data) {
+        child.stderr.on('data', (data) => {
             if(!logs.err[domain]) logs.err[domain] = '';
             logs.log[domain] += '[ERR][' + Date.now() + '] ' + data.toString().trim().split('\n').join('\n[ERR][' + Date.now() + '] ') + '\n';
             logs.err[domain] += data.toString();
