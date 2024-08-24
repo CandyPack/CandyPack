@@ -89,7 +89,7 @@ async function run(id){
         return;
     }
     set(id, 'updated', Date.now());
-    var child = Candy.ext.spawn('node', [service.file], { cwd: Candy.ext.path.dirname(service.file), detached: true });
+    var child = Candy.ext.childProcess.spawn('node', [service.file], { cwd: Candy.ext.path.dirname(service.file), detached: true });
     let pid = child.pid;
     child.stdout.on('data', function(data) {
         if(!logs[id]) logs[id] = '';

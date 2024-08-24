@@ -3,22 +3,23 @@ const { cp } = require('fs');
 
 class Candy {
 
-    Api     = require('./Api.js');
-    Cli     = require('./Cli.js');
-    Client  = require('./Client.js');
-    Config  = require('./Config.js');
-    DNS     = require('./DNS.js');
-    Lang    = require('./Lang.js');
-    Mail    = require('./Mail.js');
-    Server  = require('./Server.js');
-    Service = require('./Service.js');
-    SSL     = require('./SSL.js');
-    Web     = require('./Web.js');
+    Api       = require('./Api.js');
+    Cli       = require('./Cli.js');
+    Client    = require('./Client.js');
+    Config    = require('./Config.js');
+    DNS       = require('./DNS.js');
+    Lang      = require('./Lang.js');
+    Mail      = require('./Mail.js');
+    Server    = require('./Server.js');
+    Service   = require('./Service.js');
+    Subdomain = require('./Subdomain.js');
+    SSL       = require('./SSL.js');
+    Web       = require('./Web.js');
 
     ext = {
         acme            : require('acme-client'),
         axios           : require('axios'),
-        ChildProcess    : require('child_process'),
+        childProcess    : require('child_process'),
         crypto          : require('crypto'),
         dns             : require('native-dns'),
         fs              : require('fs'),
@@ -31,7 +32,6 @@ class Candy {
         ps              : require('ps-node'),
         readline        : require('readline'),
         selfsigned      : require('selfsigned'),
-        spawn           : require('child_process').spawn,
         tls             : require('tls'),
     }
     
@@ -39,6 +39,7 @@ class Candy {
         await this.Lang.init();
         await this.Config.init();
         await this.Server.init();
+        await this.Cli.init();
     }
 
 }

@@ -1,13 +1,5 @@
 class Server {
 
-    #check(){
-        let args = process.argv.slice(2);
-        Candy.ext.axios.post('http://127.0.0.1:1453', { args: args }, { headers: { 'Authorization': Candy.config.api.auth }})
-                .then((response) => {
-                    for(const line of response.data.output) Candy.Cli.log(line);
-                });
-    }
-
     async check(){
         return new Promise((resolve, reject) => {
             if(!Candy.config.server.watchdog) return resolve(false);
@@ -42,12 +34,6 @@ class Server {
         return new Promise(async(resolve, reject) => {
             var args = process.argv.slice(2);
             switch(args[0]){
-                case 'restart':
-                    Candy.Cli.log(await __('Restarting CandyPack Server...'));
-                    await this.stop();
-                    this.#init();
-                    return resolve();
-                    break;
                 case 'start':
                     if(global.trigger == 'cli') await this.start();
                     else Candy.Service.start(args[1]);
@@ -107,21 +93,12 @@ class Server {
                     return resolve();
                     break;
                 }
-                case 'create':
-                    Cli.log('\n\x1b[35mCandyPack \x1b[0m');
-                    await Candy.Web.create();
-                    break;
-                case 'monit':
-                    Candy.Cli.monitor();
-                    break;
                 case 'auth':
                     Candy.Client.auth(args[1]);
                     break;
             }
-            if(args[0]) return this.#check();
             if(!(await this.check())) this.#init();
             return resolve();
-            // setTimeout(async function(){ return resolve(); }, 1000);
         });
     }
 
@@ -154,6 +131,12 @@ class Server {
         });
     }
 
+    async restart(){
+        Candy.Cli.log(await __('Restarting CandyPack Server...'));
+        this.stop();
+        this.#init();
+    }
+
     start(){
         Candy.config.server.pid = process.pid;
         Candy.config.server.started = Date.now();
@@ -172,23 +155,20 @@ class Server {
     }
 
     stop(){
-        return new Promise((resolve, reject) => {
-            if(!this.check()) return resolve();
-            try {
-                process.kill(Candy.config.server.watchdog, 'SIGTERM');
-                process.kill(Candy.config.server.pid, 'SIGTERM');
-                Service.stopAll();
-            } catch(e) {
-            }
-            Candy.config.server.pid = null;
-            Candy.config.server.started = null;
-            return resolve();
-        });
+        if(!this.check()) return resolve();
+        try {
+            process.kill(Candy.config.server.watchdog, 'SIGTERM');
+            process.kill(Candy.config.server.pid, 'SIGTERM');
+            Service.stopAll();
+        } catch(e) {
+        }
+        Candy.config.server.pid = null;
+        Candy.config.server.started = null;
     }
 
     async watchdog(){
         console.log(await __('Starting CandyPack Server...'));
-        let child = Candy.ext.spawn('node', [__dirname + '/../watchdog.js', 'start'], { detached: true });
+        let child = Candy.ext.childProcess.spawn('node', [__dirname + '/../watchdog.js', 'start'], { detached: true });
         Candy.config.server.watchdog = child.pid;
         Candy.config.server.started  = Date.now();
         process.exit(0);

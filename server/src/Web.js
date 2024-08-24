@@ -210,9 +210,9 @@ class Web {
             log(__("Website %s doesn't have index.js file.", domain));
             return;
         }
-        var child = Candy.ext.ChildProcess.spawn('node', [website.path + '/index.js', port], { cwd: website.path, detached: true });
+        var child = Candy.ext.childProcess.spawn('node', [website.path + '/index.js', port], { cwd: website.path, detached: true });
         let pid = child.pid;
-        child.stdout.on('data', function(data) {
+        child.stdout.on('data', (data) => {
             if(!logs.log[domain]) logs.log[domain] = '';
             logs.log[domain] += '[LOG][' + Date.now() + '] ' + data.toString().trim().split('\n').join('\n[LOG][' + Date.now() + '] ') + '\n';
             if(logs.log[domain].length > 1000000) logs.log[domain] = logs.log[domain].substr(logs.log[domain].length - 1000000);
@@ -231,7 +231,7 @@ class Web {
             delete ports[website.port];
             active[domain] = false;
         });
-        child.on('exit', function(code, signal) {
+        child.on('exit', (code, signal) => {
             website.updated = Date.now();
             website.status = 'stopped';
             this.set(domain, website);
