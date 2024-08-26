@@ -15,15 +15,17 @@ class Subdomain {
         }
         if(typeof domain == 'object') return Candy.Api.result(false, __('Domain %s not found.', domain.join('.')));
         subdomain = subdomain.join('.').substr(0, subdomain.join('.').length - domain.length - 1);
-        if(Candy.config.websites[domain].subdomain.includes(subdomain)) return Candy.Api.result(false, __('Subdomain %s already exists.', [subdomain,domain].join('.')));
+        let fulldomain = [subdomain, domain].join('.');
+        if(Candy.config.websites[domain].subdomain.includes(subdomain)) return Candy.Api.result(false, __('Subdomain %s already exists.', fulldomain));
         Candy.DNS.add(domain, 'A', { name: subdomain });
         Candy.DNS.add(domain, 'A', { name: 'www.' + subdomain });
         let websites = Candy.config.websites;
-        websites[domain].subdomain.push(subdomain);
-        websites[domain].subdomain.push("www." + subdomain);
+        websites[domain].subdomain.push(fulldomain);
+        websites[domain].subdomain.push("www." + fulldomain);
         websites[domain].subdomain.sort();
         Candy.config.websites = websites;
-        return Candy.Api.result(true, __('Subdomain %s created successfully for domain %s.', [subdomain,domain].join('.'), domain));
+        Candy.SSL.renew(domain);
+        return Candy.Api.result(true, __('Subdomain %s created successfully for domain %s.', fulldomain, domain));
     }
 
 }

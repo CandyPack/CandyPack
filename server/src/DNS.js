@@ -17,7 +17,7 @@ class DNS {
     init(){
         if(!Candy.config.DNS) Candy.config.DNS = {};
         this.#server = Candy.ext.dns.createServer();
-        Candy.ext.axios.get('https://curlmyip.org/').then(function(res){
+        Candy.ext.axios.get('https://curlmyip.org/').then((res) => {
             this.#ip = res.data.replace('\n', '');
         }).catch(function(err){
             console.log(err);

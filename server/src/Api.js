@@ -1,5 +1,6 @@
 class Api {
     #commands = {
+        'ssl.renew': (...args) => Candy.SSL.renew(...args),
         'subdomain.create': (...args) => Candy.Subdomain.create(...args)
     };
 

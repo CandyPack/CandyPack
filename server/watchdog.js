@@ -44,13 +44,12 @@ async function check(){
             if(!data.server) data.server = {};
             if(data.server.watchdog && data.server.watchdog != watchdog){
                 try {
-                    console.log(data.server.watchdog);
                     process.kill(data.server.watchdog, 'SIGTERM');
                 } catch(e) { }
             }
             if(data.server.pid){
                 try {
-                    process.kill(data.pid, 'SIGTERM');
+                    process.kill(data.server.pid, 'SIGTERM');
                 } catch(e) { }
             }
             data.server.watchdog = watchdog;
@@ -68,11 +67,11 @@ async function start() {
     if(!fs.existsSync(logdir)) fs.mkdirSync(logdir);
     var child = spawn('node', [__dirname + '/cli.js', 'start'], { detached: true });
     child.stdout.on('data', function(data) {
-        log += data.toString();
+        log += '[LOG][' + Date.now() + '] ' + data.toString();
         save();
     });
     child.stderr.on('data', function(data) {
-        err += data.toString();
+        err += '[ERR][' + Date.now() + '] ' + data.toString();
         save();
     });
     child.on('close', function(){

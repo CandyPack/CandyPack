@@ -5,7 +5,6 @@ class Mail{
     #server;
 
     init(){
-        console.log("Mail server started")
         this.#server = new SMTPServer({
             onData(stream, session, callback) {
               parser(stream, {}, (err, parsed) => {

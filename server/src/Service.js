@@ -130,7 +130,6 @@ async function run(id){
         started: Date.now(),
         status: 'running'
     });
-    console.log('Service ' + service.name + ' started with pid ' + pid);
     watcher[pid] = true;
 }
 

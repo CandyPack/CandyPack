@@ -35,6 +35,15 @@ class Cli {
             action: async() => Candy.Server.restart()
         },
 
+        ssl: {
+            title: 'SSL',
+            sub: {
+                renew: {
+                    description: "Renew SSL certificate for a domain",
+                    action: async() => await this.#call({action: 'ssl.renew', data: [await this.question(await __('Enter the domain name: '))]})
+                }
+            }
+        },
         subdomain: {
             title: 'SUBDOMAIN',
             sub: {
@@ -146,7 +155,7 @@ class Cli {
     async #help(commands) {
         let result = [];
         let space = 0;
-        if(commands && commands.length){
+        if(typeof commands == 'string'){
             let obj = this.#commands;
             let command = commands.shift();
             if(!obj[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')));
@@ -162,7 +171,9 @@ class Cli {
             for(let line of lines) result.push(line);
         } else {
             for(const command in this.#commands){
-                let detail = (await this.#detail(command, this.#commands[command]));
+                let obj = this.#commands[command];
+                if(commands === true && !obj.action) continue;
+                let detail = (await this.#detail(command, obj));
                 if(detail.space > space) space = detail.space;
                 let lines = detail.result.split("\n");
                 for(let line of lines) result.push(line);

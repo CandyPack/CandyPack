@@ -1,45 +1,47 @@
-const { ChildProcess } = require('child_process');
-const { cp } = require('fs');
-
 class Candy {
 
-    Api       = require('./Api.js');
     Cli       = require('./Cli.js');
-    Client    = require('./Client.js');
     Config    = require('./Config.js');
-    DNS       = require('./DNS.js');
     Lang      = require('./Lang.js');
-    Mail      = require('./Mail.js');
     Server    = require('./Server.js');
-    Service   = require('./Service.js');
-    Subdomain = require('./Subdomain.js');
-    SSL       = require('./SSL.js');
-    Web       = require('./Web.js');
 
     ext = {
-        acme            : require('acme-client'),
         axios           : require('axios'),
         childProcess    : require('child_process'),
         crypto          : require('crypto'),
-        dns             : require('native-dns'),
         fs              : require('fs'),
-        http            : require('http'),
-        https           : require('https'),
-        httpProxy       : require('http-proxy'),
-        net             : require('net'),
         os              : require('os'),
         path            : require('path'),
         ps              : require('ps-node'),
         readline        : require('readline'),
-        selfsigned      : require('selfsigned'),
-        tls             : require('tls'),
     }
     
     async init(){
+        if(global.trigger == 'cli') this.server();
         await this.Lang.init();
         await this.Config.init();
         await this.Server.init();
         await this.Cli.init();
+    }
+
+    server(){
+        this.Api        = require('./Api.js');
+        this.Client     = require('./Client.js');
+        this.DNS        = require('./DNS.js');
+        this.Mail       = require('./Mail.js');
+        this.Service    = require('./Service.js');
+        this.Subdomain  = require('./Subdomain.js');
+        this.SSL        = require('./SSL.js');
+        this.Web        = require('./Web.js');
+
+        this.ext.acme       = require('acme-client');
+        this.ext.dns        = require('native-dns');
+        this.ext.http       = require('http');
+        this.ext.https      = require('https');
+        this.ext.httpProxy  = require('http-proxy');
+        this.ext.net        = require('net');
+        this.ext.selfsigned = require('selfsigned');
+        this.ext.tls        = require('tls');
     }
 
 }
