@@ -93,17 +93,19 @@ class Route {
                     }
                 }
             }
-            let controller = this.#controller(Candy.Request.route, '#'+Candy.Request.method, url);
-            if(controller){
-                if(await Candy.Auth.check()){
-                    Candy.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-                    if(['post', 'get'].includes(Candy.Request.method)
-                    && controller.token
-                    && (!(await Candy.request('_token'))
-                    || !Candy.token(await Candy.Request.request('_token')))) return resolve(Candy.Request.abort(401));
-                    if(typeof controller.cache === 'function'){
-                        if(controller.params) for(let key in controller.params) Candy.Request.data.url[key] = controller.params[key];
-                        return resolve(controller.cache(Candy));
+            for(let method of ['#'+Candy.Request.method, Candy.Request.method]){
+                let controller = this.#controller(Candy.Request.route, method, url);
+                if(controller){
+                    if(!Candy.Request.method.startsWith('#') || await Candy.Auth.check()){
+                        Candy.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+                        if(['post', 'get'].includes(Candy.Request.method)
+                        && controller.token
+                        && (!(await Candy.request('_token'))
+                        || !Candy.token(await Candy.Request.request('_token')))) return resolve(Candy.Request.abort(401));
+                        if(typeof controller.cache === 'function'){
+                            if(controller.params) for(let key in controller.params) Candy.Request.data.url[key] = controller.params[key];
+                            return resolve(controller.cache(Candy));
+                        }
                     }
                 }
             }
@@ -113,15 +115,6 @@ class Route {
                     Candy.cookie('candy_data', { page: Candy.Request.page, token: Candy.token()}, {expires: null, httpOnly: false});
                     return resolve(this.routes[Candy.Request.route]['#page'][url].cache(Candy));
                 }
-            }
-            if(this.routes[Candy.Request.route][Candy.Request.method] && this.routes[Candy.Request.route][Candy.Request.method][url]){
-                Candy.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-                if(['post', 'get'].includes(Candy.Request.method)
-                && this.routes[Candy.Request.route][Candy.Request.method][url].token
-                && (!(await Candy.Request.request('_token'))
-                || !Candy.token(await Candy.Request.request('_token')))) return resolve(Candy.Request.abort(401));
-                if(typeof this.routes[Candy.Request.route][Candy.Request.method][url].cache === 'function')
-                return resolve(this.routes[Candy.Request.route][Candy.Request.method][url].cache(Candy));
             }
             if(this.routes[Candy.Request.route]['page'] && this.routes[Candy.Request.route]['page'][url] && typeof this.routes[Candy.Request.route]['page'][url].cache === 'function'){
                 Candy.Request.page = this.routes[Candy.Request.route]['page'][url].file

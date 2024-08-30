@@ -85,7 +85,7 @@ class Cli {
                 if(response.data.message) this.log(response.data.message);
                 this.close();
             }).catch((error) => {
-                this.log(error);
+                log("Could not connect to CandyPack");
             });
     }
 
