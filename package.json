@@ -3,11 +3,11 @@
   "description": "",
   "homepage": "https://candypack.dev",
   "author": {
-    "name": "Emre Red",
+    "name": "emre.red",
     "email": "mail@emre.red",
     "url": "https://emre.red"
   },
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "MIT",
   "engines": {
     "node": ">=12.0.0"

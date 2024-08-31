@@ -134,7 +134,9 @@ class Server {
     async restart(){
         Candy.Cli.log(await __('Restarting CandyPack Server...'));
         this.stop();
-        this.#init();
+        return new Promise(async(resolve, reject) => {
+            setTimeout(async () => this.#init() && resolve(), 1000);
+        });
     }
 
     start(){

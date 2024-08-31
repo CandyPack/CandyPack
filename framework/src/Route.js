@@ -202,7 +202,9 @@ class Route {
                     } else if(this.routes[Candy.Route.buff][type][route]){
                         if(typeof this.routes[Candy.Route.buff][type][route].type === 'function') continue;
                         if(this.routes[Candy.Route.buff][type][route].mtime < fs.statSync(this.routes[Candy.Route.buff][type][route].path).mtimeMs){
-                            this.set(type, route, this.routes[Candy.Route.buff][type][route].file);
+                            delete require.cache[require.resolve(this.routes[Candy.Route.buff][type][route].path)];
+                            this.routes[Candy.Route.buff][type][route].cache = require(this.routes[Candy.Route.buff][type][route].path);
+                            this.routes[Candy.Route.buff][type][route].mtime = fs.statSync(this.routes[Candy.Route.buff][type][route].path).mtimeMs;
                         }
                     }
                 }
