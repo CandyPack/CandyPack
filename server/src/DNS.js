@@ -1,24 +1,16 @@
 
 class DNS {
     
-    #ip = '127.0.0.1';
+    ip = '127.0.0.1';
     #loaded = false;
     #server;
-    #types = ['A', 'CNAME', 'TXT'];
-
-    add(domain, type, value){
-        if(!Candy.config.websites[domain]) return false;
-        if(!this.#types.includes(type)) return false;
-        if(!Candy.config.websites[domain].DNS[type]) Candy.config.websites[domain].DNS[type] = [];
-        Candy.config.websites[domain].DNS[type].push(value);
-        return true;
-    }
+    #types = ['A', 'CNAME', 'MX', 'TXT'];
 
     init(){
         if(!Candy.config.DNS) Candy.config.DNS = {};
         this.#server = Candy.ext.dns.createServer();
         Candy.ext.axios.get('https://curlmyip.org/').then((res) => {
-            this.#ip = res.data.replace('\n', '');
+            this.ip = res.data.replace('\n', '');
         }).catch(function(err){
             console.log(err);
         });
@@ -37,7 +29,7 @@ class DNS {
                 if(record.name != response.question[0].name) continue;
                 response.answer.push(Candy.ext.dns.A({
                     name: record.name,
-                    address: record.value ?? this.#ip,
+                    address: record.value ?? this.ip,
                     ttl: record.ttl ?? 3600,
                 }));
             }
@@ -45,8 +37,26 @@ class DNS {
                 if(record.name != response.question[0].name) continue;
                 response.answer.push(Candy.ext.dns.CNAME({
                     name: record.name,
-                    data: record.value,
+                    data: record.value ?? domain,
                     ttl: record.ttl ?? 3600,
+                }));
+            }
+            for(const record of Candy.config.websites[domain].DNS.MX ?? []){
+                if(record.name != response.question[0].name) continue;
+                response.answer.push(Candy.ext.dns.MX({
+                    name: record.name,
+                    exchange: record.value ?? domain,
+                    priority: record.priority ?? 10,
+                    ttl: record.ttl ?? 3600,
+                }));
+            }
+            for(const record of Candy.config.websites[domain].DNS.NS ?? []){
+                if(record.name != response.question[0].name) continue;
+                response.header.aa = 1;
+                response.authority.push(Candy.ext.dns.NS({
+                    name: record.name,
+                    data: record.value ?? domain,
+                    ttl:  record.ttl ?? 3600,
                 }));
             }
             for(const record of Candy.config.websites[domain].DNS.TXT ?? []){
@@ -57,12 +67,48 @@ class DNS {
                     ttl: record.ttl ?? 3600,
                 }));
             }
+            for(const record of Candy.config.websites[domain].DNS.SOA ?? []){
+                response.header.aa = 1;
+                response.authority.push(Candy.ext.dns.SOA({
+                    name:       record.name,
+                    primary:    record.value.split(' ')[0],
+                    admin:      record.value.split(' ')[1],
+                    serial:     record.value.split(' ')[2],
+                    refresh:    record.value.split(' ')[3],
+                    retry:      record.value.split(' ')[4],
+                    expiration: record.value.split(' ')[5],
+                    minimum:    record.value.split(' ')[6],
+                    ttl:        record.ttl ?? 3600,
+                }));
+            }
             response.send();
         });
         this.#server.on('error', function (err, buff, req, res) {
             console.log(err.stack);
         });
         this.#server.serve(53);
+    }
+
+    record(...args){
+        let domains = [];
+        for(let obj of args){
+            let domain = obj.name;
+            while(!Candy.config.websites[domain] && domain.includes('.')) domain = domain.split('.').slice(1).join('.');
+            if(!Candy.config.websites[domain]) continue;
+            if(!obj.type) continue;
+            let type = obj.type.toUpperCase();
+            delete obj.type;
+            if(!this.#types.includes(type)) continue;
+            if(!Candy.config.websites[domain].DNS[type]) Candy.config.websites[domain].DNS[type] = [];
+            if(!obj.unique && obj.unique !== false) 
+            Candy.config.websites[domain].DNS[type].push(obj);
+            domains.push(domain);
+        }
+        let date = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 10);
+        for(let domain of domains) Candy.config.websites[domain].DNS.SOA = [{
+            name: domain,
+            value: 'ns1.' + domain + ' hostmaster.' + domain + ' ' + date + ' 3600 600 604800 3600'
+        }];
     }
 }
 

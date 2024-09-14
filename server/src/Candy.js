@@ -35,6 +35,7 @@ class Candy {
         this.Web        = require('./Web.js');
 
         this.ext.acme       = require('acme-client');
+        this.ext.bcrypt     = require('bcrypt');
         this.ext.dns        = require('native-dns');
         this.ext.http       = require('http');
         this.ext.https      = require('https');

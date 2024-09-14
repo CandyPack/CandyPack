@@ -35,6 +35,31 @@ class Cli {
             action: async() => Candy.Server.restart()
         },
 
+        mail: {
+            title: 'MAIL',
+            sub: {
+                create: {
+                    description: "Create a new mail account",
+                    action: async() => await this.#call({ action: 'mail.create', data: [ await this.question(await __('Enter the e-mail address: ')),
+                                                                                         await this.question(await(__('Enter the password: '))),
+                                                                                         await this.question(await(__('Re-enter the password: '))) ]})
+                },
+                delete: {
+                    description: "Delete a mail account",
+                    action: async() => await this.#call({ action: 'mail.delete', data: [ await this.question(await(__('Enter the e-mail address: '))) ]})
+                },
+                list: {
+                    description: "List all domain mail accounts",
+                    action: async() => await this.#call({ action: 'mail.list', data: [ await this.question(await(__('Enter the domain name: '))) ]})
+                },
+                password: {
+                    description: "Change mail account password",
+                    action: async() => await this.#call({ action: 'mail.password', data: [ await this.question(await(__('Enter the e-mail address: '))),
+                                                                                           await this.question(await(__('Enter the new password: '))),
+                                                                                           await this.question(await(__('Re-enter the new password: '))) ]})
+                }
+            }
+        },
         ssl: {
             title: 'SSL',
             sub: {
@@ -171,6 +196,7 @@ class Cli {
             for(let line of lines) result.push(line);
         } else {
             for(const command in this.#commands){
+                if(commands !== true && commands[0] !== command) continue;
                 let obj = this.#commands[command];
                 if(commands === true && !obj.action) continue;
                 let detail = (await this.#detail(command, obj));

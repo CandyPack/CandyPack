@@ -1,6 +1,10 @@
 class Api {
     #commands = {
-        'ssl.renew': (...args) => Candy.SSL.renew(...args),
+        'mail.create'     : (...args) => Candy.Mail.create(...args),
+        'mail.delete'     : (...args) => Candy.Mail.delete(...args),
+        'mail.list'       : (...args) => Candy.Mail.list(...args),
+        'mail.password'   : (...args) => Candy.Mail.password(...args),
+        'ssl.renew'       : (...args) => Candy.SSL.renew(...args),
         'subdomain.create': (...args) => Candy.Subdomain.create(...args)
     };
 
@@ -17,10 +21,8 @@ class Api {
             });
             req.on('end', async () => {
                 data = JSON.parse(data);
-                console.log(data);
                 if(!data || !data.action || !this.#commands[data.action]) return res.end("3");
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                console.log(data);
                 let result = await this.#commands[data.action](...data.data);
                 res.end(JSON.stringify(result));
             });

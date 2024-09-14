@@ -1,21 +1,335 @@
 const SMTPServer = require("smtp-server").SMTPServer;
 const parser = require("mailparser").simpleParser
+const sqlite3 = require('sqlite3').verbose();
+const tls = require('tls');
+const forge = require('node-forge');
+const fs = require('fs');
+const server = require('./mail/server');
+const smtp = require('./mail/smtp');
 
 class Mail{
-    #server;
+    #checking = false;
+    #clients = {};
+    #counts = {};
+    #db;
+    #server_smtp;
+    #started = false;
+
+    check(){
+        if(this.#checking) return;
+        if(!this.#started) this.init();
+        if(!this.#started) return;
+        this.#checking = true;
+        for (const domain of Object.keys(Candy.config.websites)) {
+            if(!Candy.config.websites[domain].DNS || !Candy.config.websites[domain].DNS.MX) continue;
+            if(!Candy.config.websites[domain].cert?.dkim) this.#dkim(domain);
+        }
+        this.#checking = false;
+    }
+
+    async create(email, password, retype){
+        if(!email || !password || !retype) return Candy.Api.result(false, __('All fields are required.'));
+        if(password != retype) return Candy.Api.result(false, __('Passwords do not match.'));
+        password = await new Promise((resolve, reject) => {
+            Candy.ext.bcrypt.hash(password, 10, (err, hash) => {
+                if(err) reject(err);
+                resolve(hash);
+            });
+        });
+        if(!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return Candy.Api.result(false, __('Invalid email address.'));
+        if(await this.exists(email)) return Candy.Api.result(false, __('Mail account %s already exists.', email));
+        let domain = email.split('@')[1];
+        if(!Candy.config.websites[domain]){
+            for(let d in Candy.config.websites){
+                if(domain.substr(-d.length) != d) continue;
+                if(Candy.config.websites[d].subdomain.includes(domain.substr(-d.length))){
+                    domain = d;
+                    break;
+                }
+            }
+            return Candy.Api.result(false, __('Domain %s not found.', domain));
+        }
+        this.#db.serialize(() => {
+            let stmt = this.#db.prepare("INSERT INTO mail_account ('email', 'password', 'domain') VALUES (?, ?, ?)");
+            stmt.run(email, password, domain);
+            stmt.finalize();
+        });
+        return Candy.Api.result(true, __('Mail account %s created successfully.', email));
+    }
+
+    async delete(email){
+        if(!email) return Candy.Api.result(false, __('Email address is required.'));
+        if(!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return Candy.Api.result(false, __('Invalid email address.'));
+        if(!await this.exists(email)) return Candy.Api.result(false, __('Mail account %s not found.', email));
+        this.#db.serialize(() => {
+            let stmt = this.#db.prepare("DELETE FROM mail_account WHERE email = ?");
+            stmt.run(email);
+            stmt.finalize();
+        });
+        return Candy.Api.result(true, __('Mail account %s deleted successfully.', email));
+    }
+
+    #dkim(domain){
+        let keys = forge.pki.rsa.generateKeyPair(1024);
+        const privateKeyPem = forge.pki.privateKeyToPem(keys.privateKey);
+        let publicKeyPem = forge.pki.publicKeyToPem(keys.publicKey);
+        if(!fs.existsSync(Candy.ext.os.homedir() + '/.candypack/cert/dkim')) fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/cert/dkim', { recursive: true });
+        fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.key', privateKeyPem);
+        fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.pub', publicKeyPem);
+        publicKeyPem = publicKeyPem.replace('-----BEGIN PUBLIC KEY-----', '')
+                                   .replace('-----END PUBLIC KEY-----', '')
+                                   .replace(/\r\n/g, '').replace(/\n/g, '');
+        if(!Candy.config.websites[domain].cert) Candy.config.websites[domain].cert = {};
+        Candy.config.websites[domain].cert.dkim = {
+            private: Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.key',
+            public : Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.pub'
+        }
+        Candy.DNS.record({
+            type  : 'TXT',
+            name  : `default._domainkey.${domain}`,
+            value : `v=DKIM1; k=rsa; p=${publicKeyPem}`
+        });
+    }
+
+    exists(email){
+        return new Promise((resolve, reject) => {
+            this.#db.get("SELECT * FROM mail_account WHERE email = ?", [email], (err, row) => {
+                if(row) resolve(row);
+                else resolve(false);
+            });
+        });
+    }
 
     init(){
-        this.#server = new SMTPServer({
-            onData(stream, session, callback) {
-              parser(stream, {}, (err, parsed) => {
-                if (err) console.log("Error:" , err)
-                console.log(parsed)
-                stream.on("end", callback)
-              })
-            },
-            disabledCommands: ['AUTH']
+        let start = false;
+        for(let domain in Candy.config.websites){
+            let web = Candy.config.websites[domain];
+            if(web && web.DNS && web.DNS.MX) start = true;
+        }
+        if(!start || this.#started) return;
+        this.#started = true;
+        if(!Candy.ext.fs.existsSync(Candy.ext.os.homedir() + '/.candypack/db')) Candy.ext.fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/db', { recursive: true });
+        this.#db = new sqlite3.Database(Candy.ext.os.homedir() + '/.candypack/db/mail', (err) => {
+            if(err) console.error(err.message);
         });
-        this.#server.listen(25, "0.0.0.0")
+        this.#db.serialize(() => {
+            this.#db.run(`CREATE TABLE IF NOT EXISTS mail_received ('id'          INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                                    'uid'         INTEGER NOT NULL,
+                                                                    'email'       VARCHAR(255) NOT NULL,
+                                                                    'mailbox'     VARCHAR(255),
+                                                                    'flags'       JSON DEFAULT '[]',
+                                                                    'attachments' JSON,
+                                                                    'headers'     JSON,
+                                                                    'headerLines' JSON,
+                                                                    'html'        TEXT,
+                                                                    'text'        TEXT,
+                                                                    'textAsHtml'  TEXT,
+                                                                    'subject'     TEXT,
+                                                                    'date'        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                    'to'          JSON,
+                                                                    'from'        JSON,
+                                                                    'messageId'   TEXT,
+                                                                    UNIQUE(email, uid))`);
+            this.#db.run(`CREATE TABLE IF NOT EXISTS mail_account ('id'       INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                                   'email'    VARCHAR(255) UNIQUE,
+                                                                   'password' VARCHAR(255),
+                                                                   'domain'   VARCHAR(255),
+                                                                   'created'  TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+            this.#db.run(`CREATE TABLE IF NOT EXISTS mail_box ('id'       INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                               'email'    VARCHAR(255),
+                                                               'title'    VARCHAR(255),
+                                                               'parent'   INTEGER DEFAULT 0,
+                                                               'deleted'  BOOLEAN DEFAULT 0,
+                                                               'date'     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                UNIQUE(email, title))`);
+            this.#db.run(`CREATE INDEX IF NOT EXISTS idx_email  ON mail_account  (email);`);
+            this.#db.run(`CREATE INDEX IF NOT EXISTS idx_domain ON mail_account  (domain);`);
+            this.#db.run(`CREATE INDEX IF NOT EXISTS idx_uid    ON mail_received (uid);`);
+            this.#db.run(`CREATE INDEX IF NOT EXISTS idx_email  ON mail_received (email);`);
+            this.#db.run(`CREATE INDEX IF NOT EXISTS idx_flags  ON mail_received (flags);`);
+            this.#db.run(`CREATE INDEX IF NOT EXISTS idx_date   ON mail_received (date);`);
+            this.#db.run(`CREATE INDEX IF NOT EXISTS idx_email  ON mail_box      (email);`);
+            this.#db.run(`CREATE INDEX IF NOT EXISTS idx_title  ON mail_box      (title);`);
+        });
+        const self = this;
+        let options = {
+            logger: true,
+            secure: false,
+            banner: 'CandyPack',
+            size: 1024 * 1024 * 10,
+            authOptional: true,
+            onAuth(auth, session, callback) {
+                let ip = session.remoteAddress;
+                if(!auth.username.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return callback(new Error("Invalid email address"));
+                if(self.#clients[ip]){
+                    if(self.#clients[ip].attempts > 5 && Date.now() - self.#clients[ip].last < 60000) return callback(new Error("Too many attempts"));
+                    if(self.#clients[ip].last < Date.now() - 60000) self.#clients[ip] = { attempts: 0, last: 0 };
+                }
+                self.exists(auth.username).then((result) => {
+                    if(result && Candy.ext.bcrypt.compare(auth.password, result.password)) return callback(null, { user: auth.username });
+                    if(!self.#clients[ip]) self.#clients[ip] = { attempts: 0, last: 0 };
+                    self.#clients[ip].attempts++;
+                    self.#clients[ip].last = Date.now();
+                    return callback(new Error("Invalid username or password"));
+                });
+            },
+            onData(stream, session, callback) {
+                parser(stream, {}, async (err, parsed) => {
+                    if (err) return console.log(err);
+                    let sender = await self.exists(parsed.from.value[0].address);
+                    if(sender && (!session.user || parsed.from.value[0].address !== session.user)) return callback(new Error("Invalid sender"));
+                    if(!sender && !['hostmaster','postmaster'].includes(parsed.to.value[0].address.split('@')[0]) && !(await self.exists(parsed.to.value[0].address))) return callback(new Error("Invalid recipient"));
+                    let mailbox = 'INBOX';
+                    await self.#store((session.user ?? parsed.to.value[0].address), parsed);
+                    if(session.user && parsed.from.value[0].address === session.user) smtp.send(parsed);
+                    callback();
+                })
+            },
+            onFetch(data, session, callback) {
+                let limit = ``;
+                if(data.limit[0]) limit += `AND uid >= ${parseInt(data.limit[0])} `;
+                if(data.limit[1] && data.limit[1] != '*') limit += `AND uid <= ${parseInt(data.limit[1])} `;
+                self.#db.all(`SELECT * FROM mail_received
+                              WHERE email = ? AND mailbox = ? ${limit}
+                              ORDER BY id DESC`, [data.email, data.mailbox], (err, rows) => {
+                    if(err){
+                        console.log(err);
+                        return callback(false);
+                    }
+                    callback(rows);
+                });
+            },
+            onMailFrom(address, session, callback) {
+                if(!address.address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return callback(new Error("Invalid email address"));
+                return callback()
+            },
+            onRcptTo(address, session, callback) {
+                if(!address.address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return callback(new Error("Invalid email address"));
+                return callback()
+            },
+            onSelect(data, session, callback) {
+                self.#db.get("SELECT COUNT(*) AS 'exists', SUM(IIF(flags LIKE '%\\Seen%', 0, 1)) AS 'unseen', MAX(uid) + 1 AS uidnext, MAX(uid) AS uidvalidity FROM mail_received WHERE email = ? AND mailbox = ?", [data.address, data.mailbox], (err, row) => {
+                    if(err){
+                        console.log(err);
+                        return callback(err);
+                    }
+                    callback(row);
+                });
+            },
+            onStore(data, session, callback) {
+                let uids = data.uids;
+                for(let flag of data.flags) for(let uid of uids){
+                    uid = [uid, uid];
+                    if(uid.includes(':')) uid = uid.split(':');
+                    self.#db.run(`UPDATE mail_received
+                                SET flags = JSON_INSERT(flags, '$[#]', ?)
+                                WHERE email = ? AND uid BETWEEN ? AND ? AND flags NOT LIKE ?`, [flag, data.address, uid[0], uid[1], `%${flag}%`], (err) => {
+                        if(err){
+                            console.log(err);
+                            return callback(err);
+                        }
+                    });
+                }
+                callback();
+            },
+            onError(err, session) {
+                console.log('Error:', err);
+            }
+        };
+        let serv = new SMTPServer(options);
+        serv.listen(25);
+        serv.on('error', (err) => log('SMTP Server Error: ', err));
+        const imap = new server(options);
+        imap.listen(143);
+        options.SNICallback = (hostname, callback) => {
+            let ssl = Candy.config.ssl ?? {};
+            let sslOptions = {};
+            while(!Candy.config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.');
+            let website = Candy.config.websites[hostname];
+            if(website && website.ssl && website.ssl.key && website.ssl.cert && Candy.ext.fs.existsSync(website.ssl.key) && Candy.ext.fs.existsSync(website.ssl.cert)){
+                sslOptions = {
+                    key: Candy.ext.fs.readFileSync(website.ssl.key),
+                    cert: Candy.ext.fs.readFileSync(website.ssl.cert)
+                };
+            } else {
+                sslOptions = {
+                    key: Candy.ext.fs.readFileSync(ssl.key),
+                    cert: Candy.ext.fs.readFileSync(ssl.cert)
+                };
+            }            
+            const ctx = Candy.ext.tls.createSecureContext(sslOptions);
+            callback(null, ctx);
+        };
+        options.secure = true;
+        this.#server_smtp = new SMTPServer(options);
+        this.#server_smtp.listen(465);
+        this.#server_smtp.on('error', (err) => log('SMTP Server Error: ', err));
+        const imap_sec = new server(options);
+        imap_sec.listen(993);
+    }
+
+    async list(domain){
+        if(!domain) return Candy.Api.result(false, __('Domain is required.'));
+        if(!Candy.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain));
+        let accounts = [];
+        await new Promise((resolve, reject) => {
+            this.#db.each("SELECT * FROM mail_account WHERE domain = ?", [domain], (err, row) => {
+                if(err) reject(err);
+                accounts.push(row.email);
+            }, (err, count) => {
+                if(err) reject(err);
+                resolve(count);
+            })
+        });
+        return Candy.Api.result(true, __('Mail accounts for domain %s.', domain) + "\n" + accounts.join("\n"));
+    }
+
+    async password(email, password, retype){
+        if(!email || !password || !retype) return Candy.Api.result(false, __('All fields are required.'));
+        if(password != retype) return Candy.Api.result(false, __('Passwords do not match.'));
+        password = await new Promise((resolve, reject) => {
+            Candy.ext.bcrypt.hash(password, 10, (err, hash) => {
+                if(err) reject(err);
+                resolve(hash);
+            });
+        });
+        if(!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return Candy.Api.result(false, __('Invalid email address.'));
+        if(!this.exists(email)) return Candy.Api.result(false, __('Mail account %s not found.', email));
+        this.#db.serialize(() => {
+            let stmt = this.#db.prepare("UPDATE mail_account SET password = ? WHERE email = ?");
+            stmt.run(password, email);
+            stmt.finalize();
+        });
+        return Candy.Api.result(true, __('Mail account %s password updated successfully.', email));
+    }
+
+    #store(email, data){
+        return new Promise((resolve, reject) => {
+            let mailbox = 'INBOX';
+            let flags = "[]";
+            if(email === data.from.value[0].address){
+                flags = '["\\Seen"]';
+                mailbox = 'Sent';
+            }
+            this.#db.serialize(async () => {
+                if(!this.#counts[email]){
+                    await new Promise((sub_resolve, sub_reject) => {
+                        this.#db.get("SELECT COUNT(*) AS count FROM mail_received WHERE email = ?", [email], (err, row) => {
+                            if(err) return sub_reject(err);
+                            this.#counts[email] = row.count + 1;
+                            return sub_resolve();
+                        });
+                    });
+                } else this.#counts[email]++;
+                if(data.html === '0') data.html = '';
+                this.#db.run("INSERT INTO mail_received ('uid', 'email', 'mailbox', 'attachments', 'headers', 'headerLines', 'html', 'text', 'textAsHtml', 'subject', 'to', 'from', 'messageId', 'flags') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            [this.#counts[email], email, mailbox, JSON.stringify(data.attachments), JSON.stringify(data.headers), JSON.stringify(data.headerLines), data.html, data.text, data.textAsHtml, data.subject, JSON.stringify(data.to), JSON.stringify(data.from), data.messageId, flags], async(err) => {
+                    if(!err) return resolve(true);
+                    console.log(err);
+                    return resolve(await this.#store(email, data));                    
+                });
+            });
+        });
     }
 }
 

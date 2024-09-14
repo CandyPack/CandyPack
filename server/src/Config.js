@@ -50,7 +50,7 @@ class Config {
                 } catch(e) {
                     this.#loaded = true;
                     if(data.length > 2){
-                        var backup = dir + '/config-bak.json';
+                        var backup = this.#dir + '/config-bak.json';
                         Candy.ext.fs.copyFileSync(file, backup);
                     }
                     this.save(true);

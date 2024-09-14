@@ -80,12 +80,11 @@ class Web {
                     if(Candy.ext.path.length > 0) web.path = path;
                     log(await __('%s Creating...', web.domain));
                     if(!Candy.ext.fs.existsSync(web.path)) Candy.ext.fs.mkdirSync(web.path, { recursive: true });
-                    web.DNS = {
-                        A: [
-                            { name: web.domain },
-                            { name: 'www' + web.domain}
-                        ]
-                    };
+                    Candy.DNS.record({ name: web.domain,             type: 'A',     value: Candy.DNS.ip },
+                                     { name: 'www.' + web.domain,    type: 'CNAME', value: web.domain },
+                                     { name: web.domain,             type: 'MX',    value: web.domain },
+                                     { name: web.domain,             type: 'TXT',   value: 'v=spf1 a mx ip4:' + Candy.DNS.ip + ' ~all' },
+                                     { name: '_dmarc.' + web.domain, type: 'TXT',   value: 'v=DMARC1; p=reject; rua=mailto:postmaster@' + web.domain});
                     web.subdomain = ['www'];
                     this.#websites[web.domain] = web;
                     Candy.config.websites = this.#websites;
@@ -128,9 +127,7 @@ class Web {
                 proxyReq.setHeader('X-Candy-Connection-SSL', secure ? 'true' : 'false');
             });
             proxy.on('error', (err, req, res) => {
-                log(website);
-                log(err);
-                res.end('ok');
+                res.end();
             });
         } catch(e){
             log(e);

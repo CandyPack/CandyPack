@@ -152,6 +152,7 @@ class Server {
                 Candy.Service.check();
                 Candy.SSL.check();
                 Candy.Web.check();
+                Candy.Mail.check();
             }, 1000);
         }, 1000);
     }
