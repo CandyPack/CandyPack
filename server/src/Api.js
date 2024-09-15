@@ -4,6 +4,7 @@ class Api {
         'mail.delete'     : (...args) => Candy.Mail.delete(...args),
         'mail.list'       : (...args) => Candy.Mail.list(...args),
         'mail.password'   : (...args) => Candy.Mail.password(...args),
+        'mail.send'       : (...args) => Candy.Mail.send(...args),
         'ssl.renew'       : (...args) => Candy.SSL.renew(...args),
         'subdomain.create': (...args) => Candy.Subdomain.create(...args)
     };

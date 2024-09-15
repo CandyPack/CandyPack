@@ -27,7 +27,7 @@ class Lang {
     }
 
     set(lang){
-        if(!lang || lang.length !== 2 || !this.#candy.var(lang).is('alpha')){
+        if(!lang || lang.length !== 2 || !this.#candy.Var(lang).is('alpha')){
             if(this.#candy.Request.header('ACCEPT-LANGUAGE') && this.#candy.Request.header('ACCEPT-LANGUAGE').length > 1) lang = this.#candy.Request.header('ACCEPT-LANGUAGE').substr(0, 2);
             else lang = this.#candy.Config.lang?.default || 'en'
         }

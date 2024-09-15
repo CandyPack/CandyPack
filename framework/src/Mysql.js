@@ -386,33 +386,33 @@ class Mysql {
                         break;
                     } else if(!this.#arr.select){
                         continue;
-                    } else if(Candy.var(this.#arr.select).contains(" AS \"" + col + "\"")){
+                    } else if(Candy.Var(this.#arr.select).contains(" AS \"" + col + "\"")){
                         // $exp = explode(' ,',explode(" AS \"$col\"",$this->arr['select'])[0]);
                         //       $real_col = explode('.',Candy::var(trim(end($exp)))->clear('`'));
                         //       $real_table = trim($real_col[0]);
                         //       $real_col = trim($real_col[1]);
                         //       $this->types[$col] = $this->types[$col] = $this->table[$real_table]['columns'][$real_col]['Type'] ?? $this->types[$col];
                         break;
-                    } else if(Candy.var(this.#arr.select).containsAny(" `" + col + "`", " `" + key + "`.`" + col + "`")){
+                    } else if(Candy.Var(this.#arr.select).containsAny(" `" + col + "`", " `" + key + "`.`" + col + "`")){
                         this.types[col] = table.columns[col].Type ?? this.types[col];
                     }
                 }
             }
             if(action == 'decode'){
-                    if(Candy.var(this.types[col]).isBegin('tinyint(1)')) value = value ? true : false;
-                else if(Candy.var(this.types[col]).isBegin('int'))        value = parseInt(value);
-                else if(Candy.var(this.types[col]).isBegin('double'))     value = parseFloat(value);
-                else if(Candy.var(this.types[col]).isBegin('float'))      value = parseFloat(value);
-                else if(Candy.var(this.types[col]).isBegin('boolean'))    value = parseInt(value);
-                else if(Candy.var(this.types[col]).isBegin('json'))       value = JSON.parse(value);
+                    if(Candy.Var(this.types[col]).isBegin('tinyint(1)')) value = value ? true : false;
+                else if(Candy.Var(this.types[col]).isBegin('int'))        value = parseInt(value);
+                else if(Candy.Var(this.types[col]).isBegin('double'))     value = parseFloat(value);
+                else if(Candy.Var(this.types[col]).isBegin('float'))      value = parseFloat(value);
+                else if(Candy.Var(this.types[col]).isBegin('boolean'))    value = parseInt(value);
+                else if(Candy.Var(this.types[col]).isBegin('json'))       value = JSON.parse(value);
             } else /* if(!is_string($value) && (!is_array($value) || ($value['ct'] ?? 0) != $GLOBALS['candy_token_mysql']))*/ {
-                    if(Candy.var(this.types[col]).isBegin('tinyint(1)')) value = parseInt(value);
-                else if(Candy.var(this.types[col]).isBegin('int'))        value = parseInt(value);
-                else if(Candy.var(this.types[col]).isBegin('double'))     value = parseFloat(value);
-                else if(Candy.var(this.types[col]).isBegin('float'))      value = parseFloat(value);
-                else if(Candy.var(this.types[col]).isBegin('boolean'))    value = parseInt(value);
-                else if(Candy.var(this.types[col]).isBegin('json'))       value = JSON.stringify(value);
-                else if(Candy.var(this.types[col]).isBegin('date', 'datetime', 'timestamp')) value = Candy.var(value).date('Y-m-d H:i:s');
+                    if(Candy.Var(this.types[col]).isBegin('tinyint(1)')) value = parseInt(value);
+                else if(Candy.Var(this.types[col]).isBegin('int'))        value = parseInt(value);
+                else if(Candy.Var(this.types[col]).isBegin('double'))     value = parseFloat(value);
+                else if(Candy.Var(this.types[col]).isBegin('float'))      value = parseFloat(value);
+                else if(Candy.Var(this.types[col]).isBegin('boolean'))    value = parseInt(value);
+                else if(Candy.Var(this.types[col]).isBegin('json'))       value = JSON.stringify(value);
+                else if(Candy.Var(this.types[col]).isBegin('date', 'datetime', 'timestamp')) value = Candy.Var(value).date('Y-m-d H:i:s');
             }
             return resolve(value);
         });

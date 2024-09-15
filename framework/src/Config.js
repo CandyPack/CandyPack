@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 
 module.exports = {
     auth: {
@@ -14,6 +15,7 @@ module.exports = {
     },
 
     init: function(){
+        this.system = JSON.parse(fs.readFileSync(os.homedir() + '/.candypack/config.json'));
         if(fs.existsSync(__dir + '/config.json')){
             let config = JSON.parse(fs.readFileSync(__dir + '/config.json'));
             for(const iterator of Object.keys(config)){

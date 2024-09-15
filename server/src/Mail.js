@@ -303,6 +303,27 @@ class Mail{
         return Candy.Api.result(true, __('Mail account %s password updated successfully.', email));
     }
 
+    async send(data){
+        if(!data || !data.from || !data.to || !data.header) return Candy.Api.result(false, __('All fields are required.'));
+        if(!data.from.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return Candy.Api.result(false, __('Invalid email address.'));
+        if(!data.to.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return Candy.Api.result(false, __('Invalid email address.'));
+        let domain = data.from.value[0].address.split('@')[1].split('.');
+        while(domain.length > 2 && !Candy.config.websites[domain.join('.')]) domain.shift();
+        domain = domain.join('.');
+        if(!Candy.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain));
+        let mail = { atttachments : [],
+                     headerLines  : [],
+                     from         : data.from,
+                     to           : data.to,
+                     subject      : data.subject ?? '' };
+        for(let key in data.header) mail.headerLines.push({ key: key.toLowerCase(), line: key + ': ' + data.header[key] });
+        if(data.html) mail.html = data.html;
+        if(data.text) mail.text = data.text;
+        mail.attachments = data.attachments ?? [];
+        smtp.send(mail);
+        return Candy.Api.result(true, __('Mail sent successfully.'));
+    }
+
     #store(email, data){
         return new Promise((resolve, reject) => {
             let mailbox = 'INBOX';

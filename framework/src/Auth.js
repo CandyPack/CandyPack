@@ -23,8 +23,8 @@ class Auth {
                         if(where[key] instanceof Promise) where[key] = await where[key];
                         if(!user[key]) equal = false;
                         if(user[key] === where[key]) equal = equal && true;
-                        else if(Candy.var(user[key]).is('bcrypt')) equal = equal && Candy.var(user[key]).hashCheck(where[key]);
-                        else if(Candy.var(user[key]).is('md5'))    equal = equal && md5(where[key]) === user[key];
+                        else if(Candy.Var(user[key]).is('bcrypt')) equal = equal && Candy.Var(user[key]).hashCheck(where[key]);
+                        else if(Candy.Var(user[key]).is('md5'))    equal = equal && md5(where[key]) === user[key];
                     }
                     if(equal) break;
                 }
@@ -41,7 +41,7 @@ class Auth {
                 if(!candy_x || !candy_y || !browser) return resolve(false);
                 let sql_token = await Candy.Mysql.table(Candy.Config.auth.token).where(['token_x', candy_x], ['browser', browser]).get();
                 if(sql_token.length !== 1) return resolve(false);
-                if(!Candy.var(sql_token[0].token_y).hashCheck(candy_y)) return resolve(false);
+                if(!Candy.Var(sql_token[0].token_y).hashCheck(candy_y)) return resolve(false);
                 this.#user = await Candy.Mysql.table(this.#table).where(Candy.Config.auth.key, sql_token[0].user).first();
                 // Candy.Mysql.table(Candy.Config.auth.token).where(sql_token[0].id).set({'ip': this.#request.ip,'active': Date.now()});
                 return resolve(true);
@@ -58,11 +58,11 @@ class Auth {
             let token = Candy.Config.auth.token;
             let check_table = await Candy.Mysql.run('SHOW TABLES LIKE "' + token + '"');
             if(check_table.length == 0) await Candy.Mysql.run('CREATE TABLE ' + token + ' (id INT NOT NULL AUTO_INCREMENT, user INT NOT NULL, token_x VARCHAR(255) NOT NULL, token_y VARCHAR(255) NOT NULL, browser VARCHAR(255) NOT NULL, ip VARCHAR(255) NOT NULL, `date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, `active` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))');
-            let token_y = Candy.var(this.#request.id + this.#request.ip).md5();
+            let token_y = Candy.Var(this.#request.id + this.#request.ip).md5();
             let cookie = {
                 user    : user[key],
-                token_x : Candy.var(Math.random().toString() + Date.now().toString()).md5(),
-                token_y : Candy.var(token_y).hash(),
+                token_x : Candy.Var(Math.random().toString() + Date.now().toString()).md5(),
+                token_y : Candy.Var(token_y).hash(),
                 browser : this.#request.header('user-agent'),
                 ip      : this.#request.ip
             };

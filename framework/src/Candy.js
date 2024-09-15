@@ -13,11 +13,11 @@ module.exports = {
         let _candy = {};
 
         _candy.Config  = require('./Config.js');
+        _candy.Mail    = (...args) => new (require('./Mail.js'))(...args);
         _candy.Mysql   = require('./Mysql.js');
         _candy.Route   = global.Candy?.Route ?? new (require('./Route.js'))();
         _candy.Server  = require('./Server.js');
-
-        _candy.var     = function(value) { return new (require('./Var.js'))(value) };
+        _candy.Var     = (...args) => new (require('./Var.js'))(...args);
 
         if(req && res){
             _candy.Request   = new (require('./Request.js')) (id, req, res, _candy);

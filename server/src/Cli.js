@@ -40,17 +40,17 @@ class Cli {
             sub: {
                 create: {
                     description: "Create a new mail account",
-                    action: async() => await this.#call({ action: 'mail.create', data: [ await this.question(await __('Enter the e-mail address: ')),
+                    action: async() => await this.#call({ action: 'mail.create',   data: [ await this.question(await __('Enter the e-mail address: ')),
                                                                                          await this.question(await(__('Enter the password: '))),
                                                                                          await this.question(await(__('Re-enter the password: '))) ]})
                 },
                 delete: {
                     description: "Delete a mail account",
-                    action: async() => await this.#call({ action: 'mail.delete', data: [ await this.question(await(__('Enter the e-mail address: '))) ]})
+                    action: async() => await this.#call({ action: 'mail.delete',   data: [ await this.question(await(__('Enter the e-mail address: '))) ]})
                 },
                 list: {
                     description: "List all domain mail accounts",
-                    action: async() => await this.#call({ action: 'mail.list', data: [ await this.question(await(__('Enter the domain name: '))) ]})
+                    action: async() => await this.#call({ action: 'mail.list',     data: [ await this.question(await(__('Enter the domain name: '))) ]})
                 },
                 password: {
                     description: "Change mail account password",

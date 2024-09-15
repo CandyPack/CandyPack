@@ -89,37 +89,37 @@ class Validator {
                                         error = !value || (value !== 1 && value !== 'on' && value !== 'yes' && value !== true);
                                         break;
                                     case 'numeric':
-                                        error = value && value !== '' && !Candy.var(value).is('numeric');
+                                        error = value && value !== '' && !Candy.Var(value).is('numeric');
                                         break;
                                     case 'alpha':
-                                        error = value && value !== '' && !Candy.var(value).is('alpha');
+                                        error = value && value !== '' && !Candy.Var(value).is('alpha');
                                         break;
                                     case 'alphaspace':
-                                        error = value && value !== '' && !Candy.var(value).is('alphaspace');
+                                        error = value && value !== '' && !Candy.Var(value).is('alphaspace');
                                         break;
                                     case 'alphanumeric':
-                                        error = value && value !== '' && !Candy.var(value).is('alphanumeric');
+                                        error = value && value !== '' && !Candy.Var(value).is('alphanumeric');
                                         break;
                                     case 'alphanumericspace':
-                                        error = value && value !== '' && !Candy.var(value).is('alphanumericspace');
+                                        error = value && value !== '' && !Candy.Var(value).is('alphanumericspace');
                                         break;
                                     case 'email':
-                                        error = value && value !== '' && !Candy.var(value).is('email');
+                                        error = value && value !== '' && !Candy.Var(value).is('email');
                                         break;
                                     case 'ip':
-                                        error = value && value !== '' && !Candy.var(value).is('ip');
+                                        error = value && value !== '' && !Candy.Var(value).is('ip');
                                         break;
                                     case 'float':
-                                        error = value && value !== '' && !Candy.var(value).is('float');
+                                        error = value && value !== '' && !Candy.Var(value).is('float');
                                         break;
                                     case 'mac':
-                                        error = value && value !== '' && !Candy.var(value).is('mac');
+                                        error = value && value !== '' && !Candy.Var(value).is('mac');
                                         break;
                                     case 'domain':
-                                        error = value && value !== '' && !Candy.var(value).is('domain');
+                                        error = value && value !== '' && !Candy.Var(value).is('domain');
                                         break;
                                     case 'url':
-                                        error = value && value !== '' && !Candy.var(value).is('url');
+                                        error = value && value !== '' && !Candy.Var(value).is('url');
                                         break;
                                     case 'username':
                                         error = value && !(ctype_alnum(value));

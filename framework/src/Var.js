@@ -44,7 +44,7 @@ class Var {
         let hour   = date.getHours();
         let minute = date.getMinutes();
         let second = date.getSeconds();
-        return Candy.var(format).replace({'Y': year,
+        return Candy.Var(format).replace({'Y': year,
                                           'm': month  < 10 ? `0${month}`  : month,
                                           'd': day    < 10 ? `0${day}`    : day,
                                           'H': hour   < 10 ? `0${hour}`   : hour,
@@ -150,7 +150,7 @@ class Var {
         if(args.length == 1) args = args[0];
         if(['array','object'].includes(typeof this.#value)){
             let new_value = {};
-            for(const key of Object.keys(this.#value)) new_value[key] = Candy.var(this.#value[key]).replace(args);
+            for(const key of Object.keys(this.#value)) new_value[key] = Candy.Var(this.#value[key]).replace(args);
             return new_value;
         }
         for(const arg of Object.keys(args)) this.#value = this.#value.replace(arg, args[arg]);
