@@ -12,10 +12,12 @@ class Mysql {
     #database;
     #table          = [];
     #arr            = {};
+    #stack          = [];
     #statements     = ['=','>','>=','<','<=','!=','LIKE','NOT LIKE','IN','NOT IN','BETWEEN','NOT BETWEEN','IS','IS NOT'];
 
     constructor(table, conn){
         this.#conn  = conn;
+        this.#stack = new Error().stack.split('\n').splice(3);
         if(table){
             this.#arr.table = table;
             this.#define(table);
@@ -84,11 +86,15 @@ class Mysql {
         });
     }
 
-    #error($sql){
-        //       $bt = debug_backtrace();
-        //       $caller = $bt[1];
-        //       if(Candy::isDev() && defined('DEV_ERRORS')) printf("Candy Mysql Error: %s\n<br />".$caller['file'].' : '.$caller['line'], mysqli_error(Mysql::$conn));
-        //       else Config::errorReport('MYSQL',mysqli_error(Mysql::$conn),$caller['file'],$caller['line'],$this->query);
+    #error(err, query){
+        err = 'CandyPack Mysql Error: ' + (err?.message ?? 'Unknown error').trim() + '\n';
+        if(query) err += 'Query: ' + query + '\n';
+        while(this.#stack.length > 0){
+            let line = this.#stack.shift().replace('at','');
+            if(line.includes('/node_modules/candypack/framework/src/')) break;
+            else if(!line.includes('(node:')) err += line + '\n';
+        }
+        console.error(err);
         return false;
     }
 
@@ -249,10 +255,7 @@ class Mysql {
             if(!query) return false;
             if(this.#conn.state == 'disconnected') Candy.Mysql.init();
             this.#conn.query(query, (err, result) => {
-                if(err){
-                    console.error(err);
-                    return reject(false);
-                }
+                if(err) return resolve(this.#error(err, query));
                 return resolve(result);
             });
         });
@@ -405,8 +408,8 @@ class Mysql {
                 else if(Candy.Var(this.types[col]).isBegin('float'))      value = parseFloat(value);
                 else if(Candy.Var(this.types[col]).isBegin('boolean'))    value = parseInt(value);
                 else if(Candy.Var(this.types[col]).isBegin('json'))       value = JSON.parse(value);
-            } else /* if(!is_string($value) && (!is_array($value) || ($value['ct'] ?? 0) != $GLOBALS['candy_token_mysql']))*/ {
-                    if(Candy.Var(this.types[col]).isBegin('tinyint(1)')) value = parseInt(value);
+            } else if(!(value instanceof Raw)){
+                    if(Candy.Var(this.types[col]).isBegin('tinyint(1)'))  value = parseInt(value);
                 else if(Candy.Var(this.types[col]).isBegin('int'))        value = parseInt(value);
                 else if(Candy.Var(this.types[col]).isBegin('double'))     value = parseFloat(value);
                 else if(Candy.Var(this.types[col]).isBegin('float'))      value = parseFloat(value);
