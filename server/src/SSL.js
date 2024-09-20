@@ -2,6 +2,7 @@
 class SSL {
     
     #checking = false;
+    #checked = {};
 
 
     async check(){
@@ -45,6 +46,7 @@ class SSL {
     }
 
     async #ssl(domain){
+        if(this.#checked[domain]?.interval > Date.now()) return;
         const accountPrivateKey = await Candy.ext.acme.forge.createPrivateKey();
         const client = new Candy.ext.acme.Client({
             directoryUrl: Candy.ext.acme.directory.letsencrypt.production,
@@ -56,60 +58,61 @@ class SSL {
             commonName: domain,
             altNames: subdomains,
         });
-        const cert = await client.auto({
-            csr,
-            termsOfServiceAgreed: true,
-            challengePriority: ['dns-01', 'http-01'],
-            challengeCreateFn: async (authz, challenge, keyAuthorization) => {
-                return new Promise((resolve, reject) => {
-                    if(challenge.type == 'dns-01'){
-                        let websites = Candy.config.websites ?? {};
-                        let website = websites[domain];
-                        if(!website){
-                            console.log('website not found');
-                            return reject();
+        let cert;
+        try{
+            cert = await client.auto({
+                csr,
+                termsOfServiceAgreed: true,
+                challengePriority: ['dns-01'],
+                challengeCreateFn: async (authz, challenge, keyAuthorization) => {
+                    return new Promise((resolve, reject) => {
+                        if(challenge.type == 'dns-01'){
+                            Candy.DNS.record({
+                                name  : '_acme-challenge.' + authz.identifier.value,
+                                type  : 'TXT',
+                                value : keyAuthorization,
+                                ttl   : 3600,
+                                unique: true
+                            });
+                            return resolve();
                         }
-                        if(!website.DNS) website.DNS = [];
-                        if(!website.DNS['TXT']) website.DNS['TXT'] = [];
-                        let txt = [];
-                        for(const record of website.DNS['TXT']) txt.push(record);
-                        txt.push({
-                            name: '_acme-challenge.' + authz.identifier.value,
-                            value: keyAuthorization,
-                        });
-                        website.DNS['TXT'] = txt;
-                        websites[domain] = website;
-                        Candy.config.websites = websites;
+                    });
+                },
+                challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
+                    return new Promise((resolve, reject) => {
+                        if(challenge.type == 'dns-01'){
+                            let websites = Candy.config.websites ?? {};
+                            let website = websites[domain];
+                            if(!website) return reject();
+                            if(!website.DNS) website.DNS = [];
+                            if(!website.DNS['TXT']) website.DNS['TXT'] = [];
+                            website.DNS['TXT'] = website.DNS['TXT'].filter(function(record){
+                                return record.name != '_acme-challenge.' + authz.identifier.value;
+                            });
+                            websites[domain] = website;
+                            Candy.config.websites = websites;
+                        }
                         return resolve();
-                    }
-                });
-            },
-            challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
-                return new Promise((resolve, reject) => {
-                    if(challenge.type == 'dns-01'){
-                        let websites = Candy.config.websites ?? {};
-                        let website = websites[domain];
-                        if(!website) return reject();
-                        if(!website.DNS) website.DNS = [];
-                        if(!website.DNS['TXT']) website.DNS['TXT'] = [];
-                        website.DNS['TXT'] = website.DNS['TXT'].filter(function(record){
-                            return record.name != '_acme-challenge.' + authz.identifier.value;
-                        });
-                        websites[domain] = website;
-                        Candy.config.websites = websites;
-                    }
-                    return resolve();
-                });
-            },
-            challengeKeyAuthorizationFn: async (challenge, keyAuthorization) => {
-                return keyAuthorization;
-            },
-            challengeTimeoutFn: async (ms) => {
-                return new Promise((resolve, reject) => {
-                    resolve();
-                });
-            }
-        });
+                    });
+                },
+                challengeKeyAuthorizationFn: async (challenge, keyAuthorization) => {
+                    return keyAuthorization;
+                },
+                challengeTimeoutFn: async (ms) => {
+                    return new Promise((resolve, reject) => {
+                        resolve();
+                    });
+                }
+            });
+        } catch(e){
+            if(!this.#checked[domain]) this.#checked[domain] = { error: 0 };
+            if(this.#checked[domain].error < 5) this.#checked[domain].error = this.#checked[domain] ? this.#checked[domain].error + 1 : 1
+            this.#checked[domain].interval = (this.#checked[domain].error * 1000 * 60 * 5) + Date.now();
+            console.log(e);
+            return;
+        }
+        if(!cert) return;
+        delete this.#checked[domain];
         Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/ssl/' + domain + '.key', key);
         Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/ssl/' + domain + '.crt', cert);
         let websites = Candy.config.websites ?? {};

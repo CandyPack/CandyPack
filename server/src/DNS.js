@@ -99,8 +99,9 @@ class DNS {
             let type = obj.type.toUpperCase();
             delete obj.type;
             if(!this.#types.includes(type)) continue;
+            if(!Candy.config.websites[domain].DNS) Candy.config.websites[domain].DNS = {};
             if(!Candy.config.websites[domain].DNS[type]) Candy.config.websites[domain].DNS[type] = [];
-            if(!obj.unique && obj.unique !== false) 
+            if(obj.unique && obj.unique === false) Candy.config.websites[domain].DNS[type].filter((record) => record.name != obj.name);
             Candy.config.websites[domain].DNS[type].push(obj);
             domains.push(domain);
         }

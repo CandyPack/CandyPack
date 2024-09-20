@@ -82,7 +82,12 @@ class Cli {
             title: 'WEBSITE',
             sub: {
                 create: {
-                    description: "Create a new website"
+                    description: "Create a new website",
+                    action: async() => {
+                        let domain = await this.question('Enter the domain name: ')
+                        let path = Candy.ext.path.resolve().replace(/\\/g, '/') + '/' + domain + '/';
+                        this.#call({action: 'web.create', data: [domain, await this.question((await __('Enter the path to the website (%s): ', path)) ?? path)]});
+                    }
                 }
             }
         }

@@ -52,53 +52,29 @@ class Web {
         });
     }
 
-    async create() {
-        return new Promise(async (resolve, reject) =>{
-            this.init();
-            const readline = require('readline').createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-            let web = {};
-            readline.question(await __('Insert Domain (example.com): '), async (domain) => {
-                for(const iterator of ['http://', 'https://', 'ftp://', 'www.']) {
-                    if(domain.startsWith(iterator)) domain = domain.replace(iterator, '');
-                }
-                if(domain.length < 3 || !domain.includes('.')){
-                    log(await __('Invalid domain.'));
-                    readline.close();
-                    return resolve();
-                }
-                if(this.#websites[domain]){
-                    log(await __('Website %s already exists.', domain));
-                    readline.close();
-                    return resolve();
-                }
-                web.domain = domain;
-                web.path = Candy.ext.path.resolve().replace(/\\/g, '/') + '/' + domain + '/';
-                readline.question(await __('Insert Path (%s): ', web.path), async(path) => {
-                    if(Candy.ext.path.length > 0) web.path = path;
-                    log(await __('%s Creating...', web.domain));
-                    if(!Candy.ext.fs.existsSync(web.path)) Candy.ext.fs.mkdirSync(web.path, { recursive: true });
-                    Candy.DNS.record({ name: web.domain,             type: 'A',     value: Candy.DNS.ip },
-                                     { name: 'www.' + web.domain,    type: 'CNAME', value: web.domain },
-                                     { name: web.domain,             type: 'MX',    value: web.domain },
-                                     { name: web.domain,             type: 'TXT',   value: 'v=spf1 a mx ip4:' + Candy.DNS.ip + ' ~all' },
-                                     { name: '_dmarc.' + web.domain, type: 'TXT',   value: 'v=DMARC1; p=reject; rua=mailto:postmaster@' + web.domain});
-                    web.subdomain = ['www'];
-                    this.#websites[web.domain] = web;
-                    Candy.config.websites = this.#websites;
-                    readline.close();
-                    log(await __('Candy Framework Initializing...'));
-                    Candy.ext.ChildProcess.execSync('npm link candypack', { cwd: web.path });
-                    if(Candy.ext.fs.existsSync(web.path + 'node_modules/.bin')) Candy.ext.fs.rmSync(web.path + 'node_modules/.bin', { recursive: true });
-                    if(!Candy.ext.fs.existsSync(web.path + '/node_modules')) Candy.ext.fs.mkdirSync(web.path + '/node_modules');
-                    Candy.ext.fs.cpSync(__dirname + '/../web/', web.path, {recursive: true});
-                    log(await __('%s Created.', web.domain));
-                    return resolve();
-                });
-            });
-        });
+    async create(domain, path) {
+        let web = {};
+        for(const iterator of ['http://', 'https://', 'ftp://', 'www.']) {
+            if(domain.startsWith(iterator)) domain = domain.replace(iterator, '');
+        }
+        if(domain.length < 3 || !domain.includes('.')) return Candy.Api.result(false, __('Invalid domain.'));
+        if(Candy.config.websites[domain]) return Candy.Api.result(false, await __('Website %s already exists.', domain));
+        web.domain = domain;
+        web.path = Candy.ext.path.resolve().replace(/\\/g, '/') + '/' + domain + '/';
+        if(Candy.ext.path.length > 0) web.path = path;
+        if(!Candy.ext.fs.existsSync(web.path)) Candy.ext.fs.mkdirSync(web.path, { recursive: true });
+        web.subdomain = ['www'];
+        Candy.config.websites[web.domain] = web;
+        Candy.DNS.record({ name: web.domain,             type: 'A',     value: Candy.DNS.ip },
+                         { name: 'www.' + web.domain,    type: 'CNAME', value: web.domain },
+                         { name: web.domain,             type: 'MX',    value: web.domain },
+                         { name: web.domain,             type: 'TXT',   value: 'v=spf1 a mx ip4:' + Candy.DNS.ip + ' ~all' },
+                         { name: '_dmarc.' + web.domain, type: 'TXT',   value: 'v=DMARC1; p=reject; rua=mailto:postmaster@' + web.domain});
+        Candy.ext.childProcess.execSync('npm link candypack', { cwd: web.path });
+        if(Candy.ext.fs.existsSync(web.path + 'node_modules/.bin')) Candy.ext.fs.rmSync(web.path + 'node_modules/.bin', { recursive: true });
+        if(!Candy.ext.fs.existsSync(web.path + '/node_modules')) Candy.ext.fs.mkdirSync(web.path + '/node_modules');
+        Candy.ext.fs.cpSync(__dirname + '/../web/', web.path, {recursive: true});
+        return Candy.Api.result(true, __('Website %s created.', domain));
     }
 
     index(req, res){

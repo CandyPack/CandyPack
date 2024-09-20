@@ -6,7 +6,8 @@ class Api {
         'mail.password'   : (...args) => Candy.Mail.password(...args),
         'mail.send'       : (...args) => Candy.Mail.send(...args),
         'ssl.renew'       : (...args) => Candy.SSL.renew(...args),
-        'subdomain.create': (...args) => Candy.Subdomain.create(...args)
+        'subdomain.create': (...args) => Candy.Subdomain.create(...args),
+        'web.create'      : (...args) => Candy.Web.create(...args),
     };
 
     init() {
