@@ -17,9 +17,9 @@ class Subdomain {
         subdomain = subdomain.join('.').substr(0, subdomain.join('.').length - domain.length - 1);
         let fulldomain = [subdomain, domain].join('.');
         if(Candy.config.websites[domain].subdomain.includes(subdomain)) return Candy.Api.result(false, __('Subdomain %s already exists.', fulldomain));
-        DNS.record({name: subdomain,          type: 'A'});
-        DNS.record({name: 'www.' + subdomain, type: 'CNAME'});
-        DNS.record({name: subdomain,          type: 'MX'});
+        Candy.DNS.record({name: fulldomain,          type: 'A'},
+                         {name: 'www.' + fulldomain, type: 'CNAME'},
+                         {name: fulldomain,          type: 'MX'});
         let websites = Candy.config.websites;
         websites[domain].subdomain.push(fulldomain);
         websites[domain].subdomain.push("www." + fulldomain);
