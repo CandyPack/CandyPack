@@ -8,13 +8,11 @@ class Web {
     #server_https;
     #started = {};
     #watcher = {};
-    #websites = {};
     
     async check() {
         if(!this.#loaded) return;
-        this.#websites = Candy.config.websites ?? {};
-        for (const domain of Object.keys(this.#websites)) {
-            let website = this.#websites[domain];
+        for (const domain of Object.keys(Candy.config.websites)) {
+            let website = Candy.config.websites[domain];
             if(!website.pid){
                 this.start(domain);
             } else if(!this.#watcher[website.pid]){
@@ -83,7 +81,6 @@ class Web {
     }
 
     async init(){
-        this.#websites = Candy.config.websites ?? {};
         this.#loaded = true;
         this.server();
     }
@@ -91,8 +88,8 @@ class Web {
     request(req, res, secure){
         let host = req.headers.host;
         if(!host) return this.index(req, res);
-        while(!this.#websites[host] && host.includes('.')) host = host.split('.').slice(1).join('.');
-        const website = this.#websites[host];
+        while(!Candy.config.websites[host] && host.includes('.')) host = host.split('.').slice(1).join('.');
+        const website = Candy.config.websites[host];
         if(!website) return this.index(req, res);
         if(!website.pid || !this.#watcher[website.pid] || website.status != 'running') return this.index(req, res);
         try{
@@ -113,19 +110,19 @@ class Web {
 
     server(){
         if(!this.#loaded) return setTimeout(server, 1000);
-        if(Object.keys(this.#websites).length == 0) return;
+        if(Object.keys(Candy.config.websites).length == 0) return;
         if(!this.#server_http) this.#server_http = Candy.ext.http.createServer((req,res) => this.request(req,res,false)).listen(80);
         let ssl = Candy.config.ssl ?? {};
         if(!this.#server_https && ssl && ssl.key && ssl.cert && Candy.ext.fs.existsSync(ssl.key) && Candy.ext.fs.existsSync(ssl.cert)){
             this.#server_https = Candy.ext.https.createServer({
                 SNICallback: (hostname, callback) => {
                     let sslOptions;
-                    while(!this.#websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.');
-                    let website = this.#websites[hostname];
-                    if(website && website.ssl && website.ssl.key && website.ssl.cert && Candy.ext.fs.existsSync(website.ssl.key) && Candy.ext.fs.existsSync(website.ssl.cert)){
+                    while(!Candy.config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.');
+                    let website = Candy.config.websites[hostname];
+                    if(website && website.cert?.ssl && website.cert.ssl.key && website.cert.ssl.cert && Candy.ext.fs.existsSync(website.cert.ssl.key) && Candy.ext.fs.existsSync(website.cert.ssl.cert)){
                         sslOptions = {
-                            key: Candy.ext.fs.readFileSync(website.ssl.key),
-                            cert: Candy.ext.fs.readFileSync(website.ssl.cert)
+                            key: Candy.ext.fs.readFileSync(website.cert.ssl.key),
+                            cert: Candy.ext.fs.readFileSync(website.cert.ssl.cert)
                         };
                     } else {
                         sslOptions = {
@@ -143,14 +140,13 @@ class Web {
     }
 
     set(domain, data){
-        this.#websites[domain] = this.#websites[domain] = data;
-        Candy.config.websites = this.#websites;
+        Candy.config.websites[domain] = Candy.config.websites[domain] = data;
     }
 
     async start(domain){
         if(this.#active[domain] || !this.#loaded) return;
         this.#active[domain] = true;
-        let website = this.#websites[domain];
+        let website = Candy.config.websites[domain];
         if(!website) return;
         if(website.status == 'errored' && (Date.now() - website.updated < this.#error_counts[domain] * 1000)) return;
         let port = 60000;
@@ -217,7 +213,7 @@ class Web {
 
     async status() {
         this.init();
-        return this.#websites;
+        return Candy.config.websites;
     }
 }
 

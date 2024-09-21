@@ -20,8 +20,8 @@ class Subdomain {
                          {name: 'www.' + fulldomain, type: 'CNAME'},
                          {name: fulldomain,          type: 'MX'});
         let websites = Candy.config.websites;
-        websites[domain].subdomain.push(fulldomain);
-        websites[domain].subdomain.push("www." + fulldomain);
+        websites[domain].subdomain.push(subdomain);
+        websites[domain].subdomain.push("www." + subdomain);
         websites[domain].subdomain.sort();
         Candy.config.websites = websites;
         Candy.SSL.renew(domain);

@@ -10,7 +10,7 @@ class SSL {
         this.#checking = true;
         this.#self();
         for (const domain of Object.keys(Candy.config.websites)) {
-            if(!Candy.config.websites[domain].ssl || Date.now() + (1000 * 60 * 60 * 24 * 30) > Candy.config.websites[domain].ssl.expiry) await this.#ssl(domain);
+            if(!Candy.config.websites[domain].cert?.ssl || Date.now() - (1000 * 60 * 60 * 24 * 30) > Candy.config.websites[domain].cert.ssl.expiry) await this.#ssl(domain);
         }
         this.#checking = false;
     }
@@ -34,9 +34,9 @@ class SSL {
         if(ssl && ssl.expiry > Date.now() && ssl.key && ssl.cert && Candy.ext.fs.existsSync(ssl.key) && Candy.ext.fs.existsSync(ssl.cert)) return;
         const attrs = [{ name: 'commonName', value: 'CandyPack' }];
         const pems = Candy.ext.selfsigned.generate(attrs, { days: 365, keySize: 2048});
-        if(!Candy.ext.fs.existsSync(Candy.ext.os.homedir() + '/.candypack/ssl')) Candy.ext.fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/ssl');
-        let key_file = Candy.ext.os.homedir() + '/.candypack/ssl/candypack.key';
-        let crt_file = Candy.ext.os.homedir() + '/.candypack/ssl/candypack.crt';
+        if(!Candy.ext.fs.existsSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl')) Candy.ext.fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl', { recursive: true });
+        let key_file = Candy.ext.os.homedir() + '/.candypack/cert/ssl/candypack.key';
+        let crt_file = Candy.ext.os.homedir() + '/.candypack/cert/ssl/candypack.crt';
         Candy.ext.fs.writeFileSync(key_file, pems.private);
         Candy.ext.fs.writeFileSync(crt_file, pems.cert);
         ssl.key = key_file;
@@ -71,26 +71,22 @@ class SSL {
                                 name  : '_acme-challenge.' + authz.identifier.value,
                                 type  : 'TXT',
                                 value : keyAuthorization,
-                                ttl   : 3600,
+                                ttl   : 100,
                                 unique: true
                             });
-                            return resolve();
                         }
+                        return resolve();
                     });
                 },
                 challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
                     return new Promise((resolve, reject) => {
                         if(challenge.type == 'dns-01'){
-                            let websites = Candy.config.websites ?? {};
-                            let website = websites[domain];
-                            if(!website) return reject();
-                            if(!website.DNS) website.DNS = [];
-                            if(!website.DNS['TXT']) website.DNS['TXT'] = [];
-                            website.DNS['TXT'] = website.DNS['TXT'].filter(function(record){
-                                return record.name != '_acme-challenge.' + authz.identifier.value;
+                            Candy.DNS.delete({
+                                name: '_acme-challenge.' + authz.identifier.value,
+                                type: 'TXT',
+                                value: keyAuthorization
                             });
-                            websites[domain] = website;
-                            Candy.config.websites = websites;
+                            return resolve();
                         }
                         return resolve();
                     });
@@ -113,14 +109,16 @@ class SSL {
         }
         if(!cert) return;
         delete this.#checked[domain];
-        Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/ssl/' + domain + '.key', key);
-        Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/ssl/' + domain + '.crt', cert);
+        if(!Candy.ext.fs.existsSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl')) Candy.ext.fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl', { recursive: true });
+        Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.key', key);
+        Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.crt', cert);
         let websites = Candy.config.websites ?? {};
         let website = websites[domain];
         if(!website) return;
-        website.ssl = {
-            key: Candy.ext.os.homedir() + '/.candypack/ssl/' + domain + '.key',
-            cert: Candy.ext.os.homedir() + '/.candypack/ssl/' + domain + '.crt',
+        if(!website.cert) website.cert = {};
+        website.cert.ssl = {
+            key : Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.key',
+            cert: Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.crt',
             expiry: Date.now() + (1000 * 60 * 60 * 24 * 30 * 3)
         };
         websites[domain] = website;

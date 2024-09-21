@@ -1,3 +1,3 @@
-module.exports = function(req, res){
-    res.end('CandyPack Server Example 4');
+module.exports = function(Candy){
+    return 'CandyPack Server Example';
 };
