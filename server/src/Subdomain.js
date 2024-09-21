@@ -1,7 +1,6 @@
 class Subdomain {
 
     create(subdomain){
-        log(subdomain)
         let domain = subdomain.split('.');
         subdomain = subdomain.trim().split('.');
         if(subdomain.length < 3) return Candy.Api.result(false, __('Invalid subdomain name.'));
@@ -27,6 +26,12 @@ class Subdomain {
         Candy.config.websites = websites;
         Candy.SSL.renew(domain);
         return Candy.Api.result(true, __('Subdomain %s created successfully for domain %s.', fulldomain, domain));
+    }
+
+    list(domain){
+        if(!Candy.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain));
+        let subdomains = Candy.config.websites[domain].subdomain.map((subdomain) => { return subdomain + '.' + domain; });
+        return Candy.Api.result(true, __('Subdomains of %s:', domain) + '\n  ' + subdomains.join('\n  '));
     }
 
 }

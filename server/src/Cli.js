@@ -75,6 +75,10 @@ class Cli {
                 create: {
                     description: "Create a new subdomain",
                     action: async() => await this.#call({action: 'subdomain.create', data: [await this.question(await __('Enter the subdomain name (subdomain.example.com): '))]})
+                },
+                list: {
+                    description: "List all domain subdomains",
+                    action: async() => await this.#call({action: 'subdomain.list', data: [await this.question(await __('Enter the domain name: '))]})
                 }
             }
         },
