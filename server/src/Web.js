@@ -11,7 +11,7 @@ class Web {
     
     async check() {
         if(!this.#loaded) return;
-        for (const domain of Object.keys(Candy.config.websites)) {
+        for (const domain of Object.keys(Candy.config.websites ?? {})) {
             let website = Candy.config.websites[domain];
             if(!website.pid){
                 this.start(domain);
@@ -110,7 +110,7 @@ class Web {
 
     server(){
         if(!this.#loaded) return setTimeout(server, 1000);
-        if(Object.keys(Candy.config.websites).length == 0) return;
+        if(Object.keys(Candy.config.websites ?? {}).length == 0) return;
         if(!this.#server_http) this.#server_http = Candy.ext.http.createServer((req,res) => this.request(req,res,false)).listen(80);
         let ssl = Candy.config.ssl ?? {};
         if(!this.#server_https && ssl && ssl.key && ssl.cert && Candy.ext.fs.existsSync(ssl.key) && Candy.ext.fs.existsSync(ssl.cert)){
