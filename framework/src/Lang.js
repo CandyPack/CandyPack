@@ -10,13 +10,15 @@ class Lang {
         this.set();
     }
 
-    get(key){
-        if(typeof key !== 'string') return key;
-        if(!this.#data[key]){
-            this.#data[key] = key;
+    get(...args){
+        if(typeof args[0] !== 'string') return key;
+        if(!this.#data[args[0]]){
+            this.#data[args[0]] = key;
             this.#save();
         }
-        return this.#data[key];
+        let str = this.#data[args[0]];
+        for(let i = 1; i < args.length; i++) str = str.replace('%s', args[i]);
+        return str;
     }
 
     #save(){

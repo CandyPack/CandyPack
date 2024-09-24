@@ -19,8 +19,10 @@ class Request {
         this.method = req.method.toLowerCase();
         this.url    = req.url;
         this.host   = req.headers.host;
-        this.ssl    = this.header('X-Candy-Connection-SSL') === 'true';
-        this.ip     = (this.header('X-Candy-Connection-RemoteAddress') ?? req.connection.remoteAddress).replace('::ffff:', '');
+        this.ssl    = this.header('x-candy-connection-ssl') === 'true';
+        this.ip     = (this.header('x-candy-connection-remoteaddress') ?? req.connection.remoteAddress).replace('::ffff:', '');
+        delete this.req.headers['x-candy-connection-ssl'];
+        delete this.req.headers['x-candy-connection-remoteaddress'];
         let route   = req.headers.host.split('.')[0];
         if(!Candy.Route.routes[route]) route = 'www';
         this.route = route;

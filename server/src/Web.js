@@ -93,6 +93,10 @@ class Web {
         if(!website) return this.index(req, res);
         if(!website.pid || !this.#watcher[website.pid] || website.status != 'running') return this.index(req, res);
         try{
+            if(!secure){
+                res.writeHead(301, { Location: 'https://' + host + req.url });
+                return res.end();
+            }
             const proxy = Candy.ext.httpProxy.createProxyServer({});
             proxy.web(req, res, { target: 'http://127.0.0.1:' + website.port });
             proxy.on('proxyReq', (proxyReq, req, res, options) => {

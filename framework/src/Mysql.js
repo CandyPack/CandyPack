@@ -59,7 +59,10 @@ class Mysql {
             if(this.#table[table]) return resolve(true);
             let columns = [];
             this.#conn.query(`SHOW COLUMNS FROM ${this.escape(table,'table')}`, (err, result) => {
-                if(err) return reject(err);
+                if(err){
+                    this.#error(err);
+                    return resolve(false);
+                }
                 for(let get of result){
                     columns[get.Field] = get;
                     if(get.Key == 'PRI'){
@@ -67,6 +70,7 @@ class Mysql {
                     this.#table[table].primary = get.Field;
                     }
                 }
+                if(!this.#table[table]) this.#table[table] = {};
                 this.#table[table].columns = columns;
                 Candy.Mysql.db[this.#database][table] = this.#table[table];
                 return resolve(true);
@@ -77,11 +81,9 @@ class Mysql {
     async delete(b){
         return new Promise(async (resolve, reject) => {
             let query = this.query('delete');
-            let run = this.run(query);
-            //       $sql = mysqli_query(Mysql::$conn, $query);
-            //       $this->affected = mysqli_affected_rows(Mysql::$conn);
+            let run = await this.run(query);
+            this.affected = run.affectedRows;
             //       if($this->affected > 0) self::clearcache();
-            //       return new static($this->table,$this->arr, ['affected' => $this->affected]);
             return this;
         });
     }
@@ -98,46 +100,52 @@ class Mysql {
         return false;
     }
 
-    first(b = false) {
-        return new Promise(async (resolve, reject) => {
-        this.#arr.limit = 1;
-        this.get(b)
-            .then(sql => {
-                if (sql === false || !sql[0]) return resolve(false);
-                return resolve(sql[0]);
-            })
-            .catch(reject);
-        });
-    }
-
     escape(v, type){
         if(!type) type = 'value';
         if(v && v instanceof Raw) return ' ' + v.value + ' ';
         if(type == 'value'){
             if(v === null) return 'NULL';
-            //     if(is_array($v)) return ' ("'.implode('","',array_map(function($val){return(Mysql::escape($val));},$v)).'") ';
+            if(typeof v === 'object') return ' (' + Object.values(v).map(val => mysql.escape(val)).join(',') + ') ';
             return `${mysql.escape(v)}`;
         } else if(type == 'table'){
             let as = "";
-            //     if(is_array($v)){
-            //       $as = array_values($v)[0];
-            //       $v = array_keys($v)[0];
-            //       $as = " `$as` ";
-            //     }
-            //     if(strpos($v,'.') !== false) return ' `'.implode('`.`',array_map(function($val){return(Mysql::escape($val));},explode('.',$v))).'` '.$as;
+            if(typeof v === 'object'){
+                as = Object.values(v)[0];
+                v = Object.keys(v)[0];
+                as = " `" + as + "` ";
+            }
+            if(v.includes('.')) return ' `' + v.split('.').map(val => {
+                val = mysql.escape(val)
+                return val.substring(1, val.length - 1);
+            }).join('`.`') + '` ' + as;
             return '`' + mysql.escape(v).replace(/'/g, "") + '`' + as;
         } else if(type == 'col'){
             let as = "";
-            if(Array.isArray(v)){
-                //       $as = array_values($v)[0];
-                //       $v = array_keys($v)[0];
-                //       $as = "AS \"$as\" ";
+            if(typeof v === 'object'){
+                as = Object.values(v)[0];
+                v = Object.keys(v)[0];
+                as = "AS \"" + as + "\" ";
             }
-            //     if(strpos($v,'.') !== false) return ' `'.implode('`.`',array_map(function($val){return(Mysql::escape($val));},explode('.',$v))).'` '.$as;
+            if(v.includes('.')) return ' `' + v.split('.').map(val => {
+                val = mysql.escape(val)
+                return val.substring(1, val.length - 1);
+            }).join('`.`') + '` ' + as;
             return '`' + mysql.escape(v).replace(/'/g, "") + '`' + as;
         } else if(type == 'statement' || type == 'st'){
             return this.#statements.includes(v.toUpperCase()) ? v.toUpperCase() : "=";
         }
+    }
+
+    first(b = false) {
+        return new Promise(async (resolve, reject) => {
+            this.#arr.limit = 1;
+            this.get(b)
+                .then(sql => {
+                    if (sql === false || !sql[0]) return resolve(false);
+                    return resolve(sql[0]);
+                })
+                .catch(reject);
+        });
     }
 
     async get(b){
@@ -180,11 +188,11 @@ class Mysql {
             this.#arr['into'] = ext['into'];
             this.#arr['values'] = ext['values'];
             let query = this.query('insert');
-            let run = this.run(query);
+            let run = await this.run(query);
             //   if($sql === false) return $this->error();
             //   $this->success = $sql;
-            //   $this->id = mysqli_insert_id(Mysql::$conn);
-            // $this->affected = mysqli_affected_rows(Mysql::$conn);
+            this.id = run.insertId;
+            this.affected = run.affectedRows;
             // if(this.affected > 0) this.clearcache();
             return resolve(this);
         });
@@ -220,9 +228,10 @@ class Mysql {
             this.#arr['values'] = ext['values'];
             let query = this.query('replace');
             let run = await this.run(query);
+            this.id = run.insertId;
+            this.affected = run.affectedRows;
             //       if($sql === false) return $this->error();
             //       $this->success = $sql;
-            //       $this->id = mysqli_insert_id(Mysql::$conn);
             //       self::clearcache();
             return resolve(this);
         });
@@ -261,6 +270,24 @@ class Mysql {
         });
     }
 
+    select(...args){
+        this.#arr['select'] = this.#arr['select'] ?? [];
+        if(args.length == 1 && (typeof args[0] === 'object' || args[0] instanceof Raw)){
+            if(args[0] instanceof Raw){
+                this.#arr['select'].push(args[0].value);
+            } else {
+                for(let key of Object.keys(args[0])){
+                    let value = args[0][key];
+                    if(isNaN(key)) this.#arr['select'].push(this.escape(key, 'col') + ' AS ' + this.escape(value, 'col'));
+                    else this.#arr['select'].push(this.escape(value, 'col'));
+                }
+            }
+        } else {
+            for(let key of args) this.#arr['select'].push(this.escape(key, 'col'));
+        }
+        return this;
+    }
+
     async set(arr, val){
         return new Promise(async (resolve, reject) => {
             let vars = '';
@@ -276,74 +303,52 @@ class Mysql {
         });
     }
 
+    groupBy(...args){
+        this.#arr['group by'] = this.#arr['group by'] ?? '';
+        let select = this.#arr['group by'].split(',');
+        //       if(count(func_get_args())==1 && is_array(func_get_args()[0])){
+        //         if(isset(func_get_args()[0]['ct']) && isset(func_get_args()[0]['v']) && func_get_args()[0]['ct'] == $GLOBALS['candy_token_mysql']){
+        //           $select[] = func_get_args()[0]['v'];
+        //         }else{
+        //           foreach(func_get_args()[0] as $key => $value){
+        //             $select[] = $this->escape($value,'col');
+        //           }
+        //         }
+        /*       } else */ for(let key of args) select.push(this.escape(key, 'col'));
+        this.#arr['group by'] = select.join(', ');
+        return this;
+    }
 
-    //     function select(){
-    //       $this->arr['select'] = isset($this->arr['select']) ? $this->arr['select'] : '';
-    //       $select = array_filter(explode(',',$this->arr['select']));
-    //       if(count(func_get_args())==1 && is_array(func_get_args()[0])){
-    //         if(isset(func_get_args()[0]['ct']) && isset(func_get_args()[0]['v']) && func_get_args()[0]['ct'] == $GLOBALS['candy_token_mysql']){
-    //           $select[] = func_get_args()[0]['v'];
-    //         }else{
-    //           foreach(func_get_args()[0] as $key => $value){
-    //             if(!is_int($key)) $select[] = $this->escape($key,'col').' AS '.$this->escape($value);
-    //             else $select[] = $this->escape($value,'col');
-    //           }
-    //         }
-    //       }else{
-    //         foreach(func_get_args() as $key){
-    //           $select[] = $this->escape($key,'col');
-    //         }
-    //       }
-    //       $this->arr['select'] = implode(', ',$select);
-    //       return new static($this->table,$this->arr);
-    //     }
+    limit(v1, v2 = null){
+        this.#arr['limit'] = v2 === null ? v1 : `${v1}, ${v2}`;
+        return this;
+    }
 
-    //     function groupBy(){
-    //       $this->arr['group by'] = isset($this->arr['group by']) ? $this->arr['group by'] : '';
-    //       $select = array_filter(explode(',',$this->arr['group by']));
-    //       if(count(func_get_args())==1 && is_array(func_get_args()[0])){
-    //         if(isset(func_get_args()[0]['ct']) && isset(func_get_args()[0]['v']) && func_get_args()[0]['ct'] == $GLOBALS['candy_token_mysql']){
-    //           $select[] = func_get_args()[0]['v'];
-    //         }else{
-    //           foreach(func_get_args()[0] as $key => $value){
-    //             $select[] = $this->escape($value,'col');
-    //           }
-    //         }
-    //       }else foreach(func_get_args() as $key) $select[] = $this->escape($key,'col');
-    //       $this->arr['group by'] = implode(', ',$select);
-    //       return new static($this->table,$this->arr);
-    //     }
-    //     function limit($v1,$v2=null){
-    //       $this->arr['limit'] = $v2===null ? $v1 : "$v1, $v2";
-    //       return new static($this->table,$this->arr);
-    //     }
-    //     function leftJoin($tb,$col1,$st=null,$col2=null){
-    //       return $this->join($tb,$col1,$st,$col2,'left join');
-    //     }
-    //     function rightJoin($tb,$col1,$st=null,$col2=null){
-    //       return $this->join($tb,$col1,$st,$col2,'right join');
-    //     }
-    //     function join($tb,$col1,$st=null,$col2=null,$type='inner join'){
-    //       $this->arr[$type] = isset($this->arr[$type]) ? $this->arr[$type] : [];
-    //       $this->define(is_array($tb) ? array_keys($tb)[0] : $tb);
-    //       $tb = $this->escape($tb,'table');
-    //       if($st===null && $col2===null){
-    //         $col1 = self::whereExtract($col1);
-    //         $col2 = '';
-    //         $state = '';
-    //       }else{
-    //         $col1 = $this->escape($col1,'col');
-    //         $col2 = $this->escape(($col2 !== null ? $col2 : $st),'col');
-    //         $state = $this->escape(($col2 !== null ? $st : '='),'st');
-    //       }
-    //       $this->arr[$type][] = $tb . ' ON ' . $col1 . $state . $col2;
-    //       return new static($this->table,$this->arr);
-    //     }
-    //     function login($tb_token = 'candy_token', $key = 'id'){
-    //       $sql = $this->first();
-    //       if($sql === false) return false;
-    //       return new static($this->table,$this->arr);
-    //     }
+    leftJoin(tb, col1, st = null, col2 = null){
+        return this.join(tb, col1, st, col2, 'left join');
+    }
+
+    rightJoin(tb, col1, st = null, col2 = null){
+        return this.join(tb, col1, st, col2, 'right join');
+    }
+
+    join(tb, col1, st = null, col2 = null, type = 'inner join'){
+        this.#arr[type] = this.#arr[type] ?? [];
+        this.#define(Array.isArray(tb) ? Object.keys(tb)[0] : tb);
+        tb = this.escape(tb, 'table');
+        let state;
+        if(st === null && col2 === null){
+            col1 = this.#whereExtract(col1);
+            col2 = '';
+            state = '';
+        }else{
+            col1 = this.escape(col1, 'col');
+            col2 = this.escape(col2 !== null ? col2 : st, 'col');
+            state = this.escape(col2 !== null ? st : '=', 'st');
+        }
+        this.#arr[type].push(`${tb} ON ${col1} ${state} ${col2}`);
+        return this;
+    }
 
     #clearcache(){
     //       if(!isset($this->arr['table'])) return false;
@@ -357,17 +362,17 @@ class Mysql {
         const arr_q = ['inner join', 'right join', 'left join', 'where','group by','having','order by','limit'];
         let query = "";
         for(let key of arr_q) {
-        if(this.#arr[key]){
-            if(Array.isArray(this.#arr[key])){
-                query += " " + key.toUpperCase() + " " + this.#arr[key].join(" " + strtoupper(key) + " ");
-            }else{
-                query += key.toUpperCase() + " ";
-                query += this.#arr[key];
+            if(this.#arr[key]){
+                if(Array.isArray(this.#arr[key])){
+                    query += " " + key.toUpperCase() + " " + this.#arr[key].join(" " + key.toUpperCase() + " ");
+                }else{
+                    query += " " + key.toUpperCase() + " ";
+                    query += this.#arr[key];
+                }
             }
         }
-        }
         switch(type){
-            case 'get'    : query = `SELECT ${this.#arr.select ? this.#arr.select : '*'} FROM ${this.escape(this.#arr.table,'table')} ${query}`; break;
+            case 'get'    : query = `SELECT ${this.#arr.select ? this.#arr.select.join(', ') : '*'} FROM ${this.escape(this.#arr.table,'table')} ${query}`; break;
             case 'set'    : query = `UPDATE ${this.escape(this.#arr['table'],'table')} SET ${this.#arr['set']} ${query}`; break;
             case 'insert' : query = `INSERT ${this.#arr.ignore ? 'IGNORE' : ''} INTO ${this.escape(this.#arr.table,'table')} ${this.#arr.into} VALUES ${this.#arr.values}`; break;
             case 'delete' : query = `DELETE FROM ${this.escape(this.#arr.table,'table')} ${query}`; break;
@@ -452,7 +457,7 @@ class Mysql {
     }
 
     where(...args){
-        if(args.length == 1 && !['array','object'].includes(typeof args[0]) && !(args[0] instanceof Raw)){
+        if(args.length == 1 && typeof args[0] !== 'object' && !(args[0] instanceof Raw)){
             this.#arr.where = this.#whereExtract([this.#table[this.#arr.table].primary, args[0]]);
         }else if(args.length > 0){
             this.#arr.where = this.#arr.where && this.#arr.where.trim() != '' ? `${this.#arr.where} AND ${this.#whereExtract(args)}` : this.#whereExtract(args);
@@ -472,11 +477,7 @@ class Mysql {
                 in_arr = true;
                 last = 1;
             }else if(arr.length == 2 && loop == 2){
-                if(!['object','array'].includes(typeof key) && this.#statements.includes(key.toString().toUpperCase())){
-                    q += " " + key.toString().toUpperCase();
-                }else{
-                    q += " = " + this.escape(key);
-                }
+                q += " = " + this.escape(key);
             }else if(in_arr){
                 $q += key.toUpperCase() == 'OR' ? " OR " : " AND ";
                 last = 2;

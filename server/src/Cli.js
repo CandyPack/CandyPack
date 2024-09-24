@@ -165,7 +165,7 @@ class Cli {
     async #detail(command, obj){
         let result = "";
         let space = 0;
-        if(obj.title) result += "\n\x1b[90m" + await __(obj.title) + "\x1b\n";
+        if(obj.title) result += "\n\x1b[90m" + await obj.title + "\x1b\n";
         if(obj.description){
             let args = obj.args ? ' <' + obj.args.join('> <') + '>' : '';
             let line = '\x1b[91mcandy ' + command + '\x1b[0m\x1b[90m' + args + '\x1b[0m : ' + (await __(obj.description));
@@ -205,7 +205,7 @@ class Cli {
             for(let line of lines) result.push(line);
         } else {
             for(const command in this.#commands){
-                if(commands !== true && commands[0] !== command) continue;
+                if(commands && commands !== true && commands[0] !== command) continue;
                 let obj = this.#commands[command];
                 if(commands === true && !obj.action) continue;
                 let detail = (await this.#detail(command, obj));
@@ -457,7 +457,7 @@ class Cli {
                 }
                 if(!status.auth) log(await __('Login on %s to manage all your server operations.', '\x1b[95mhttps://candypack.dev\x1b[0m'));
                 log();
-                log('Commands:');
+                log(await __('Commands:'));
                 length = 0;
                 this.#help(true);
                 log('');

@@ -26,7 +26,7 @@ module.exports = {
             _candy.View      = new (require('./View.js'))    (_candy.Request);
             _candy.Lang      = new (require('./Lang.js'))    (_candy);
 
-            _candy.__        = function(value)              { return _candy.Lang.get(value)                                    };
+            _candy.__        = function(...args)            { return _candy.Lang.get(...args)                                  };
             _candy.abort     = function(code)               { return _candy.Request.abort(code)                                };
             _candy.cookie    = function(key, value, options){ return _candy.Request.cookie(key, value, options)                };
             _candy.redirect  = function(url)                { return _candy.Request.redirect(url)                              };
