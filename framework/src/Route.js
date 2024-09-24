@@ -148,12 +148,17 @@ class Route {
             let route_arr = key.split('/');
             if(route_arr.length !== arr.length) continue;
             let params = {};
+            let next = false;
             for(let i = 0; i < route_arr.length; i++){
                 if(route_arr[i].includes('{') && route_arr[i].includes('}')){
                     params[route_arr[i].replace('{','').replace('}','')] = arr[i];
                     arr[i] = route_arr[i];
+                } else if(route_arr[i] !== arr[i]){
+                    next = true;
+                    break;
                 }
             }
+            if(next) continue;
             if(arr.join('/') === key) return {
                 params: params,
                 cache: this.routes[route][method][key].cache,
