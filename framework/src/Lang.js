@@ -11,9 +11,9 @@ class Lang {
     }
 
     get(...args){
-        if(typeof args[0] !== 'string') return key;
+        if(typeof args[0] !== 'string') return args[0];
         if(!this.#data[args[0]]){
-            this.#data[args[0]] = key;
+            this.#data[args[0]] = args[0];
             this.#save();
         }
         let str = this.#data[args[0]];

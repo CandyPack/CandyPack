@@ -163,6 +163,7 @@ class Server {
             process.kill(Candy.config.server.watchdog, 'SIGTERM');
             process.kill(Candy.config.server.pid, 'SIGTERM');
             Service.stopAll();
+            Web.stopAll();
         } catch(e) {
         }
         Candy.config.server.pid = null;

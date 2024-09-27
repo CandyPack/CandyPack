@@ -191,17 +191,14 @@ class Web {
             this.#logs.err[domain] += data.toString();
             if(this.#logs.err[domain].length > 1000000) this.#logs.err[domain] = this.#logs.err[domain].substr(this.#logs.err[domain].length - 1000000);
             website.status = 'errored';
-            website.updated = Date.now();
-            this.set(domain, website);
-            this.#watcher[pid] = false;
-            this.#error_counts[domain] = this.#error_counts[domain] ?? 0;
-            this.#error_counts[domain]++;
-            delete this.#ports[website.port];
-            this.#active[domain] = false;
         });
         child.on('exit', (code, signal) => {
             website.updated = Date.now();
-            website.status = 'stopped';
+            if(website.status == 'errored'){
+                website.status = 'errored';
+                this.#error_counts[domain] = this.#error_counts[domain] ?? 0;
+                this.#error_counts[domain]++;
+            } else website.status = 'stopped';
             this.set(domain, website);
             this.#watcher[pid] = false;
             delete this.#ports[website.port];
@@ -218,6 +215,20 @@ class Web {
     async status() {
         this.init();
         return Candy.config.websites;
+    }
+
+    async stopAll(){
+        for(const domain of Object.keys(Candy.config.websites ?? {})){
+            let website = Candy.config.websites[domain];
+            if(website.pid){
+                try {
+                    process.kill(website.pid, 'SIGTERM');
+                } catch(e) {
+                }
+                website.pid = null;
+                this.set(domain, website);
+            }
+        }
     }
 }
 
