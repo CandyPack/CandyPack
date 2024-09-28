@@ -246,10 +246,10 @@ class Mail{
             let sslOptions = {};
             while(!Candy.config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.');
             let website = Candy.config.websites[hostname];
-            if(website && website.ssl && website.ssl.key && website.ssl.cert && Candy.ext.fs.existsSync(website.ssl.key) && Candy.ext.fs.existsSync(website.ssl.cert)){
+            if(website && website.cert.ssl && website.cert.ssl.key && website.cert.ssl.cert && Candy.ext.fs.existsSync(website.cert.ssl.key) && Candy.ext.fs.existsSync(website.cert.ssl.cert)){
                 sslOptions = {
-                    key: Candy.ext.fs.readFileSync(website.ssl.key),
-                    cert: Candy.ext.fs.readFileSync(website.ssl.cert)
+                    key: Candy.ext.fs.readFileSync(website.cert.ssl.key),
+                    cert: Candy.ext.fs.readFileSync(website.cert.ssl.cert)
                 };
             } else {
                 sslOptions = {

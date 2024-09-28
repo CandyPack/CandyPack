@@ -183,7 +183,7 @@ class View {
             }
             let cache = `${crypto.createHash('md5').update(file).digest('hex')}`;
             if(!fs.existsSync('./storage/cache')) fs.mkdirSync('./storage/cache', { recursive: true });
-            fs.writeFileSync('./storage/cache/' + cache, `module.exports = (get,__) => {\nlet html = '';\n${result}\nreturn html.trim()\n}`);
+            fs.writeFileSync('./storage/cache/' + cache, `module.exports = (Candy, get, __) => {\nlet html = '';\n${result}\nreturn html.trim()\n}`);
             delete require.cache[require.resolve(__dir + '/storage/cache/' + cache)];
             if(!Candy.View) Candy.View = {};
             if(!Candy.View.cache) Candy.View.cache = {};
@@ -193,7 +193,8 @@ class View {
             };
         }
         try{
-            return require(__dir + '/storage/cache/' + Candy.View.cache[file].cache)((key)     => this.#candy.Request.get(key),
+            return require(__dir + '/storage/cache/' + Candy.View.cache[file].cache)(this.#candy,
+                                                                                     (key)     => this.#candy.Request.get(key),
                                                                                      (...args) => this.#candy.Lang.get(...args));
         } catch(e){
             let stackLine = e.stack.split('\n')[1].match(/:(\d+):\d+/);
