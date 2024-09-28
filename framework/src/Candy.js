@@ -23,8 +23,8 @@ module.exports = {
             _candy.Request   = new (require('./Request.js')) (id, req, res, _candy);
             _candy.Auth      = new (require('./Auth.js'))    (_candy.Request);
             _candy.Token     = new (require('./Token.js'))   (_candy.Request);
-            _candy.View      = new (require('./View.js'))    (_candy.Request);
             _candy.Lang      = new (require('./Lang.js'))    (_candy);
+            _candy.View      = new (require('./View.js'))    (_candy);
 
             _candy.__        = function(...args)            { return _candy.Lang.get(...args)                                  };
             _candy.abort     = function(code)               { return _candy.Request.abort(code)                                };
