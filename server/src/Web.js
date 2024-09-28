@@ -91,7 +91,7 @@ class Web {
         while(!Candy.config.websites[host] && host.includes('.')) host = host.split('.').slice(1).join('.');
         const website = Candy.config.websites[host];
         if(!website) return this.index(req, res);
-        if(!website.pid || !this.#watcher[website.pid] || website.status != 'running') return this.index(req, res);
+        if(!website.pid || !this.#watcher[website.pid]) return this.index(req, res);
         try{
             if(!secure){
                 res.writeHead(301, { Location: 'https://' + host + req.url });
@@ -193,6 +193,7 @@ class Web {
             website.status = 'errored';
         });
         child.on('exit', (code, signal) => {
+            website.pid = null;
             website.updated = Date.now();
             if(website.status == 'errored'){
                 website.status = 'errored';
@@ -204,6 +205,7 @@ class Web {
             delete this.#ports[website.port];
             this.#active[domain] = false;
         });
+        
         website.pid = pid;
         website.started = Date.now();
         website.status = 'running';
