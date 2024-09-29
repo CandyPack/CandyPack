@@ -12,16 +12,14 @@ class Web {
     async check() {
         if(!this.#loaded) return;
         for (const domain of Object.keys(Candy.config.websites ?? {})) {
-            let website = Candy.config.websites[domain];
-            if(!website.pid){
+            if(!Candy.config.websites[domain].pid){
                 this.start(domain);
-            } else if(!this.#watcher[website.pid]){
+            } else if(!this.#watcher[Candy.config.websites[domain].pid]){
                 try {
-                    process.kill(website.pid, 'SIGTERM');
+                    process.kill(Candy.config.websites[domain].pid, 'SIGTERM');
                 } catch(e) {
                 }
-                website.pid = null;
-                this.set(domain, website);
+                Candy.config.websites[domain].pid = null;
                 this.start(domain);
             }
             if(this.#logs.log[domain]){
@@ -30,7 +28,7 @@ class Web {
                 });
             }
             if(this.#logs.err[domain]){
-                Candy.ext.fs.writeFile(website.path + '/error.log', this.#logs.err[domain], function(err) {
+                Candy.ext.fs.writeFile(Candy.config.websites[domain].path + '/error.log', this.#logs.err[domain], function(err) {
                     if(err) log(err);
                 });
             }
@@ -150,9 +148,8 @@ class Web {
     async start(domain){
         if(this.#active[domain] || !this.#loaded) return;
         this.#active[domain] = true;
-        let website = Candy.config.websites[domain];
-        if(!website) return;
-        if(website.status == 'errored' && (Date.now() - website.updated < this.#error_counts[domain] * 1000)) return;
+        if(!Candy.config.websites[domain]) return this.#active[domain] = false;
+        if(Candy.config.websites[domain].status == 'errored' && (Date.now() - Candy.config.websites[domain].updated < this.#error_counts[domain] * 1000)) return this.#active[domain] = false;
         let port = 60000;
         let using = false;
         do {
@@ -172,44 +169,44 @@ class Web {
                 using = true;
             }
         } while(using);
-        website.port = port;
+        Candy.config.websites[domain].port = port;
         this.#ports[port] = true;
-        if(!Candy.ext.fs.existsSync(website.path + '/index.js')){
+        if(!Candy.ext.fs.existsSync(Candy.config.websites[domain].path + '/index.js')){
             log(__("Website %s doesn't have index.js file.", domain));
+            this.#active[domain] = false;
             return;
         }
-        var child = Candy.ext.childProcess.spawn('node', [website.path + '/index.js', port], { cwd: website.path, detached: true });
+        var child = Candy.ext.childProcess.spawn('node', [Candy.config.websites[domain].path + '/index.js', port], { cwd: Candy.config.websites[domain].path, detached: true });
         let pid = child.pid;
         child.stdout.on('data', (data) => {
             if(!this.#logs.log[domain]) this.#logs.log[domain] = '';
             this.#logs.log[domain] += '[LOG][' + Date.now() + '] ' + data.toString().trim().split('\n').join('\n[LOG][' + Date.now() + '] ') + '\n';
             if(this.#logs.log[domain].length > 1000000) this.#logs.log[domain] = this.#logs.log[domain].substr(this.#logs.log[domain].length - 1000000);
+            if(Candy.config.websites[domain].status == 'errored') Candy.config.websites[domain].status = 'running';
         });
         child.stderr.on('data', (data) => {
             if(!this.#logs.err[domain]) this.#logs.err[domain] = '';
             this.#logs.log[domain] += '[ERR][' + Date.now() + '] ' + data.toString().trim().split('\n').join('\n[ERR][' + Date.now() + '] ') + '\n';
             this.#logs.err[domain] += data.toString();
             if(this.#logs.err[domain].length > 1000000) this.#logs.err[domain] = this.#logs.err[domain].substr(this.#logs.err[domain].length - 1000000);
-            website.status = 'errored';
+            Candy.config.websites[domain].status = 'errored';
         });
         child.on('exit', (code, signal) => {
-            website.pid = null;
-            website.updated = Date.now();
-            if(website.status == 'errored'){
-                website.status = 'errored';
+            Candy.config.websites[domain].pid = null;
+            Candy.config.websites[domain].updated = Date.now();
+            if(Candy.config.websites[domain].status == 'errored'){
+                Candy.config.websites[domain].status = 'errored';
                 this.#error_counts[domain] = this.#error_counts[domain] ?? 0;
                 this.#error_counts[domain]++;
-            } else website.status = 'stopped';
-            this.set(domain, website);
+            } else Candy.config.websites[domain].status = 'stopped';
             this.#watcher[pid] = false;
-            delete this.#ports[website.port];
+            delete this.#ports[Candy.config.websites[domain].port];
             this.#active[domain] = false;
         });
         
-        website.pid = pid;
-        website.started = Date.now();
-        website.status = 'running';
-        this.set(domain, website);
+        Candy.config.websites[domain].pid = pid;
+        Candy.config.websites[domain].started = Date.now();
+        Candy.config.websites[domain].status = 'running';
         this.#watcher[pid] = true;
         this.#started[domain] = Date.now();
     }

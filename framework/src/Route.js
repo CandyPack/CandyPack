@@ -228,11 +228,17 @@ class Route {
         let id = `${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
         let param = Candy.instance(id, req, res);
         if(!this.routes[param.Request.route]) return param.Request.end();
-        let result = this.check(param);
-        if(result instanceof Promise) result = await result;
-        if(result) param.Request.end(result);
-        param.Request.print(param);
-        param.View.print(param);
+        try{
+            let result = this.check(param);
+            if(result instanceof Promise) result = await result;
+            if(result) param.Request.end(result);
+            param.Request.print(param);
+            param.View.print(param);
+        } catch(e){
+            console.error(e);
+            param.Request.abort(500);
+            return param.Request.end();
+        }
     }
 
     set(type, url, file, options = {}){

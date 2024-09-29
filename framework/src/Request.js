@@ -188,7 +188,9 @@ class Request {
             let interval = setInterval(() => {
                 if(this.data.post[key] !== undefined || this.data.get[key] !== undefined || this.#complete){
                     clearInterval(interval);
-                         if(this.data.post[key] !== undefined && method !== 'GET') resolve(this.data.post[key]);
+                    if(!key && !method) resolve(this.data.post);
+                    else if(!key && method) resolve(this.data[method.toLowerCase()]);
+                    else if(this.data.post[key] !== undefined && method !== 'GET') resolve(this.data.post[key]);
                     else if(this.data.get[key]  !== undefined && method !== 'GET') resolve(this.data.get[key]);
                     else resolve();
                 }
