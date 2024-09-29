@@ -206,7 +206,7 @@ class View {
 
     // - SET PARTS
     set(...args) {
-        if(args.length === 1 && typeof args[0] === 'object') for(let key in data) this.#part[key] = data[key];
+        if(args.length === 1 && typeof args[0] === 'object') for(let key in args[0]) this.#part[key] = args[0][key];
         else if(args.length === 2) this.#part[args[0]] = args[1];
         return this;
     }
