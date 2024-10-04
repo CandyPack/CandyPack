@@ -10,6 +10,7 @@ class Raw {
 class Mysql {
     #conn;
     #database;
+    #defining       = false;
     #table          = [];
     #arr            = {};
     #stack          = [];
@@ -21,6 +22,8 @@ class Mysql {
         if(table){
             this.#arr.table = table;
             this.#define(table);
+            this.#defining = 1;
+            while(this.#defining && this.#defining < 255){ this.#defining++; }
         }
     }
 
@@ -56,23 +59,28 @@ class Mysql {
         return new Promise(async (resolve, reject) => {
             if(!Candy.Mysql.db[this.#database]) Candy.Mysql.db[this.#database] = {};
             this.#table[table] = Candy.Mysql.db[this.#database][table];
-            if(this.#table[table]) return resolve(true);
+            if(this.#table[table]){
+                this.#defining = false;
+                return resolve(true);
+            }
             let columns = [];
             this.#conn.query(`SHOW COLUMNS FROM ${this.escape(table,'table')}`, (err, result) => {
                 if(err){
                     this.#error(err);
+                    this.#defining = false;
                     return resolve(false);
                 }
                 for(let get of result){
                     columns[get.Field] = get;
                     if(get.Key == 'PRI'){
-                    if(!this.#table[table]) this.#table[table] = {};
-                    this.#table[table].primary = get.Field;
+                        if(!this.#table[table]) this.#table[table] = {};
+                        this.#table[table].primary = get.Field;
                     }
                 }
                 if(!this.#table[table]) this.#table[table] = {};
                 this.#table[table].columns = columns;
                 Candy.Mysql.db[this.#database][table] = this.#table[table];
+                this.#defining = false;
                 return resolve(true);
             });
         });    
@@ -502,29 +510,33 @@ module.exports = {
     conn: {},
     db  : {},
     init: function(){
-        if(!Candy.Config.database) return;
-        let multiple = typeof Candy.Config.database[Object.keys(Candy.Config.database)[0]] === 'object';
-        let dbs = multiple ? Candy.Config.database : {'default': Candy.Config.database};
-        for(let key of Object.keys(dbs)){
-            let db = dbs[key];
-            if(db.type && db.type != 'mysql') continue;
-            Candy.Mysql.conn[key] = mysql.createConnection({
-                host    : db.host ?? "127.0.0.1",
-                user    : db.user,
-                password: db.password,
-                database: db.database
-            });
-            Candy.Mysql.conn[key].connect();
-            Candy.Mysql.conn[key].query('SHOW TABLES', (err, result) => {
-                if(err){
-                    console.error('Mysql Connection Error', err);
-                    return;
-                }
-                for(let table of result) for(let key of Object.keys(table)){
-                    let t = new Mysql(table[key], Candy.Mysql.conn['default']);
-                }
-            });
-        }
+        return new Promise(async (resolve) => {
+            if(!Candy.Config.database) return resolve(false);
+            let multiple = typeof Candy.Config.database[Object.keys(Candy.Config.database)[0]] === 'object';
+            let dbs = multiple ? Candy.Config.database : {'default': Candy.Config.database};
+            for(let key of Object.keys(dbs)){
+                let db = dbs[key];
+                if(db.type && db.type != 'mysql') continue;
+                Candy.Mysql.conn[key] = mysql.createConnection({
+                    host    : db.host ?? "127.0.0.1",
+                    user    : db.user,
+                    password: db.password,
+                    database: db.database
+                });
+                Candy.Mysql.conn[key].connect();
+                Candy.Mysql.conn[key].query('SHOW TABLES', (err, result) => {
+                    if(err){
+                        console.error('Mysql Connection Error', err);
+                        return resolve(false);
+                    }
+                    for(let table of result) for(let key of Object.keys(table)){
+                        let t = () => { new Mysql(table[key], Candy.Mysql.conn['default']) }
+                        t();
+                    }
+                });
+            }
+            return resolve(true);
+        });
     },
     database: function(name){
         return new Mysql(name, Candy.Mysql.conn[name]);

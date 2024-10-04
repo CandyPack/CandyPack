@@ -1,10 +1,10 @@
 module.exports = {
-    init: function(){
+    init: async function(){
         global.Candy = this.instance();
-        global.Candy.Config.init();
-        global.Candy.Mysql.init();
-        global.Candy.Route.init();
-        global.Candy.Server.init();
+        await global.Candy.Config.init();
+        await global.Candy.Mysql.init();
+        await global.Candy.Route.init();
+        await global.Candy.Server.init();
         global.Candy.instance = this.instance;
         global.__ = (value) => { return value };
     },
