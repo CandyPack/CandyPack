@@ -218,7 +218,7 @@ class Mysql {
       //   if(!is_int($key)) $order[] = $this->escape($key,'col').(strtolower($val) == 'desc' ? ' DESC' : ' ASC');
       //   else $order[] = $this->escape($val,'col').' ASC';
       //   $this->arr['order by'] = implode(',',$order);
-      // }else $this->arr['order by'] = $this->escape($v1,'col').(strtolower($v2) == 'desc' ? ' DESC' : ' ASC');
+      /* }else */ this.#arr['order by'] = this.escape(v1,'col') + (v2.toLowerCase() == 'desc' ? ' DESC' : ' ASC');
       return this;
     }
 
@@ -397,8 +397,8 @@ class Mysql {
                 for (const key of Object.keys(this.#table)) {
                     if(!this.#table[key]) await this.#define(key);
                     if(!this.#table[key]) throw new Error(`Table ${key} not found`);
-                    if(!this.#arr.select && this.#table[key].columns[col].Type){
-                        this.types[col] = this.#table[key].columns[col].Type ?? this.types[col];
+                    if(!this.#arr.select && this.#table[key].columns[col]?.Type){
+                        this.types[col] = this.#table[key].columns[col]?.Type ?? this.types[col];
                         break;
                     } else if(!this.#arr.select){
                         continue;
