@@ -14,18 +14,7 @@ class Config {
             if(!Candy.ext.fs.existsSync(this.#file)) this.#save();
             else await this.#load();
             if(global.trigger === 'cli') setInterval(() => this.#save(), 500);
-            Candy.config = new Proxy(Candy.config, {
-                set: (target, name, value) => {
-                    this.#changed = true;
-                    target[name] = value;
-                    return true;
-                },
-                deleteProperty: (target, name) => {
-                    this.#changed = true;
-                    delete target[name];
-                    return true;
-                }
-            });
+            Candy.config = this.#proxy(Candy.config);
             return resolve();
         });
     }
@@ -59,6 +48,29 @@ class Config {
                 return resolve();
             });
         });
+    }
+
+    #proxy(target) {
+        if (typeof target !== 'object' || target === null) return target;
+        const handler = {
+            get: (obj, prop) => {
+                const value = obj[prop];
+                if(typeof value === 'object' && value !== null) return this.#proxy(value);
+                return value;
+            },
+            set: (obj, prop, value) => {
+                obj[prop] = typeof value === 'object' && value !== null ? this.#proxy(value) : value;
+                this.#changed = true;
+                obj[prop] = value;
+                return true;
+            },
+            deleteProperty: (obj, prop) => {
+                this.#changed = true;
+                delete obj[prop];
+                return true;
+            }
+        };
+        return new Proxy(target, handler);
     }
 
     #save() {

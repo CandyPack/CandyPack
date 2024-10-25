@@ -8,7 +8,8 @@ class Api {
         'ssl.renew'       : (...args) => Candy.SSL.renew(...args),
         'subdomain.create': (...args) => Candy.Subdomain.create(...args),
         'subdomain.list'  : (...args) => Candy.Subdomain.list(...args),
-        'web.create'      : (...args) => Candy.Web.create(...args)
+        'web.create'      : (...args) => Candy.Web.create(...args),
+        'web.list'        : (...args) => Candy.Web.list(...args)
     };
 
     init() {
@@ -26,7 +27,7 @@ class Api {
                 data = JSON.parse(data);
                 if(!data || !data.action || !this.#commands[data.action]) return res.end("3");
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                let result = await this.#commands[data.action](...data.data);
+                let result = await this.#commands[data.action](...data.data ?? []);
                 res.end(JSON.stringify(result));
             });
         }).listen(1453);

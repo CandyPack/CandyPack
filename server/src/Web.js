@@ -83,6 +83,12 @@ class Web {
         this.server();
     }
 
+    list(){
+        let domains = Object.keys(Candy.config.websites ?? {});
+        if(domains.length == 0) return Candy.Api.result(false, __('No websites found.'));
+        return Candy.Api.result(true, __('Websites:') + '\n  ' + domains.join('\n  '));
+    }
+
     request(req, res, secure){
         let host = req.headers.host;
         if(!host) return this.index(req, res);
