@@ -90,7 +90,7 @@ class Cli {
                     action: async() => {
                         let domain = await this.question('Enter the domain name: ')
                         let path = Candy.ext.path.resolve().replace(/\\/g, '/') + '/' + domain + '/';
-                        await this.#call({action: 'web.create', data: [domain, await this.question((await __('Enter the path to the website (%s): ', path)) ?? path)]});
+                        await this.#call({action: 'web.create', data: [domain, await this.question((await __('Enter the path to the website (%s): ', path))) ?? path]});
                     }
                 },
                 list: {
