@@ -16,19 +16,19 @@ class smtp {
         });
     }
 
-    #connect(host, port){
+    #connect(sender, host, port){
         return new Promise((resolve, reject) => {
             let socket;
             if(port == 465) socket = tls.connect({host: host, port: port, rejectUnauthorized: false}, async () => {
                 socket.setEncoding('utf8');
                 await new Promise((resolve) => socket.once('data', resolve));
-                await this.#command(socket, `EHLO ${host}\r\n`);
+                await this.#command(socket, `EHLO ${sender}\r\n`);
                 resolve(socket);
             });
             else socket = net.createConnection(port, host, async () => {
                 socket.setEncoding('utf8');
                 await new Promise((resolve) => socket.once('data', resolve));
-                let response = await this.#command(socket, `EHLO ${host}\r\n`);
+                let response = await this.#command(socket, `EHLO ${sender}\r\n`);
                 if(!response.startsWith('2') || !response.includes('STARTTLS')) return resolve(socket);
                 response = await this.#command(socket, `STARTTLS\r\n`);
                 if(!response.startsWith('2')) return resolve(socket);
@@ -36,7 +36,7 @@ class smtp {
                 socket = tls.connect({socket: socket, servername: host, rejectUnauthorized: false, minVersion: 'TLSv1.2'}, async () => {
                     socket.setEncoding('utf8');
                     await new Promise((resolve) => setTimeout(resolve, 1000));
-                    response = await this.#command(socket, `EHLO ${host}\r\n`);
+                    response = await this.#command(socket, `EHLO ${sender}\r\n`);
                     resolve(socket);
                 });
                 socket.on('error', (error) => {
@@ -98,19 +98,37 @@ class smtp {
     }
     
     async #send(to, obj){
+        log('Mail', 'Sending email to ' + to);
         let host = await this.#host(to.split('@')[1]);
-        let socket = await this.#connect(host, 25);
-        if(!socket) socket = await this.#connect(host, 587);
-        if(!socket) socket = await this.#connect(host, 465);
-        if(!socket) return;
-        let result = await this.#command(socket, `MAIL FROM:<${obj.from.value[0].address}>\r\n`);
-        if(result.startsWith('2')) result = await this.#command(socket, `RCPT TO:<${to}>\r\n`);
-        if(result.startsWith('2')) result = await this.#command(socket, `DATA\r\n`);
-        if(result.startsWith('2') || result.startsWith('3')){
-            socket.write(this.#content(obj));
-            result = await this.#command(socket, `.\r\n`);
+        let sender = obj.from.value[0].address.split('@')[1];
+        let socket = await this.#connect(sender, host, 25);
+        if(!socket) socket = await this.#connect(sender, host, 587);
+        if(!socket) socket = await this.#connect(sender, host, 465);
+        if(!socket) socket = await this.#connect(sender, host, 2525);
+        if(!socket){
+            log('Mail', 'Could not connect to the server');
+            return;
         }
-        socket.end();
+        log('Mail', 'Connected to ' + host);
+        let result = await this.#command(socket, `MAIL FROM:<${obj.from.value[0].address}>\r\n`);
+        if(!result.startsWith('2')){
+            if(socket) socket.end();
+            return log('Mail', 'Could not send the email to ' + to, result);
+        }
+        result = await this.#command(socket, `RCPT TO:<${to}>\r\n`);
+        if(!result.startsWith('2')){
+            if(socket) socket.end();
+            return log('Mail', 'Could not send the email to ' + to, result);
+        }
+        result = await this.#command(socket, `DATA\r\n`);
+        if(!result.startsWith('2') && !result.startsWith('3')){
+            if(socket) socket.end();
+            return log('Mail', 'Could not send the email to ' + to, result);
+        }
+        socket.write(this.#content(obj));
+        result = await this.#command(socket, `.\r\n`);
+        if(socket) socket.end();
+        log('Mail', 'Email sent to ' + to);
     }
 
     async send(obj){

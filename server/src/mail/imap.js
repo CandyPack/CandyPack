@@ -241,7 +241,6 @@ class Connection {
                         if(request.fields.length) body.keys += obj.value + (obj.peek ? '.' + obj.peek : '');
                         if(fields.length > 0) body.keys += ' (';
                         if(obj.value == 'HEADER'){
-                            let i = 0;
                             for(let line of data.headerLines){
                                 let include = true;
                                 if(obj.peek) if(obj.peek == 'FIELDS')     include =  fields.includes(line.key);
