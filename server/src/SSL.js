@@ -10,7 +10,7 @@ class SSL {
         this.#checking = true;
         this.#self();
         for (const domain of Object.keys(Candy.config.websites)) {
-            if(!Candy.config.websites[domain].cert?.ssl || Date.now() - (1000 * 60 * 60 * 24 * 30) > Candy.config.websites[domain].cert.ssl.expiry) await this.#ssl(domain);
+            if(!Candy.config.websites[domain].cert?.ssl || Date.now() + (1000 * 60 * 60 * 24 * 30) > Candy.config.websites[domain].cert.ssl.expiry) await this.#ssl(domain);
         }
         this.#checking = false;
     }

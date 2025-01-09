@@ -302,7 +302,7 @@ class Connection {
                 case 'BODYSTRUCTURE':
                     let structure = '';
                     if(data.attachments.length && data.html.length > 1) structure += '(';
-                    if(data.text.length)     structure += '("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.text, 'utf8') + ' ' + data.text.split('\n').length + ' NIL NIL NIL NIL)';
+                    if(data.text && data.text.length) structure += '("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.text, 'utf8') + ' ' + data.text.split('\n').length + ' NIL NIL NIL NIL)';
                     if(data.html.length > 1){
                         structure += ' ("TEXT" "HTML"  ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.html, 'utf8') + ' ' + data.html.split('\n').length + ' NIL NIL NIL NIL)';
                         structure += ' "ALTERNATIVE" ("BOUNDARY" "' + boundary + '_alt") NIL NIL NIL';
