@@ -42,7 +42,7 @@ class Config {
                         var backup = this.#dir + '/config-bak.json';
                         if(Candy.ext.fs.existsSync(file)) Candy.ext.fs.copyFileSync(file, backup);
                     }
-                    this.save(true);
+                    this.#save(true);
                 }
                 Candy.config = data;
                 return resolve();

@@ -187,13 +187,13 @@ class Mail{
             },
             onFetch(data, session, callback) {
                 let limit = ``;
-                if(data.limit[0]) limit += `AND uid >= ${parseInt(data.limit[0])} `;
-                if(data.limit[1] && data.limit[1] != '*') limit += `AND uid <= ${parseInt(data.limit[1])} `;
+                if(data.limit[0] && !isNaN(data.limit[0])) limit += `AND uid >= ${parseInt(data.limit[0])} `;
+                if(data.limit[1] && !isNaN(data.limit[1])) limit += `AND uid <= ${parseInt(data.limit[1])} `;
                 self.#db.all(`SELECT * FROM mail_received
                               WHERE email = ? AND mailbox = ? ${limit}
                               ORDER BY id DESC`, [data.email, data.mailbox], (err, rows) => {
                     if(err){
-                        console.log(err);
+                        console.error(err);
                         return callback(false);
                     }
                     callback(rows);
@@ -233,7 +233,7 @@ class Mail{
                 callback();
             },
             onError(err, session) {
-                console.log('Error:', err);
+                console.error('Error:', err);
             }
         };
         let serv = new SMTPServer(options);
@@ -263,7 +263,7 @@ class Mail{
         options.secure = true;
         this.#server_smtp = new SMTPServer(options);
         this.#server_smtp.listen(465);
-        this.#server_smtp.on('error', (err) => log('SMTP Server Error: ', err));
+        this.#server_smtp.on('error', (err) => console.error('SMTP Server Error: ', err));
         const imap_sec = new server(options);
         imap_sec.listen(993);
     }
