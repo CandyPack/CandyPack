@@ -208,7 +208,7 @@ class Mail{
                 return callback()
             },
             onSelect(data, session, callback) {
-                self.#db.get("SELECT COUNT(*) AS 'exists', SUM(IIF(flags LIKE '%\\Seen%', 0, 1)) AS 'unseen', MAX(uid) + 1 AS uidnext, MAX(uid) AS uidvalidity FROM mail_received WHERE email = ? AND mailbox = ?", [data.address, data.mailbox], (err, row) => {
+                self.#db.get("SELECT COUNT(*) AS 'exists', SUM(IIF(flags LIKE '%seen%', 0, 1)) AS 'unseen', MAX(uid) + 1 AS uidnext, MAX(uid) AS uidvalidity FROM mail_received WHERE email = ? AND mailbox = ?", [data.address, data.mailbox], (err, row) => {
                     if(err){
                         console.log(err);
                         return callback(err);
@@ -329,7 +329,7 @@ class Mail{
             let mailbox = 'INBOX';
             let flags = "[]";
             if(email === data.from.value[0].address){
-                flags = '["\\Seen"]';
+                flags = JSON.stringify(['seen']);
                 mailbox = 'Sent';
             }
             this.#db.serialize(async () => {

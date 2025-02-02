@@ -62,6 +62,7 @@ class Connection {
     }
 
     #bad(){
+        console.error('Unknown command', this.#request.action);
         this.#write(`${this.#request.id} BAD Unknown command\r\n`);
     }
     
@@ -92,6 +93,7 @@ class Connection {
             data.shift();
         }
         this.#request.requests = this.#export(data);
+        log('mail', 'imap', JSON.stringify(this.#request));
         if(this.#actions[this.#request.action]) this.#actions[this.#request.action]();
         else this.#bad();
     }
@@ -149,23 +151,27 @@ class Connection {
         return result;
     }
 
-    #fetch(){
+    async #fetch(){
         if(!this.#auth) return this.#write(`${this.#request.id} NO Authentication required\r\n`);
         if(!this.#box) return this.#write(`${this.#request.id} NO Mailbox required\r\n`);
         if(!this.#options.onFetch || typeof this.#options.onFetch != 'function') return this.#write(`${this.#request.id} NO FETCH failed\r\n`);
-        this.#options.onFetch({
-            email   : this.#auth,
-            mailbox : this.#box,
-            limit   : this.#request.uid == 'ALL' ? null : (this.#request.uid.includes(':') ? this.#request.uid.split(':') : [this.#request.uid,this.#request.uid]),
-        }, this.#commands, (data) => {
-            if(data === false) return this.#write(`${this.#request.id} NO FETCH failed\r\n`);
-            for(let row of data){
-                this.#write('* ' + row.uid + ' FETCH (');
-                this.#prepare(this.#request.requests, row);
-                this.#write(')\r\n');
-            }
-            this.#write(`${this.#request.id} OK FETCH completed\r\n`);
+        let ids = this.#request.uid.split(',');
+        for(const id of ids) await new Promise((resolve, reject) => {
+            this.#options.onFetch({
+                email   : this.#auth,
+                mailbox : this.#box,
+                limit   : id == 'ALL' ? null : (id.includes(':') ? id.split(':') : [id, id]),
+            }, this.#commands, (data) => {
+                if(data === false) return this.#write(`${this.#request.id} NO FETCH failed\r\n`);
+                for(let row of data){
+                    this.#write('* ' + row.uid + ' FETCH (');
+                    this.#prepare(this.#request.requests, row);
+                    this.#write(')\r\n');
+                }
+                return resolve();
+            });
         });
+        this.#write(`${this.#request.id} OK FETCH completed\r\n`);
     }
 
     #list(){
@@ -247,14 +253,30 @@ class Connection {
                                         else if(obj.peek == 'FIELDS.NOT') include = !fields.includes(line.key);
                                 if(include){
                                     if(fields.length > 0) body.keys += line.key + ' ';
-                                    body.header += line.line + '\r\n';
+                                    if(line.key.toLowerCase() == 'content-type'){
+                                        if(data.html && data.html.length > 1 && data.text && data.text.length > 1){
+                                            body.header += 'Content-Type: multipart/alternative; boundary="' + boundary + '_alt"\r\n';
+                                        } else if(!data.text || data.text.length < 1){
+                                            body.header += 'Content-Type: text/html; charset=utf-8\r\n';
+                                        } else if(!data.html || data.html.length < 1){
+                                            body.header += 'Content-Type: text/plain; charset=utf-8\r\n';
+                                        }
+                                    } else body.header += line.line + '\r\n';
                                 }
                             }
                             if((obj.peek ?? '') !== 'FIELDS.NOT'){
                                 for(let field of fields){
                                     if(!data.headerLines.find((line) => line.key == field)){
                                         if(fields.length > 0) body.keys += field + ' ';
-                                        if(field.toLowerCase() == 'content-type') body.header += 'Content-Type: multipart/alternative; boundary="boundary' + data.id + '"\r\n';
+                                        // if(field.toLowerCase() == 'content-type'){
+                                        //     if(data.html && data.html.length > 1 && data.text && data.text.length > 1){
+                                        //         body.header += 'Content-Type: multipart/alternative; boundary="boundary' + data.id + '"\r\n';
+                                        //     } else if(!data.text || data.text.length < 1){
+                                        //         body.header += 'Content-Type: text/html; charset=utf-8\r\n';
+                                        //     } else if(!data.html || data.html.length < 1){
+                                        //         body.header += 'Content-Type: text/plain; charset=utf-8\r\n';
+                                        //     }
+                                        // }
                                         else body.header += field + ': \r\n';
                                     }
                                 }
@@ -264,18 +286,24 @@ class Connection {
                         } else if(obj.value == 'TEXT'){
                             if(body.header.length) body.content += body.header + '\r\n\r\n';
                             if(data.html.length > 1 || data.attachments.length){
-                                body.content += '--' + boundary + '\r\n';
-                                body.content += 'Content-Type: multipart/alternative; boundary="' + boundary + '_alt"\r\n';
-                                body.content += '\r\n--' + boundary + '_alt\r\n';
-                                body.content += 'Content-Type: text/plain; charset=utf-8\r\n';
-                                body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n';
-                                body.content += data.text;
-                                body.content += '\r\n--' + boundary + '_alt\r\n';
-                                if(data.html.length > 1){
-                                    body.content += 'Content-Type: text/html; charset=utf-8\r\n';
-                                    body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n';
-                                    body.content += data.html;
+                                if(data.attachments.length > 1){
+                                    body.content += '--' + boundary + '\r\n';
+                                    body.content += 'Content-Type: multipart/alternative; boundary="' + boundary + '_alt"\r\n';
+                                }
+                                if(data.text && data.text.length > 1){
                                     body.content += '\r\n--' + boundary + '_alt\r\n';
+                                    body.content += 'Content-Type: text/plain; charset=utf-8\r\n';
+                                    body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n';
+                                    body.content += data.text;
+                                    body.content += '\r\n--' + boundary + '_alt\r\n';
+                                }
+                                if(data.html.length > 1){
+                                    if(data.text && data.text.length > 1){
+                                        body.content += 'Content-Type: text/html; charset=utf-8\r\n';
+                                        body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n';
+                                    }
+                                    body.content += data.html;
+                                    if(data.text && data.text.length > 1) body.content += '\r\n--' + boundary + '_alt--\r\n';
                                 }
                                 for (let attachment of data.attachments) {
                                     body.content += '\r\n--' + boundary + '\r\n';
@@ -285,6 +313,7 @@ class Connection {
                                     body.content += Buffer.from(attachment.content.data).toString('base64');
                                     body.content += '\r\n--' + boundary + '\r\n';
                                 }
+                                if(data.attachments.length > 1) body.content += '--' + boundary + '--\r\n';
                             } else body.content += data.text;
                         } else if(!isNaN(obj.value)){
                             obj.value = parseInt(obj.value);
@@ -301,16 +330,14 @@ class Connection {
                     break;
                 case 'BODYSTRUCTURE':
                     let structure = '';
-                    if(data.attachments.length && data.html.length > 1) structure += '(';
-                    if(data.text && data.text.length) structure += '("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.text, 'utf8') + ' ' + data.text.split('\n').length + ' NIL NIL NIL NIL)';
-                    if(data.html.length > 1){
-                        structure += ' ("TEXT" "HTML"  ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.html, 'utf8') + ' ' + data.html.split('\n').length + ' NIL NIL NIL NIL)';
-                        structure += ' "ALTERNATIVE" ("BOUNDARY" "' + boundary + '_alt") NIL NIL NIL';
-                        if(data.attachments.length) structure += ')';
-                    }
+                    if(data.text && data.text.length > 1 && data.html && data.html.length > 1) structure += '(';
+                    if(data.text && data.text.length)     structure += '("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.text, 'utf8') + ' ' + data.text.split('\n').length + ' NIL NIL NIL NIL)';
+                    if(data.html && data.html.length > 1) structure += '("TEXT" "HTML"  ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.html, 'utf8') + ' ' + data.html.split('\n').length + ')';
+                    if(data.text && data.text.length && data.html && data.html.length > 1) structure += ' "ALTERNATIVE" ("BOUNDARY" "' + boundary + '_alt") NIL NIL NIL';
+                    if(data.text && data.text.length > 1 && data.html && data.html.length > 1) structure += ')';
                     for (let attachment of data.attachments) structure += '("APPLICATION" "' + attachment.contentType.split('/')[1].toUpperCase() + '" ("NAME" "' + attachment.filename + '") NIL NIL "BASE64" ' + Buffer.from(attachment.content.data).toString('base64').length + ' NIL ("ATTACHMENT" ("FILENAME" "' + attachment.filename + '")) NIL NIL)';
                     if(data.attachments.length) structure += ' "MIXED" ("BOUNDARY" "' + boundary + '") NIL NIL NIL';
-                    this.#write('BODYSTRUCTURE (' + structure + ') ');
+                    this.#write('BODYSTRUCTURE ' + structure);
                     break;
                 case 'ENVELOPE':
                     let envelope = '';
@@ -325,7 +352,12 @@ class Connection {
                     this.#write('INTERNALDATE "' + date.toUTCString() + '" ');
                     break;
                 case 'FLAGS':
-                    let flags = data.flags ? JSON.parse(data.flags) : [];
+                    let flags = []
+                    try{
+                        flags = data.flags ? JSON.parse(data.flags) : [];
+                    } catch(e) {
+                        console.error('Error parsing flags', data.flags);
+                    }
                     flags = flags.map((flag) => "\\" + flag);
                     this.#write('FLAGS (' + flags.join(' ') + ') ');
                     break;
@@ -400,6 +432,7 @@ class Connection {
     }
 
     #write(data){
+        log('mail', 'imap', data);
         if(!this.#end) this.#socket.write(data);
     }
 }
