@@ -237,7 +237,8 @@ class Connection {
         data.attachments = data.attachments ? JSON.parse(data.attachments) : [];
         for(let request of requests){
             if(typeof data.headerLines === 'string') data.headerLines = JSON.parse(data.headerLines);
-            let boundary = data.headerLines.find((line) => line.key.toLowerCase() == 'content-type').line.replace(/"/g, '').split('boundary=')[1];
+            let boundary = data.headerLines.find((line) => line.key.toLowerCase() == 'content-type');
+            if(boundary) boundary = boundary.line.replace(/"/g, '').split('boundary=')[1];
             if(!boundary) boundary = 'boundary' + data.id;
             switch(request.value){
                 case 'BODY':

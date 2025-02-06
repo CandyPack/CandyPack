@@ -12,7 +12,7 @@ class smtp {
                 const response = data.toString();
                 return resolve(response);
             });
-            socket.write(command);
+            if(socket.writable) socket.write(command);
         });
     }
 
@@ -62,7 +62,7 @@ class smtp {
             for(let attachment of obj.attachments) content += `--${boundary}\r\nContent-Type: ${attachment.contentType}; name="${attachment.filename}"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename="${attachment.filename}"\r\n\r\n${attachment.content.toString('base64')}\r\n`;
             content += `--${boundary}--\r\n`;
         } else content = obj.text;
-        content = content.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+        if(content) content = content.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
         let dkim = Candy.config.websites[domain].cert?.dkim;
         let signature = '';
         if(dkim) {
@@ -125,7 +125,7 @@ class smtp {
             if(socket) socket.end();
             return log('Mail', 'Could not send the email to ' + to, result);
         }
-        socket.write(this.#content(obj));
+        if(socket.writable) socket.write(this.#content(obj));
         result = await this.#command(socket, `.\r\n`);
         if(socket) socket.end();
         log('Mail', 'Email sent to ' + to);
