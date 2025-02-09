@@ -165,8 +165,8 @@ class Mail{
                     if(self.#clients[ip].attempts > 1 && Date.now() - self.#clients[ip].last < 1000 * 60 * 60) return callback(new Error("Too many attempts"));
                     if(self.#clients[ip].last < Date.now() - 1000 * 60 * 60) self.#clients[ip] = { attempts: 0, last: 0 };
                 }
-                self.exists(auth.username).then((result) => {
-                    if(result && Candy.ext.bcrypt.compare(auth.password, result.password)) return callback(null, { user: auth.username });
+                self.exists(auth.username).then(async (result) => {
+                    if(result && await Candy.ext.bcrypt.compare(auth.password, result.password)) return callback(null, { user: auth.username });
                     if(!self.#clients[ip]) self.#clients[ip] = { attempts: 0, last: 0 };
                     self.#clients[ip].attempts++;
                     self.#clients[ip].last = Date.now();
