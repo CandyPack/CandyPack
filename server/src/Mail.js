@@ -157,13 +157,13 @@ class Mail{
             secure: false,
             banner: 'CandyPack',
             size: 1024 * 1024 * 10,
-            authOptional: true,
+            authOptional: false,
             onAuth(auth, session, callback) {
                 let ip = session.remoteAddress;
                 if(!auth.username.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return callback(new Error("Invalid email address"));
                 if(self.#clients[ip]){
-                    if(self.#clients[ip].attempts > 5 && Date.now() - self.#clients[ip].last < 60000) return callback(new Error("Too many attempts"));
-                    if(self.#clients[ip].last < Date.now() - 60000) self.#clients[ip] = { attempts: 0, last: 0 };
+                    if(self.#clients[ip].attempts > 1 && Date.now() - self.#clients[ip].last < 1000 * 60 * 60) return callback(new Error("Too many attempts"));
+                    if(self.#clients[ip].last < Date.now() - 1000 * 60 * 60) self.#clients[ip] = { attempts: 0, last: 0 };
                 }
                 self.exists(auth.username).then((result) => {
                     if(result && Candy.ext.bcrypt.compare(auth.password, result.password)) return callback(null, { user: auth.username });

@@ -26,9 +26,10 @@ class DNS {
         this.#udp = Candy.ext.dns.createServer();
         this.#tcp = Candy.ext.dns.createTCPServer();
         Candy.ext.axios.get('https://curlmyip.org/').then((res) => {
+            console.log('Server IP:', res.data.replace('\n', ''));
             this.ip = res.data.replace('\n', '');
         }).catch(function(err){
-            console.log(err);
+            console.error('DNS', err);
         });
         this.#publish();
     }
@@ -38,8 +39,8 @@ class DNS {
         this.#loaded = true;
         this.#udp.on('request', (request, response) => this.#request(request, response));
         this.#tcp.on('request', (request, response) => this.#request(request, response));
-        this.#udp.on('error', (err, buff, req, res) => console.log(err.stack));
-        this.#tcp.on('error', (err, buff, req, res) => console.log(err.stack));
+        this.#udp.on('error', (err, buff, req, res) => console.error('DNS', err.stack));
+        this.#tcp.on('error', (err, buff, req, res) => console.error('DNS', err.stack));
         this.#udp.serve(53);
         this.#tcp.serve(53);
     }
