@@ -2,11 +2,10 @@
 
 **CandyPack** is a lightweight yet powerful server + framework toolkit for building and deploying modern web apps with ease — with built-in automation and a developer-first philosophy.
 
-> 🔥 **Install with a single command. Works on Linux, macOS, and Windows.**
-
 ---
 
 ## 🚀 Quick Start
+> 🔥 **Install with a single command. Works on Linux, macOS, and Windows.**
 
 ```bash
 curl -sL https://candypack.dev/install | bash
