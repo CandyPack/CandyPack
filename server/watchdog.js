@@ -11,14 +11,14 @@ var err_date = 0;
 var saving = false;
 
 function save(b){
-    if(!b){
+    if(b !== true){
         saving = true;
         return;
     }
     if(!saving) return;
     fs.writeFile(logdir + '.candypack.log', log, 'utf8', function(error) {
         if(error) console.log(error);
-        fs.writeFile(logdir + '.candypack_err.log', err, 'utf8', function(err) {
+        fs.writeFile(logdir + '.candypack_err.log', err, 'utf8', function(error) {
             if(error) console.log(error);
             saving = false;
         });
@@ -75,15 +75,17 @@ async function start() {
         save();
     });
     child.on('close', function(){
+        err += '[ERR][' + Date.now() + '] Process closed\n';
+        save();
         if(Date.now() - err_date > 1000 * 60 * 5) err_count = 0;
         err_count++;
         err_date = Date.now();
-        if(err_count < 5){
+        // if(err_count < 100){
             start();
-        } else {
-            save();
-            setTimeout(process.exit, 1000);
-        }
+        // } else {
+        //     save();
+        //     setTimeout(process.exit, 2000);
+        // }
     });
     setInterval(function(){
         save(true);

@@ -39,8 +39,26 @@ class Config {
                 } catch(e) {
                     this.#loaded = true;
                     if(data.length > 2){
-                        var backup = this.#dir + '/config-bak.json';
+                        var backup = this.#dir + '/config-corrupted.json';
                         if(Candy.ext.fs.existsSync(file)) Candy.ext.fs.copyFileSync(file, backup);
+                    }
+                    if(Candy.ext.fs.existsSync(this.#file + '.bak')){
+                        Candy.ext.fs.readFile(this.#file + '.bak', 'utf8', (err, data) => {
+                            if(err){
+                                console.log(err);
+                                this.#save(true);
+                                return resolve();
+                            }
+                            try {
+                                data = JSON.parse(data);
+                                this.#save(true);
+                            } catch(e) {
+                                console.log(e);
+                                this.#save(true);
+                            }
+                            Candy.config = data;
+                            return resolve();
+                        });
                     }
                     this.#save(true);
                 }
@@ -80,6 +98,9 @@ class Config {
         let json = JSON.stringify(Candy.config, null, 4);
         if(json.length < 3) json = '{}';
         Candy.ext.fs.writeFileSync(this.#file, json, 'utf8');
+        setTimeout(() => {
+            Candy.ext.fs.writeFileSync(this.#file + '.bak', json, 'utf8');
+        }, 5000);
         this.#saving = false;
     }
 }

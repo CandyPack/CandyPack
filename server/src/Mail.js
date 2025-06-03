@@ -157,14 +157,14 @@ class Mail{
             secure: false,
             banner: 'CandyPack',
             size: 1024 * 1024 * 10,
-            authOptional: false,
+            authOptional: true,
             onAuth(auth, session, callback) {
                 let ip = session.remoteAddress;
-                if(!auth.username.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return callback(new Error("Invalid email address"));
                 if(self.#clients[ip]){
-                    if(self.#clients[ip].attempts > 1 && Date.now() - self.#clients[ip].last < 1000 * 60 * 60) return callback(new Error("Too many attempts"));
+                    if(self.#clients[ip].attempts > 1 && Date.now() - self.#clients[ip].last < 1000 * 60 * 60) return callback(new Error("Too many attempts from this IP: " + ip));
                     if(self.#clients[ip].last < Date.now() - 1000 * 60 * 60) self.#clients[ip] = { attempts: 0, last: 0 };
                 }
+                if(!auth.username.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return callback(new Error("Invalid username or password"));
                 self.exists(auth.username).then(async (result) => {
                     if(result && await Candy.ext.bcrypt.compare(auth.password, result.password)) return callback(null, { user: auth.username });
                     if(!self.#clients[ip]) self.#clients[ip] = { attempts: 0, last: 0 };
@@ -175,10 +175,25 @@ class Mail{
             },
             onData(stream, session, callback) {
                 parser(stream, {}, async (err, parsed) => {
-                    if (err) return console.log(err);
+                    if (err) return console.error(err);
+                    // console.log('ON DATA:', session);
+                    if(!parsed.to.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)){
+                        console.error('Invalid recipient:', parsed.to.value[0].address);
+                        return callback(new Error("Invalid recipient"));
+                    }
+                    if(!parsed.from.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)){
+                        console.error('Invalid sender:', parsed.from.value[0].address);
+                        return callback(new Error("Invalid sender"));
+                    }
                     let sender = await self.exists(parsed.from.value[0].address);
-                    if(sender && (!session.user || parsed.from.value[0].address !== session.user)) return callback(new Error("Invalid sender"));
-                    if(!sender && !['hostmaster','postmaster'].includes(parsed.to.value[0].address.split('@')[0]) && !(await self.exists(parsed.to.value[0].address))) return callback(new Error("Invalid recipient"));
+                    if(sender && (!session.user || parsed.from.value[0].address !== session.user)){
+                        console.error('Unexpected sender:', parsed.from.value[0].address);
+                        return callback(new Error("Unexpected sender"));
+                    }
+                    if(!sender && !['hostmaster','postmaster'].includes(parsed.to.value[0].address.split('@')[0]) && !(await self.exists(parsed.to.value[0].address))){
+                        console.error('Unexpected recipient:', parsed.to.value[0].address);
+                        return callback(new Error("Unexpected recipient"));
+                    }
                     let mailbox = 'INBOX';
                     await self.#store((session.user ?? parsed.to.value[0].address), parsed);
                     if(session.user && parsed.from.value[0].address === session.user) smtp.send(parsed);
@@ -187,8 +202,10 @@ class Mail{
             },
             onFetch(data, session, callback) {
                 let limit = ``;
-                if(data.limit[0] && !isNaN(data.limit[0])) limit += `AND uid >= ${parseInt(data.limit[0])} `;
-                if(data.limit[1] && !isNaN(data.limit[1])) limit += `AND uid <= ${parseInt(data.limit[1])} `;
+                if(data.limit){
+                    if(data.limit[0] && !isNaN(data.limit[0])) limit += `AND uid >= ${parseInt(data.limit[0])} `;
+                    if(data.limit[1] && !isNaN(data.limit[1])) limit += `AND uid <= ${parseInt(data.limit[1])} `;
+                }
                 self.#db.all(`SELECT * FROM mail_received
                               WHERE email = ? AND mailbox = ? ${limit}
                               ORDER BY id DESC`, [data.email, data.mailbox], (err, rows) => {
@@ -210,7 +227,7 @@ class Mail{
             onSelect(data, session, callback) {
                 self.#db.get("SELECT COUNT(*) AS 'exists', SUM(IIF(flags LIKE '%seen%', 0, 1)) AS 'unseen', MAX(uid) + 1 AS uidnext, MAX(uid) AS uidvalidity FROM mail_received WHERE email = ? AND mailbox = ?", [data.address, data.mailbox], (err, row) => {
                     if(err){
-                        console.log(err);
+                        console.error(err);
                         return callback(err);
                     }
                     callback(row);
@@ -225,7 +242,7 @@ class Mail{
                                 SET flags = JSON_INSERT(flags, '$[#]', ?)
                                 WHERE email = ? AND uid BETWEEN ? AND ? AND flags NOT LIKE ?`, [flag, data.address, uid[0], uid[1], `%${flag}%`], (err) => {
                         if(err){
-                            console.log(err);
+                            console.error(err);
                             return callback(err);
                         }
                     });
@@ -346,7 +363,7 @@ class Mail{
                 this.#db.run("INSERT INTO mail_received ('uid', 'email', 'mailbox', 'attachments', 'headers', 'headerLines', 'html', 'text', 'textAsHtml', 'subject', 'to', 'from', 'messageId', 'flags') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                             [this.#counts[email], email, mailbox, JSON.stringify(data.attachments), JSON.stringify(data.headers), JSON.stringify(data.headerLines), data.html, data.text, data.textAsHtml, data.subject, JSON.stringify(data.to), JSON.stringify(data.from), data.messageId, flags], async(err) => {
                     if(!err) return resolve(true);
-                    console.log(err);
+                    console.error(err);
                     return resolve(await this.#store(email, data));                    
                 });
             });

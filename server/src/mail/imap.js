@@ -30,6 +30,7 @@ class Connection {
 
     #authenticate(){
         this.#write('+ Ready for authentication\r\n');
+        log('mail','imap','Authenticate request from: ' + this.#socket.remoteAddress.replace('::ffff:', ''));
         this.#wait = true;
         this.#socket.once('data', (data) => {
             data = data.toString().trim();
@@ -39,12 +40,16 @@ class Connection {
                     this.#options.onAuth({
                         username: auth[1],
                         password: auth[2]
-                    }, this.#commands, (err, result) => {
+                    }, {
+                        remoteAddress: this.#socket.remoteAddress.replace('::ffff:', '')
+                    }, (err, result) => {
                         if(err){
                             this.#write(`${this.#request.id} NO Authentication failed\r\n`);
+                            log('mail','imap','Authentication failed for: ' + auth[1]);
                             this.#auth = false;
                         } else {
                             this.#write(`${this.#request.id} OK Authentication successful\r\n`);
+                            log('mail','imap','Authentication successful for: ' + auth[1]);
                             this.#auth = auth[1];
                         }
                     });
@@ -62,7 +67,7 @@ class Connection {
     }
 
     #bad(){
-        console.error('Unknown command', this.#request.action);
+        console.error('mail','imap','Unknown command', this.#request.action);
         this.#write(`${this.#request.id} BAD Unknown command\r\n`);
     }
     
@@ -76,14 +81,15 @@ class Connection {
     }
 
     #data(data){
-        if(this.#wait) return;
+        if(this.#wait || data.toString().trim().length === 0) return;
         this.#commands = data.toString().trim().split(" ");
         this.#request = {};
         data = data.toString().trim().split(" ");
         this.#request.id = data.shift();
-        this.#request.action = data.filter((item) => Object.keys(this.#actions).includes(item)).join(' ');
+        this.#request.action = data.filter((item) => Object.keys(this.#actions).includes(item.toUpperCase())).join(' ');
         let index = data.indexOf(this.#request.action);
         data.splice(data.indexOf(this.#request.action), 1);
+        this.#request.action = this.#request.action.toUpperCase();
         if(data.includes('UID') && data.indexOf('UID') < index){
             this.#request.uid = data[data.indexOf('UID') + 1];
             data.splice(data.indexOf('UID'), 2);
@@ -93,7 +99,6 @@ class Connection {
             data.shift();
         }
         this.#request.requests = this.#export(data);
-        log('mail', 'imap', JSON.stringify(this.#request));
         if(this.#actions[this.#request.action]) this.#actions[this.#request.action]();
         else this.#bad();
     }
@@ -155,7 +160,7 @@ class Connection {
         if(!this.#auth) return this.#write(`${this.#request.id} NO Authentication required\r\n`);
         if(!this.#box) return this.#write(`${this.#request.id} NO Mailbox required\r\n`);
         if(!this.#options.onFetch || typeof this.#options.onFetch != 'function') return this.#write(`${this.#request.id} NO FETCH failed\r\n`);
-        let ids = this.#request.uid.split(',');
+        let ids = this.#request.uid ? this.#request.uid.split(',') : ['ALL'];
         for(const id of ids) await new Promise((resolve, reject) => {
             this.#options.onFetch({
                 email   : this.#auth,
@@ -433,7 +438,6 @@ class Connection {
     }
 
     #write(data){
-        log('mail', 'imap', data);
         if(!this.#end) this.#socket.write(data);
     }
 }

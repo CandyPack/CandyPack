@@ -13,7 +13,7 @@ class server {
         if(!port) port = 993;
         const server = tls.createServer(this.options);
         server.on('secureConnection', (socket) => {
-            log('Mail', 'New connection from ' + socket.remoteAddress.replace('::ffff:','') + ':' + socket.remotePort);
+            log('Mail', 'New connection from ' + socket.remoteAddress);
             socket.id = Math.random().toString(36).substring(7);
             socket.write('* OK [CAPABILITY IMAP4rev1 AUTH=PLAIN] IMAP4rev1 Server Ready\r\n');
             let conn = new imap(socket, this);

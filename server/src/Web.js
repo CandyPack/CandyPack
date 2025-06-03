@@ -104,7 +104,7 @@ class Web {
             const proxy = Candy.ext.httpProxy.createProxyServer({});
             proxy.web(req, res, { target: 'http://127.0.0.1:' + website.port });
             proxy.on('proxyReq', (proxyReq, req, res, options) => {
-                proxyReq.setHeader('X-Candy-Connection-RemoteAddress', req.socket.remoteAddress);
+                proxyReq.setHeader('X-Candy-Connection-RemoteAddress', req.socket.remoteAddress ?? '');
                 proxyReq.setHeader('X-Candy-Connection-SSL', secure ? 'true' : 'false');
             });
             proxy.on('error', (err, req, res) => {
