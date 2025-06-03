@@ -28,7 +28,7 @@ function save(b){
 async function check(){
     return new Promise((resolve, reject) => {
         if(!fs.existsSync(os.homedir() + '/.candypack/config.json')){
-            fs.mkdirSync(os.homedir() + '/.candypack/');
+            if(!fs.existsSync(os.homedir() + '/.candypack/')) fs.mkdirSync(os.homedir() + '/.candypack/');
             fs.writeFileSync(os.homedir() + '/.candypack/config.json', '{}', 'utf8');
         }
         fs.readFile(os.homedir() + '/.candypack/config.json', 'utf8', function(err, data) {
