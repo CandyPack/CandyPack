@@ -33,6 +33,7 @@ class Server {
         process.on('uncaughtException', (err) => {
             console.error('Uncaught Exception:', err.stack || err);
         });
+        if(!Candy.config) Candy.config = {};
         if(!Candy.config.server) Candy.config.server = {};
         return new Promise(async(resolve, reject) => {
             var args = process.argv.slice(2);

@@ -34,16 +34,20 @@ class Config {
                     return resolve();
                 }
                 try {
-                    data = JSON.parse(data);
-                    this.#loaded = true;
+                    if(data.length > 2){
+                        data = JSON.parse(data);
+                        this.#loaded = true;
+                    }
                 } catch(e) {
-                    this.#loaded = true;
+                    console.log('Error parsing config file:', this.#file);
+                }
+                if(!this.#loaded){
                     if(data.length > 2){
                         var backup = this.#dir + '/config-corrupted.json';
                         if(Candy.ext.fs.existsSync(file)) Candy.ext.fs.copyFileSync(file, backup);
                     }
                     if(Candy.ext.fs.existsSync(this.#file + '.bak')){
-                        Candy.ext.fs.readFile(this.#file + '.bak', 'utf8', (err, data) => {
+                        Candy.ext.fs.readFile(this.#file + '.bak', 'utf8', async (err, data) => {
                             if(err){
                                 console.log(err);
                                 this.#save(true);
@@ -51,7 +55,7 @@ class Config {
                             }
                             try {
                                 data = JSON.parse(data);
-                                this.#save(true);
+                                await Candy.ext.fs.promises.writeFile(this.#file, JSON.stringify(data, null, 4), 'utf8');
                             } catch(e) {
                                 console.log(e);
                                 this.#save(true);
@@ -59,11 +63,15 @@ class Config {
                             Candy.config = data;
                             return resolve();
                         });
+                    } else {
+                        Candy.config = {};
+                        this.#save(true);
+                        return resolve();
                     }
-                    this.#save(true);
+                } else {
+                    Candy.config = data;
+                    return resolve();
                 }
-                Candy.config = data;
-                return resolve();
             });
         });
     }
