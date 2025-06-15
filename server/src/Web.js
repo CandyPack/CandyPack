@@ -64,7 +64,7 @@ class Web {
         if(Candy.ext.path.length > 0) web.path = path;
         if(!Candy.ext.fs.existsSync(web.path)) Candy.ext.fs.mkdirSync(web.path, { recursive: true });
         web.subdomain = ['www'];
-        if(web.domain.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) || web.domain == 'localhost') web.ssl = false;
+        if(web.domain.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) || web.domain == 'localhost') web.cert = false;
         Candy.config.websites[web.domain] = web;
         Candy.DNS.record({ name: web.domain,             type: 'A',     value: Candy.DNS.ip },
                          { name: 'www.' + web.domain,    type: 'CNAME', value: web.domain },
@@ -129,10 +129,11 @@ class Web {
         if(!this.#server_https && ssl && ssl.key && ssl.cert && Candy.ext.fs.existsSync(ssl.key) && Candy.ext.fs.existsSync(ssl.cert)){
             this.#server_https = Candy.ext.https.createServer({
                 SNICallback: (hostname, callback) => {
+                    console.log('SNI Callback for hostname:', hostname);
                     let sslOptions;
                     while(!Candy.config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.');
                     let website = Candy.config.websites[hostname];
-                    if(website && website.cert?.ssl && website.cert.ssl.key && website.cert.ssl.cert && Candy.ext.fs.existsSync(website.cert.ssl.key) && Candy.ext.fs.existsSync(website.cert.ssl.cert)){
+                    if(website && website.cert && website.cert.ssl && website.cert.ssl.key && website.cert.ssl.cert && Candy.ext.fs.existsSync(website.cert.ssl.key) && Candy.ext.fs.existsSync(website.cert.ssl.cert)){
                         sslOptions = {
                             key: Candy.ext.fs.readFileSync(website.cert.ssl.key),
                             cert: Candy.ext.fs.readFileSync(website.cert.ssl.cert)
@@ -145,7 +146,9 @@ class Web {
                     }            
                     const ctx = Candy.ext.tls.createSecureContext(sslOptions);
                     callback(null, ctx);
-                }
+                },
+                key: Candy.ext.fs.readFileSync(ssl.key),
+                cert: Candy.ext.fs.readFileSync(ssl.cert)
             }, (req, res) => {
                 this.request(req, res, true);
             }).listen(443);

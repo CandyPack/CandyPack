@@ -22,7 +22,7 @@ class Mail{
         this.#checking = true;
         for (const domain of Object.keys(Candy.config.websites)) {
             if(!Candy.config.websites[domain].DNS || !Candy.config.websites[domain].DNS.MX) continue;
-            if(!Candy.config.websites[domain].cert?.dkim) this.#dkim(domain);
+            if(Candy.config.websites[domain].cert !== false && !Candy.config.websites[domain].cert?.dkim) this.#dkim(domain);
         }
         this.#checking = false;
     }
