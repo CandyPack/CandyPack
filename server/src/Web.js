@@ -56,10 +56,15 @@ class Web {
         if(domain.length < 3 || !domain.includes('.')) return Candy.Api.result(false, __('Invalid domain.'));
         if(Candy.config.websites[domain]) return Candy.Api.result(false, await __('Website %s already exists.', domain));
         web.domain = domain;
-        web.path = Candy.ext.path.resolve().replace(/\\/g, '/') + '/' + domain + '/';
+        if(path && path.length > 0){
+            web.path = Candy.ext.path.resolve(path).replace(/\\/g, '/') + '/';
+        } else {
+            web.path = Candy.ext.path.resolve().replace(/\\/g, '/') + '/' + domain + '/';
+        }
         if(Candy.ext.path.length > 0) web.path = path;
         if(!Candy.ext.fs.existsSync(web.path)) Candy.ext.fs.mkdirSync(web.path, { recursive: true });
         web.subdomain = ['www'];
+        if(web.domain.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) || web.domain == 'localhost') web.ssl = false;
         Candy.config.websites[web.domain] = web;
         Candy.DNS.record({ name: web.domain,             type: 'A',     value: Candy.DNS.ip },
                          { name: 'www.' + web.domain,    type: 'CNAME', value: web.domain },
