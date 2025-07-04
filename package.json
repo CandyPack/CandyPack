@@ -7,8 +7,8 @@
     "email": "mail@emre.red",
     "url": "https://emre.red"
   },
-  "version": "0.3.6",
-  "license": "MIT",
+  "version": "0.3.7",
+  "license": "AGPL-3.0",
   "engines": {
     "node": ">=18.0.0"
   },
