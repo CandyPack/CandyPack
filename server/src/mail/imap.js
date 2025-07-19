@@ -260,7 +260,9 @@ class Connection {
                                 if(include){
                                     if(fields.length > 0) body.keys += line.key + ' ';
                                     if(line.key.toLowerCase() == 'content-type'){
-                                        if(data.html && data.html.length > 1 && data.text && data.text.length > 1){
+                                        if(data.attachments.length > 0){
+                                            body.header += 'Content-Type: multipart/mixed; boundary="' + boundary + '"\r\n';
+                                        } else if(data.html && data.html.length > 1 && data.text && data.text.length > 1){
                                             body.header += 'Content-Type: multipart/alternative; boundary="' + boundary + '_alt"\r\n';
                                         } else if(!data.text || data.text.length < 1){
                                             body.header += 'Content-Type: text/html; charset=utf-8\r\n';
@@ -274,15 +276,6 @@ class Connection {
                                 for(let field of fields){
                                     if(!data.headerLines.find((line) => line.key == field)){
                                         if(fields.length > 0) body.keys += field + ' ';
-                                        // if(field.toLowerCase() == 'content-type'){
-                                        //     if(data.html && data.html.length > 1 && data.text && data.text.length > 1){
-                                        //         body.header += 'Content-Type: multipart/alternative; boundary="boundary' + data.id + '"\r\n';
-                                        //     } else if(!data.text || data.text.length < 1){
-                                        //         body.header += 'Content-Type: text/html; charset=utf-8\r\n';
-                                        //     } else if(!data.html || data.html.length < 1){
-                                        //         body.header += 'Content-Type: text/plain; charset=utf-8\r\n';
-                                        //     }
-                                        // }
                                         else body.header += field + ': \r\n';
                                     }
                                 }
@@ -292,24 +285,24 @@ class Connection {
                         } else if(obj.value == 'TEXT'){
                             if(body.header.length) body.content += body.header + '\r\n\r\n';
                             if(data.html.length > 1 || data.attachments.length){
-                                if(data.attachments.length > 1){
+                                if(data.attachments.length && data.html && data.html.length && data.text && data.text.length){
                                     body.content += '--' + boundary + '\r\n';
                                     body.content += 'Content-Type: multipart/alternative; boundary="' + boundary + '_alt"\r\n';
                                 }
-                                if(data.text && data.text.length > 1){
+                                if(data.text && data.text.length){
                                     body.content += '\r\n--' + boundary + '_alt\r\n';
                                     body.content += 'Content-Type: text/plain; charset=utf-8\r\n';
                                     body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n';
                                     body.content += data.text;
                                     body.content += '\r\n--' + boundary + '_alt\r\n';
                                 }
-                                if(data.html.length > 1){
-                                    if(data.text && data.text.length > 1){
+                                if(data.html.length){
+                                    if(data.text && data.text.length){
                                         body.content += 'Content-Type: text/html; charset=utf-8\r\n';
                                         body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n';
                                     }
                                     body.content += data.html;
-                                    if(data.text && data.text.length > 1) body.content += '\r\n--' + boundary + '_alt--\r\n';
+                                    if(data.text && data.text.length) body.content += '\r\n--' + boundary + '_alt--\r\n';
                                 }
                                 for (let attachment of data.attachments) {
                                     body.content += '\r\n--' + boundary + '\r\n';
@@ -317,9 +310,8 @@ class Connection {
                                     body.content += 'Content-Transfer-Encoding: base64\r\n';
                                     body.content += 'Content-Disposition: attachment; filename="' + attachment.filename + '"\r\n\r\n';
                                     body.content += Buffer.from(attachment.content.data).toString('base64');
-                                    body.content += '\r\n--' + boundary + '\r\n';
                                 }
-                                if(data.attachments.length > 1) body.content += '--' + boundary + '--\r\n';
+                                if(data.attachments.length) body.content += '--' + boundary + '--\r\n';
                             } else body.content += data.text;
                         } else if(!isNaN(obj.value)){
                             obj.value = parseInt(obj.value);
@@ -331,16 +323,16 @@ class Connection {
                     }
                     if(body.content == '') body.content = body.header;
                     body.content = body.content.replace(/\r\n/g, '\n');
-                    this.#write('BODY[' + body.keys + '] {' + (body.content.length) + '}\r\n');
+                    this.#write('BODY[' + body.keys + '] {' + Buffer.byteLength(body.content, 'utf8') + '}\r\n');
                     this.#write(body.content);
                     break;
                 case 'BODYSTRUCTURE':
                     let structure = '';
-                    if(data.text && data.text.length > 1 && data.html && data.html.length > 1) structure += '(';
+                    if(data.text && data.text.length && data.html && data.html.length) structure += '(';
                     if(data.text && data.text.length)     structure += '("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.text, 'utf8') + ' ' + data.text.split('\n').length + ' NIL NIL NIL NIL)';
-                    if(data.html && data.html.length > 1) structure += '("TEXT" "HTML"  ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.html, 'utf8') + ' ' + data.html.split('\n').length + ')';
-                    if(data.text && data.text.length && data.html && data.html.length > 1) structure += ' "ALTERNATIVE" ("BOUNDARY" "' + boundary + '_alt") NIL NIL NIL';
-                    if(data.text && data.text.length > 1 && data.html && data.html.length > 1) structure += ')';
+                    if(data.html && data.html.length) structure += '("TEXT" "HTML"  ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' + Buffer.byteLength(data.html, 'utf8') + ' ' + data.html.split('\n').length + ')';
+                    if(data.text && data.text.length && data.html && data.html.length) structure += ' "ALTERNATIVE" ("BOUNDARY" "' + boundary + '_alt") NIL NIL NIL';
+                    if(data.text && data.text.length && data.html && data.html.length) structure += ')';
                     for (let attachment of data.attachments) structure += '("APPLICATION" "' + attachment.contentType.split('/')[1].toUpperCase() + '" ("NAME" "' + attachment.filename + '") NIL NIL "BASE64" ' + Buffer.from(attachment.content.data).toString('base64').length + ' NIL ("ATTACHMENT" ("FILENAME" "' + attachment.filename + '")) NIL NIL)';
                     if(data.attachments.length) structure += ' "MIXED" ("BOUNDARY" "' + boundary + '") NIL NIL NIL';
                     this.#write('BODYSTRUCTURE ' + structure);
