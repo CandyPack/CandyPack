@@ -129,7 +129,6 @@ class Web {
         if(!this.#server_https && ssl && ssl.key && ssl.cert && Candy.ext.fs.existsSync(ssl.key) && Candy.ext.fs.existsSync(ssl.cert)){
             this.#server_https = Candy.ext.https.createServer({
                 SNICallback: (hostname, callback) => {
-                    console.log('SNI Callback for hostname:', hostname);
                     let sslOptions;
                     while(!Candy.config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.');
                     let website = Candy.config.websites[hostname];

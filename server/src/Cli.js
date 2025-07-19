@@ -22,6 +22,10 @@ class Cli {
             args: ['key'],
             description: "Define your server to your CandyPack account"
         },
+        debug: {
+            description: "Debug CandyPack Server",
+            action: async() => this.debug()
+        },
         help: {
             description: "List all available commands",
             action: async() => this.#help()
@@ -33,6 +37,14 @@ class Cli {
         restart: {
             description: "Restart CandyPack Server",
             action: async() => Candy.Server.restart()
+        },
+        run: {
+            args: ['file'],
+            description: "Add a new Service",
+            action: async(args) => {
+                let service = args[0];
+                await this.#call({ action: 'service.start', data: [ service ] });
+            }
         },
 
         mail: {
@@ -101,6 +113,7 @@ class Cli {
         }
     }
     current  = '';
+    #modules = ['api', 'candy', 'cli', 'client', 'config', 'dns', 'lang', 'mail', 'server', 'service', 'ssl', 'storage', 'subdomain', 'web'];
     rl;
     selected = 0;
     websites = {};
@@ -111,6 +124,7 @@ class Cli {
     logging  = false;
     width;
     height;
+    #watch = [];
 
     close(){
         if(this.rl) this.rl.close();
@@ -135,6 +149,93 @@ class Cli {
             if(arg == 'bold') output = '\x1b[1m' + output + '\x1b[0m';
         }
         return output;
+    }
+
+    async debug(){
+        process.stdout.write(process.platform === 'win32' ? `title CandyPack Debug\n` : `\x1b]2;CandyPack Debug\x1b\x5c`);
+        await this.#debug();
+        setInterval(() => this.#debug(), 250);
+        this.rl = Candy.ext.readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        this.rl.input.on('keypress', (key, data) => {
+            if(data.ctrl && data.name == 'c') {
+                process.stdout.write('\x1Bc');
+                process.exit(0);
+            }
+            if(data.name == 'up') if(this.selected > 0) this.selected--;
+            if(data.name == 'down') if(this.selected + 1 < this.domains.length + this.services.length) this.selected++;
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+            this.#debug();
+        });
+        this.rl.on('close', () => {
+            process.stdout.write('\x1Bc');
+            process.exit(0);
+        });
+        process.stdout.clearLine(0);
+        process.stdout.cursorTo(0);
+    }
+
+    #debug(){
+        if(this.printing) return;
+        this.printing = true;
+        this.websites = Candy.config.websites ?? [];
+        this.services = Candy.config.services ?? [];
+        this.domains = Object.keys(this.websites);
+        this.width = process.stdout.columns - 5;
+        this.height = process.stdout.rows - 2;
+        this.#load();
+        let c1 = (this.width / 12) * 3;
+        if(c1 % 1 != 0) c1 = Math.floor(c1);
+        if(c1 > 50) c1 = 50;
+        let result = '';
+        result = this.#color('\n' + this.#spacing('CANDYPACK', this.width, 'center') + '\n\n', 'magenta', 'bold');
+        result += this.#color(' ┌', 'gray');
+        let service = -1;
+        result += this.#color('─'.repeat(5), 'gray');
+        let title = this.#color(__('Modules'), null);
+        result += ' ' + this.#color(title) + ' ';
+        result += this.#color('─'.repeat(c1 - title.length - 7), 'gray');
+        service++;
+        result += this.#color('┬', 'gray');
+        result += this.#color('─'.repeat(5), 'gray');
+        title = this.#color(__('Logs'), null);
+        result += ' ' + this.#color(title) + ' ';
+        result += this.#color('─'.repeat(this.width - c1 - title.length - 7), 'gray');
+        result += this.#color('┐ \n', 'gray');
+        for(let i = 0; i < this.height - 6; i++){
+            if(this.#modules[i]){
+                result += this.#color(' │', 'gray');
+                result += this.#color('[' + (this.#watch.includes(i) ? 'X' : ' ') + '] ', i == this.selected ? 'blue' : 'white', i == this.selected ? 'white' : null, i == this.selected ? 'bold' : null);
+                result += this.#color(this.#spacing(this.#modules[i] ? this.#modules[i] : '', c1 - 4), i == this.selected ? 'blue' : 'white', i == this.selected ? 'white' : null, i == this.selected ? 'bold' : null);
+                result += this.#color('│', 'gray');
+            } else {
+                result += this.#color(' │', 'gray');
+                result += ' '.repeat(c1);
+                result += this.#color('│', 'gray');
+            }
+            if(this.logs.selected == this.selected){
+                result += this.#spacing(this.logs.content[i] ? this.logs.content[i] : ' ', this.width - c1);
+            } else {
+                result += ' '.repeat(this.width - c1);
+            }
+            result += this.#color('│\n', 'gray');
+        }
+        result += this.#color(' └', 'gray');
+        result += this.#color('─'.repeat(c1), 'gray');
+        result += this.#color('┴', 'gray');
+        result += this.#color('─'.repeat(this.width - c1), 'gray');
+        result += this.#color('┘ \n', 'gray');
+        result += this.#color('\n' + this.#spacing('Select a module to watch', this.width, 'center') + '\n', 'gray');
+        if(result !== this.current){
+            this.current = result;
+            process.stdout.clearLine(0);
+            process.stdout.write('\x1Bc');
+            process.stdout.write(result);
+        }
+        this.printing = false;
     }
 
     #format(text, raw){
@@ -246,12 +347,12 @@ class Cli {
         let command = args.shift();
         if(!this.#commands[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')));
         let action = this.#commands[command];
-        while(args.length > 0) {
+        while(args.length > 0 && !action.args) {
             command = args.shift();
             if(!action.sub || !action.sub[command]) return this.#help(cmds);
             action = action.sub[command];
         }
-        if(action.action) return action.action();
+        if(action.action) return action.action(args);
         else return this.#help(cmds);
     }
 

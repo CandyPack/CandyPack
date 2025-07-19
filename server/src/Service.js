@@ -29,7 +29,7 @@ function add(file){
     services.push(service);
     services[service.id] = service;
     Candy.config.services = services;
-    log(__('Service %s added.', file));
+    return true;
 }
 
 
@@ -150,12 +150,12 @@ module.exports = {
                 file = Candy.ext.path.resolve(file);
                 if(Candy.ext.fs.existsSync(file)){
                     if(!get(file)) add(file);
-                    else log(__('Service %s already exists.', file));
+                    else return resolve(Candy.Api.result(true, __('Service %s already exists.', file)));
                 } else {
-                    log(__('Service file %s not found.', file));
+                    return resolve(Candy.Api.result(false, __('Service file %s not found.', file)));
                 }
             } else {
-                log(__('Service file not specified.'));
+                return resolve(Candy.Api.result(false, __('Service file not specified.')));
             }
         });
     },

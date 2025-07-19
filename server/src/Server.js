@@ -39,8 +39,8 @@ class Server {
             var args = process.argv.slice(2);
             switch(args[0]){
                 case 'start':
-                    if(global.trigger == 'cli') await this.start();
-                    else Candy.Service.start(args[1]);
+                    if(args.length > 1 || global.trigger !== 'cli') break;
+                    await this.start();
                     return resolve();
                     break;
                 case 'services': {
