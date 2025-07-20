@@ -43,6 +43,9 @@ class Cli {
             description: "Add a new Service",
             action: async(args) => {
                 let service = args[0];
+                if(!service.startsWith('/') && !/^[a-zA-Z]:\\|^\\\\/.test(service)) {
+                    service = Candy.ext.path.resolve() + '/' + service;
+                }
                 await this.#call({ action: 'service.start', data: [ service ] });
             }
         },
