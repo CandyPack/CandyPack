@@ -12,7 +12,7 @@ class Candy {
         fs              : require('fs'),
         os              : require('os'),
         path            : require('path'),
-        ps              : require('ps-node'),
+        process         : require('find-process').default,
         readline        : require('readline'),
     }
     

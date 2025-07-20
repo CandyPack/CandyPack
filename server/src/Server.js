@@ -3,11 +3,12 @@ class Server {
     async check(){
         return new Promise((resolve, reject) => {
             if(!Candy.config.server.watchdog) return resolve(false);
-            Candy.ext.ps.lookup({ pid: Candy.config.server.watchdog }, function(err, resultList ) {
-                if(err) throw new Error(err);
-                let process = resultList[0];
-                if(process) resolve(true);
-                else resolve(false);
+            Candy.ext.process('pid', Candy.config.server.watchdog).then((list) => {
+                if(list.length > 0) return resolve(true);
+                return resolve(false);
+            }).catch((err) => {
+                console.error('Error checking process:', err);
+                return resolve(false);
             });
         });
     }
@@ -17,14 +18,11 @@ class Server {
         if(!pid){
             this.watchdog();
         } else {
-            Candy.ext.ps.lookup({ pid: pid }, (err, resultList) => {
-                if(err) throw new Error(err);
-                if(!resultList){
-                    this.watchdog();
-                } else {
-                    let process = resultList[0];
-                    if(!process) this.watchdog();
-                }
+            Candy.ext.process('pid', pid).then((list) => {
+                if(list.length == 0) this.watchdog();
+            }).catch((err) => {
+                console.error('Error checking process:', err);
+                this.watchdog();
             });
         }
     }
