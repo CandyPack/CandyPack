@@ -53,7 +53,7 @@ class Web {
         for(const iterator of ['http://', 'https://', 'ftp://', 'www.']) {
             if(domain.startsWith(iterator)) domain = domain.replace(iterator, '');
         }
-        if(domain.length < 3 || !domain.includes('.')) return Candy.Api.result(false, __('Invalid domain.'));
+        if(domain.length < 3 || (!domain.includes('.') && domain != 'localhost')) return Candy.Api.result(false, __('Invalid domain.'));
         if(Candy.config.websites[domain]) return Candy.Api.result(false, await __('Website %s already exists.', domain));
         web.domain = domain;
         if(path && path.length > 0){
@@ -66,11 +66,13 @@ class Web {
         web.subdomain = ['www'];
         if(web.domain.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) || web.domain == 'localhost') web.cert = false;
         Candy.config.websites[web.domain] = web;
-        Candy.DNS.record({ name: web.domain,             type: 'A',     value: Candy.DNS.ip },
-                         { name: 'www.' + web.domain,    type: 'CNAME', value: web.domain },
-                         { name: web.domain,             type: 'MX',    value: web.domain },
-                         { name: web.domain,             type: 'TXT',   value: 'v=spf1 a mx ip4:' + Candy.DNS.ip + ' ~all' },
-                         { name: '_dmarc.' + web.domain, type: 'TXT',   value: 'v=DMARC1; p=reject; rua=mailto:postmaster@' + web.domain});
+        if(web.domain !== 'localhost'){
+            Candy.DNS.record({ name: web.domain,             type: 'A',     value: Candy.DNS.ip },
+                             { name: 'www.' + web.domain,    type: 'CNAME', value: web.domain },
+                             { name: web.domain,             type: 'MX',    value: web.domain },
+                             { name: web.domain,             type: 'TXT',   value: 'v=spf1 a mx ip4:' + Candy.DNS.ip + ' ~all' },
+                             { name: '_dmarc.' + web.domain, type: 'TXT',   value: 'v=DMARC1; p=reject; rua=mailto:postmaster@' + web.domain});
+        }
         Candy.ext.childProcess.execSync('npm link candypack', { cwd: web.path });
         if(Candy.ext.fs.existsSync(web.path + 'node_modules/.bin')) Candy.ext.fs.rmSync(web.path + 'node_modules/.bin', { recursive: true });
         if(!Candy.ext.fs.existsSync(web.path + '/node_modules')) Candy.ext.fs.mkdirSync(web.path + '/node_modules');
