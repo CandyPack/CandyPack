@@ -19,7 +19,7 @@ class Server {
             this.watchdog();
         } else {
             Candy.ext.process('pid', pid).then((list) => {
-                if(list.length == 0) this.watchdog();
+                if(list.length == 0 || list[0].name !== 'node') this.watchdog();
             }).catch((err) => {
                 console.error('Error checking process:', err);
                 this.watchdog();
