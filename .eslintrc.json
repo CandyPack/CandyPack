@@ -1,0 +1,45 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true,
+    "commonjs": true
+  },
+  "extends": ["eslint:recommended", "plugin:prettier/recommended"],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "globals": {
+    "$": "readonly",
+    "Candy": "readonly",
+    "__": "readonly",
+    "__dir": "readonly",
+    "log": "readonly",
+    "Auth": "readonly",
+    "md5": "readonly",
+    "ctype_alnum": "readonly",
+    "strip_tags": "readonly",
+    "strtotime": "readonly",
+    "strlen": "readonly",
+    "strpos": "readonly",
+    "empty": "readonly",
+    "preg_match": "readonly",
+    "table": "readonly",
+    "$q": "readonly",
+    "insert": "readonly",
+    "service": "readonly",
+    "file": "readonly",
+    "tls": "readonly",
+    "ms": "readonly",
+    "Cli": "readonly",
+    "Web": "readonly",
+    "Service": "readonly",
+    "Lang": "readonly"
+  },
+  "rules": {
+    "prettier/prettier": "error",
+    "no-unused-vars": "warn",
+    "no-empty": "warn"
+  }
+}

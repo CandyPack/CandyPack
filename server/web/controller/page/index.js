@@ -1,3 +1,3 @@
-module.exports = function(Candy){
-    return 'CandyPack Server Example';
+module.exports = function (Candy) {
+  return 'CandyPack Server Example';
 };

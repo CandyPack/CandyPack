@@ -26,6 +26,12 @@
     "candy": "bin/candy",
     "candypack": "bin/candypack"
   },
+  "scripts": {
+    "test": "node framework/index.js",
+    "lint": "eslint . --ext .js",
+    "format": "prettier --write .",
+    "prepare": "husky"
+  },
   "dependencies": {
     "acme-client": "^5.1.0",
     "bcrypt": "^5.1.1",
@@ -40,5 +46,21 @@
     "smtp-server": "^3.13.4",
     "sqlite3": "^5.1.7",
     "ssh2": "^1.15.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.4",
+    "prettier": "^3.6.2"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
 }
