@@ -30,7 +30,8 @@
     "test": "nyc jest",
     "lint": "eslint . --ext .js",
     "format": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "docs": "jsdoc -c jsdoc.json"
   },
   "dependencies": {
     "acme-client": "^5.4.0",
@@ -55,6 +56,7 @@
     "eslint-plugin-prettier": "^5.5.4",
     "husky": "^9.1.7",
     "jest": "^30.0.5",
+    "jsdoc": "^4.0.4",
     "lint-staged": "^16.1.4",
     "npm-check-updates": "^18.0.2",
     "nyc": "^17.1.0",

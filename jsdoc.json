@@ -1,0 +1,11 @@
+{
+  "source": {
+    "include": ["framework"],
+    "includePattern": ".+\\.js(doc|x)?$",
+    "excludePattern": "(^|\\/|\\\\)_"
+  },
+  "opts": {
+    "destination": "./docs/",
+    "recurse": true
+  }
+}
