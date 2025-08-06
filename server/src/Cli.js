@@ -122,7 +122,7 @@ class Cli {
     websites = {};
     services = [];
     domains  = [];
-    logs     = {content: [], mtime: null, selected: null};
+    logs     = {content: [], mtime: null, selected: null, watched: []};
     printing = false;
     logging  = false;
     width;
@@ -168,7 +168,12 @@ class Cli {
                 process.exit(0);
             }
             if(data.name == 'up') if(this.selected > 0) this.selected--;
-            if(data.name == 'down') if(this.selected + 1 < this.domains.length + this.services.length) this.selected++;
+            if(data.name == 'down') if(this.selected + 1 < this.#modules.length) this.selected++;
+            if(data.name == 'return'){
+                let index = this.#watch.indexOf(this.selected);
+                if(index > -1) this.#watch.splice(index, 1);
+                else this.#watch.push(this.selected);
+            }
             process.stdout.clearLine(0);
             process.stdout.cursorTo(0);
             this.#debug();
@@ -184,12 +189,9 @@ class Cli {
     #debug(){
         if(this.printing) return;
         this.printing = true;
-        this.websites = Candy.config.websites ?? [];
-        this.services = Candy.config.services ?? [];
-        this.domains = Object.keys(this.websites);
         this.width = process.stdout.columns - 5;
         this.height = process.stdout.rows - 2;
-        this.#load();
+        this.#loadModuleLogs();
         let c1 = (this.width / 12) * 3;
         if(c1 % 1 != 0) c1 = Math.floor(c1);
         if(c1 > 50) c1 = 50;
@@ -208,7 +210,7 @@ class Cli {
         result += ' ' + this.#color(title) + ' ';
         result += this.#color('─'.repeat(this.width - c1 - title.length - 7), 'gray');
         result += this.#color('┐ \n', 'gray');
-        for(let i = 0; i < this.height - 6; i++){
+        for(let i = 0; i < this.height - 7; i++){
             if(this.#modules[i]){
                 result += this.#color(' │', 'gray');
                 result += this.#color('[' + (this.#watch.includes(i) ? 'X' : ' ') + '] ', i == this.selected ? 'blue' : 'white', i == this.selected ? 'white' : null, i == this.selected ? 'bold' : null);
@@ -219,11 +221,7 @@ class Cli {
                 result += ' '.repeat(c1);
                 result += this.#color('│', 'gray');
             }
-            if(this.logs.selected == this.selected){
-                result += this.#spacing(this.logs.content[i] ? this.logs.content[i] : ' ', this.width - c1);
-            } else {
-                result += ' '.repeat(this.width - c1);
-            }
+            result += this.#spacing(this.logs.content[i] ? this.logs.content[i] : ' ', this.width - c1);
             result += this.#color('│\n', 'gray');
         }
         result += this.#color(' └', 'gray');
@@ -231,7 +229,8 @@ class Cli {
         result += this.#color('┴', 'gray');
         result += this.#color('─'.repeat(this.width - c1), 'gray');
         result += this.#color('┘ \n', 'gray');
-        result += this.#color('\n' + this.#spacing('Select a module to watch', this.width, 'center') + '\n', 'gray');
+        let shortcuts = '↑/↓ Navigate | ↵ Select | Ctrl+C Exit';
+        result += this.#color('\n' + this.#spacing(shortcuts, this.width, 'center') + '\n', 'gray');
         if(result !== this.current){
             this.current = result;
             process.stdout.clearLine(0);
@@ -363,6 +362,16 @@ class Cli {
         return this.#value(text, true).toString().replace(/\x1b\[[0-9;]*m/g, '').length;
     }
 
+    #formatDate(date) {
+        const YYYY = date.getFullYear();
+        const MM = String(date.getMonth() + 1).padStart(2, '0');
+        const DD = String(date.getDate()).padStart(2, '0');
+        const HH = String(date.getHours()).padStart(2, '0');
+        const mm = String(date.getMinutes()).padStart(2, '0');
+        const ss = String(date.getSeconds()).padStart(2, '0');
+        return `${YYYY}-${MM}-${DD} ${HH}:${mm}:${ss}`;
+    }
+
     async #load(){
         if(this.logging) return;
         this.logging = true;
@@ -385,17 +394,66 @@ class Cli {
         }
         this.logs.content = log.trim().replace(/\r\n/g, '\n').split('\n').map((line) => {
             if('[LOG]' == line.substr(0, 5)){
-                line = line = line.substr(5);
+                line = line.substr(5);
                 let date = parseInt(line.substr(1, 13));
-                line = this.#color('[' + new Date(date).toLocaleString() + ']', 'green', 'bold') + line.substr(15);
+                line = this.#color('[' + this.#formatDate(new Date(date)) + ']', 'green', 'bold') + line.substr(15);
             } else if ('[ERR]' == line.substr(0, 5)){
-                line = line = line.substr(5);
+                line = line.substr(5);
                 let date = parseInt(line.substr(1, 13));
-                line = this.#color('[' + new Date(date).toLocaleString() + ']', 'red', 'bold') + line.substr(15);
+                line = this.#color('[' + this.#formatDate(new Date(date)) + ']', 'red', 'bold') + line.substr(15);
             }
             return line;
         }).slice(-this.height + 4);
         this.logs.mtime = mtime;
+        this.logging = false;
+    }
+
+    async #loadModuleLogs(){
+        if(this.logging) return;
+        this.logging = true;
+
+        if (this.#watch.length === 0) {
+            this.logs.content = [];
+            this.logging = false;
+            return;
+        }
+
+        const file = Candy.ext.os.homedir() + '/.candypack/logs/.candypack.log';
+        let log = '';
+        let mtime = null;
+
+        if (Candy.ext.fs.existsSync(file)) {
+            mtime = Candy.ext.fs.statSync(file).mtime;
+            if (JSON.stringify(this.#watch) === JSON.stringify(this.logs.watched) && mtime == this.logs.mtime) {
+                this.logging = false;
+                return;
+            }
+            log = Candy.ext.fs.readFileSync(file, 'utf8');
+        }
+
+        const selectedModules = this.#watch.map(index => this.#modules[index]);
+        this.logs.content = log.trim().replace(/\r\n/g, '\n').split('\n').map(line => {
+            const lowerCaseLine = line.toLowerCase();
+            const moduleName = selectedModules.find(name => lowerCaseLine.includes(name.toLowerCase()));
+            return { line, moduleName };
+        }).filter(item => item.moduleName).map(item => {
+            let { line, moduleName } = item;
+            if('[LOG]' == line.substr(0, 5) || '[ERR]' == line.substr(0, 5)) {
+                const isError = '[ERR]' == line.substr(0, 5);
+                const date = parseInt(line.substr(6, 13));
+                const originalMessage = line.substr(21);
+                const cleanedMessage = originalMessage.replace(new RegExp(moduleName, "i"), "").trim();
+                const dateColor = isError ? 'red' : 'green';
+                
+                line = this.#color('[' + this.#formatDate(new Date(date)) + ']', dateColor, 'bold') + 
+                       this.#color(`[${moduleName}]`, 'white', 'bold') + ' ' + 
+                       cleanedMessage;
+            }
+            return line;
+        }).slice(-this.height + 4);
+
+        this.logs.mtime = mtime;
+        this.logs.watched = [...this.#watch];
         this.logging = false;
     }
     
@@ -468,7 +526,7 @@ class Cli {
         result += this.#color('┬', 'gray');
         result += this.#color('─'.repeat(this.width - c1), 'gray');
         result += this.#color('┐ \n', 'gray');
-        for(let i = 0; i < this.height - 4; i++){
+        for(let i = 0; i < this.height - 5; i++){
             if(this.domains[i]){
                 result += this.#color(' │', 'gray');
                 result += this.#icon(this.websites[this.domains[i]].status ?? null, i == this.selected);
@@ -505,6 +563,8 @@ class Cli {
         result += this.#color('┴', 'gray');
         result += this.#color('─'.repeat(this.width - c1), 'gray');
         result += this.#color('┘ \n', 'gray');
+        let shortcuts = '↑/↓ Navigate | Ctrl+C Exit';
+        result += this.#color('\n' + this.#spacing(shortcuts, this.width, 'center') + '\n', 'gray');
         if(result !== this.current){
             this.current = result;
             process.stdout.clearLine(0);
