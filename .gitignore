@@ -3,3 +3,5 @@ yarn.lock
 package-lock.json
 /node_modules
 *.log
+.nyc_output
+coverage
