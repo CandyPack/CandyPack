@@ -1,4 +1,4 @@
 #!/usr/bin/env node
-global.trigger = 'candy';
+global.trigger = 'candy'
 
-require((process.argv.includes('_watchdog')) ? '../server/watchdog.js' : '../server/cli.js');
+require(process.argv.includes('watchdog') ? '../tools/watchdog.js' : '../server/index.js')
