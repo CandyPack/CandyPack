@@ -79,7 +79,7 @@ async function check() {
 async function start() {
   await check()
   if (!fs.existsSync(logdir)) fs.mkdirSync(logdir)
-  var child = spawn('node', [__dirname + '/../server/cli.js', 'start'], {detached: true})
+  var child = spawn('node', [__dirname + '/../server/index.js', 'start'], {detached: true})
   child.stdout.on('data', function (data) {
     log += '[LOG][' + Date.now() + '] ' + data.toString()
     save()

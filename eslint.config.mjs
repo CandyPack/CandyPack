@@ -22,11 +22,30 @@ export default defineConfig([
   },
   {
     files: ['server/**/*.js'],
-    ignores: ['server/web/**'],
+    ignores: ['server/web/**', 'server/src/Candy.js'],
     languageOptions: {
       globals: {
         ...globals.node,
         Candy: 'readonly',
+        log: 'readonly',
+        __: 'readonly'
+      },
+      sourceType: 'script'
+    },
+    extends: ['js/recommended'],
+    plugins: {
+      js,
+      prettier: prettierPlugin
+    },
+    rules: {
+      'prettier/prettier': 'error'
+    }
+  },
+  {
+    files: ['server/src/Candy.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
         log: 'readonly',
         __: 'readonly'
       },
