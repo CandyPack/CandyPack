@@ -1,65 +1,78 @@
-import js from "@eslint/js";
-import globals from "globals";
-import { defineConfig } from "eslint/config";
+import js from '@eslint/js'
+import globals from 'globals'
+import {defineConfig} from 'eslint/config'
+import prettier from 'eslint-config-prettier'
 
 export default defineConfig([
   {
-    files: ["server/watchdog.js"],
+    files: ['server/watchdog.js'],
     languageOptions: {
-      globals: { ...globals.node },
-      sourceType: "script",
-    }, 
-    extends: ["js/recommended"],
-    plugins: { js },
+      globals: {...globals.node},
+      sourceType: 'script'
+    },
+    extends: ['js/recommended', 'prettier'],
+    plugins: {js, prettier},
+    rules: {
+      'prettier/prettier': 'error'
+    }
   },
   {
-    files: ["server/**/*.js"],
-    ignores: ["server/watchdog.js", "server/web/**"], 
+    files: ['server/**/*.js'],
+    ignores: ['server/watchdog.js', 'server/web/**'],
     languageOptions: {
       globals: {
         ...globals.node,
-        Candy: "readonly",
-        log: "readonly",
-        "__": "readonly"
+        Candy: 'readonly',
+        log: 'readonly',
+        __: 'readonly'
       },
-      sourceType: "script",
+      sourceType: 'script'
     },
-    extends: ["js/recommended"],
-    plugins: { js },
+    extends: ['js/recommended', 'prettier'],
+    plugins: {js, prettier},
+    rules: {
+      'prettier/prettier': 'error'
+    }
   },
   {
-    files: ["framework/**/*.js"],
-    ignores: ["framework/web/**/*.js"],
+    files: ['framework/**/*.js'],
+    ignores: ['framework/web/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.node,
-        Candy: "readonly",
-        "__dir": "readonly"
+        Candy: 'readonly',
+        __dir: 'readonly'
       },
-      sourceType: "script",
+      sourceType: 'script'
     },
-    extends: ["js/recommended"],
-    plugins: { js },
+    extends: ['js/recommended', 'prettier'],
+    plugins: {js, prettier},
+    rules: {
+      'prettier/prettier': 'error'
+    }
   },
   {
-    files: ["framework/web/**/*.js"],
+    files: ['framework/web/**/*.js'],
     languageOptions: {
-      globals: { ...globals.browser },
-      sourceType: "module",
+      globals: {...globals.browser},
+      sourceType: 'module'
     },
-    extends: ["js/recommended"],
-    plugins: { js },
+    extends: ['js/recommended', 'prettier'],
+    plugins: {js, prettier}
   },
   {
-    files: ["server/web/**/*.js"],
+    files: ['server/web/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.node,
-        Candy: "readonly",
+        Candy: 'readonly'
       },
-      sourceType: "script",
+      sourceType: 'script'
     },
-    extends: ["js/recommended"],
-    plugins: { js },
+    extends: ['js/recommended', 'prettier'],
+    plugins: {js, prettier},
+    rules: {
+      'prettier/prettier': 'error'
+    }
   }
-]);
+])
