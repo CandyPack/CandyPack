@@ -1,24 +1,28 @@
 import js from '@eslint/js'
 import globals from 'globals'
 import {defineConfig} from 'eslint/config'
-import prettier from 'eslint-config-prettier'
+import prettierPlugin from "eslint-plugin-prettier";
+import prettierConfig from "eslint-config-prettier";
 
 export default defineConfig([
   {
-    files: ['server/watchdog.js'],
+    files: ['tools/**/*.js'],
     languageOptions: {
       globals: {...globals.node},
       sourceType: 'script'
     },
-    extends: ['js/recommended', 'prettier'],
-    plugins: {js, prettier},
+    extends: ['js/recommended'],
+    plugins: {
+      js,
+      prettier: prettierPlugin
+    },
     rules: {
       'prettier/prettier': 'error'
     }
   },
   {
     files: ['server/**/*.js'],
-    ignores: ['server/watchdog.js', 'server/web/**'],
+    ignores: ['server/web/**'],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -28,8 +32,11 @@ export default defineConfig([
       },
       sourceType: 'script'
     },
-    extends: ['js/recommended', 'prettier'],
-    plugins: {js, prettier},
+    extends: ['js/recommended'],
+    plugins: {
+      js,
+      prettier: prettierPlugin
+    },
     rules: {
       'prettier/prettier': 'error'
     }
@@ -45,8 +52,11 @@ export default defineConfig([
       },
       sourceType: 'script'
     },
-    extends: ['js/recommended', 'prettier'],
-    plugins: {js, prettier},
+    extends: ['js/recommended'],
+    plugins: {
+      js,
+      prettier: prettierPlugin
+    },
     rules: {
       'prettier/prettier': 'error'
     }
@@ -57,8 +67,8 @@ export default defineConfig([
       globals: {...globals.browser},
       sourceType: 'module'
     },
-    extends: ['js/recommended', 'prettier'],
-    plugins: {js, prettier}
+    extends: ['js/recommended'],
+    plugins: {js}
   },
   {
     files: ['server/web/**/*.js'],
@@ -69,8 +79,11 @@ export default defineConfig([
       },
       sourceType: 'script'
     },
-    extends: ['js/recommended', 'prettier'],
-    plugins: {js, prettier},
+    extends: ['js/recommended'],
+    plugins: {
+      js,
+      prettier: prettierPlugin
+    },
     rules: {
       'prettier/prettier': 'error'
     }
