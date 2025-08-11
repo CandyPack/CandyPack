@@ -40,5 +40,14 @@
     "smtp-server": "^3.13.4",
     "sqlite3": "^5.1.7",
     "ssh2": "^1.15.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "eslint": "^9.33.0",
+    "globals": "^16.3.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   }
 }
