@@ -183,7 +183,7 @@ class Server {
 
   async watchdog() {
     console.log(await __('Starting CandyPack Server...'))
-    let child = Candy.ext.childProcess.spawn('node', [__dirname + '/../../tools/watchdog.js'], {
+    let child = Candy.ext.childProcess.spawn('node', [__dirname + '/../../watchdog/index.js'], {
       detached: true
     })
 
