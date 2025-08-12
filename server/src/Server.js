@@ -43,9 +43,8 @@ class Server {
       switch (args[0]) {
         case 'start':
           if (args.length > 1 || global.trigger !== 'cli') break
-          this.start().then(() => {
-            resolve()
-          })
+          this.start()
+          resolve()
           break
         case 'services':
           Candy.Service.status().then(services => {
@@ -175,8 +174,6 @@ class Server {
     try {
       process.kill(Candy.config.server.watchdog, 'SIGTERM')
       process.kill(Candy.config.server.pid, 'SIGTERM')
-      Candy.Service.stopAll()
-      Candy.Web.stopAll()
     } catch (e) {
       console.error('Error stopping services:', e)
     }
