@@ -31,5 +31,10 @@
     "Change mail account password": "E-posta hesabı şifresini değiştir",
     "Renew SSL certificate for a domain": "Bir domain için SSL sertifikasını yenile",
     "List all domain subdomains": "Bir domainin tüm alt domainlerini listele",
-    "Monitor Website or Service": "Web Sitesi veya Hizmeti İzle"
+    "Monitor Website or Service": "Web Sitesi veya Hizmeti İzle",
+    "Offline": "Offline",
+    "Commands:": "Commands:",
+    "Debug CandyPack Server": "Debug CandyPack Server",
+    "Add a new Service": "Add a new Service",
+    "'%s' is not a valid command.": "'%s' is not a valid command."
 }
