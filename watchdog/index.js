@@ -72,8 +72,19 @@ async function performStartupChecks() {
       const configData = await fs.readFile(CONFIG_PATH, 'utf8')
       config = JSON.parse(configData)
     } catch (error) {
-      console.error('Error reading or parsing config file, resetting it.', error)
-      config = {}
+      // If reading or parsing fails, try to read a backup config file
+      if (fs.existsSync(CONFIG_PATH + '.bak')) {
+        const backupData = await fs.readFile(CONFIG_PATH + '.bak', 'utf8')
+        try {
+          config = JSON.parse(backupData)
+        } catch (error) {
+          console.error('Error reading or parsing backup config file, resetting it.', error)
+          config = {}
+        }
+      } else {
+        console.error('Error reading or parsing config file, resetting it.', error)
+        config = {}
+      }
     }
 
     if (!config.server) config.server = {}
