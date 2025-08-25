@@ -6,7 +6,7 @@ import prettierConfig from "eslint-config-prettier";
 
 export default defineConfig([
   {
-    files: ['tools/**/*.js'],
+    files: ['watchdog/**/*.js', 'cli/**/*.js', 'core/**/*.js'],
     languageOptions: {
       globals: {...globals.node},
       sourceType: 'script'

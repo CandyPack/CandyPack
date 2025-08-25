@@ -1,3 +1,6 @@
+const fs = require('fs')
+const os = require('os')
+
 class Config {
   #dir
   #file
@@ -6,24 +9,24 @@ class Config {
   #changed = false
 
   async init() {
-    this.#dir = Candy.ext.os.homedir() + '/.candypack'
+    this.#dir = os.homedir() + '/.candypack'
     this.#file = this.#dir + '/config.json'
-    Candy.config = {}
-    if (!Candy.ext.fs.existsSync(this.#dir)) Candy.ext.fs.mkdirSync(this.#dir)
-    if (!Candy.ext.fs.existsSync(this.#file)) this.#save()
+    this.config = {}
+    if (!fs.existsSync(this.#dir)) fs.mkdirSync(this.#dir)
+    if (!fs.existsSync(this.#file)) this.#save()
     else await this.#load()
     if (global.trigger === 'cli') setInterval(() => this.#save(), 500)
-    Candy.config = this.#proxy(Candy.config)
+    this.config = this.#proxy(this.config)
   }
 
   async #load() {
     return new Promise(resolve => {
       if (this.#saving && this.#loaded) return resolve()
-      if (!Candy.ext.fs.existsSync(this.#file)) {
+      if (!fs.existsSync(this.#file)) {
         this.#loaded = true
         return resolve()
       }
-      Candy.ext.fs.readFile(this.#file, 'utf8', (err, data) => {
+      fs.readFile(this.#file, 'utf8', (err, data) => {
         if (err) {
           console.log(err)
           this.#loaded = true
@@ -41,10 +44,10 @@ class Config {
         if (!this.#loaded) {
           if (data.length > 2) {
             var backup = this.#dir + '/config-corrupted.json'
-            if (Candy.ext.fs.existsSync(this.#file)) Candy.ext.fs.copyFileSync(this.#file, backup)
+            if (fs.existsSync(this.#file)) fs.copyFileSync(this.#file, backup)
           }
-          if (Candy.ext.fs.existsSync(this.#file + '.bak')) {
-            Candy.ext.fs.readFile(this.#file + '.bak', 'utf8', async (err, data) => {
+          if (fs.existsSync(this.#file + '.bak')) {
+            fs.readFile(this.#file + '.bak', 'utf8', async (err, data) => {
               if (err) {
                 console.log(err)
                 this.#save(true)
@@ -52,21 +55,21 @@ class Config {
               }
               try {
                 data = JSON.parse(data)
-                await Candy.ext.fs.promises.writeFile(this.#file, JSON.stringify(data, null, 4), 'utf8')
+                await fs.promises.writeFile(this.#file, JSON.stringify(data, null, 4), 'utf8')
               } catch (e) {
                 console.log(e)
                 this.#save(true)
               }
-              Candy.config = data
+              this.config = data
               return resolve()
             })
           } else {
-            Candy.config = {}
+            this.config = {}
             this.#save(true)
             return resolve()
           }
         } else {
-          Candy.config = data
+          this.config = data
           return resolve()
         }
       })
@@ -100,11 +103,11 @@ class Config {
     if (this.#saving || !this.#changed) return
     this.#changed = false
     this.#saving = true
-    let json = JSON.stringify(Candy.config, null, 4)
+    let json = JSON.stringify(this.config, null, 4)
     if (json.length < 3) json = '{}'
-    Candy.ext.fs.writeFileSync(this.#file, json, 'utf8')
+    fs.writeFileSync(this.#file, json, 'utf8')
     setTimeout(() => {
-      Candy.ext.fs.writeFileSync(this.#file + '.bak', json, 'utf8')
+      fs.writeFileSync(this.#file + '.bak', json, 'utf8')
     }, 5000)
     this.#saving = false
   }

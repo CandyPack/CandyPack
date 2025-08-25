@@ -19,9 +19,9 @@ class Mail {
     if (!this.#started) this.init()
     if (!this.#started) return
     this.#checking = true
-    for (const domain of Object.keys(Candy.config.websites)) {
-      if (!Candy.config.websites[domain].DNS || !Candy.config.websites[domain].DNS.MX) continue
-      if (Candy.config.websites[domain].cert !== false && !Candy.config.websites[domain].cert?.dkim) this.#dkim(domain)
+    for (const domain of Object.keys(Candy.Config.config.websites)) {
+      if (!Candy.Config.config.websites[domain].DNS || !Candy.Config.config.websites[domain].DNS.MX) continue
+      if (Candy.Config.config.websites[domain].cert !== false && !Candy.Config.config.websites[domain].cert?.dkim) this.#dkim(domain)
     }
     this.#checking = false
   }
@@ -38,10 +38,10 @@ class Mail {
     if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return Candy.Api.result(false, __('Invalid email address.'))
     if (await this.exists(email)) return Candy.Api.result(false, __('Mail account %s already exists.', email))
     let domain = email.split('@')[1]
-    if (!Candy.config.websites[domain]) {
-      for (let d in Candy.config.websites) {
+    if (!Candy.Config.config.websites[domain]) {
+      for (let d in Candy.Config.config.websites) {
         if (domain.substr(-d.length) != d) continue
-        if (Candy.config.websites[d].subdomain.includes(domain.substr(-d.length))) {
+        if (Candy.Config.config.websites[d].subdomain.includes(domain.substr(-d.length))) {
           domain = d
           break
         }
@@ -81,8 +81,8 @@ class Mail {
       .replace('-----END PUBLIC KEY-----', '')
       .replace(/\r\n/g, '')
       .replace(/\n/g, '')
-    if (!Candy.config.websites[domain].cert) Candy.config.websites[domain].cert = {}
-    Candy.config.websites[domain].cert.dkim = {
+    if (!Candy.Config.config.websites[domain].cert) Candy.Config.config.websites[domain].cert = {}
+    Candy.Config.config.websites[domain].cert.dkim = {
       private: Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.key',
       public: Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.pub'
     }
@@ -104,8 +104,8 @@ class Mail {
 
   init() {
     let start = false
-    for (let domain in Candy.config.websites) {
-      let web = Candy.config.websites[domain]
+    for (let domain in Candy.Config.config.websites) {
+      let web = Candy.Config.config.websites[domain]
       if (web && web.DNS && web.DNS.MX) start = true
     }
     if (!start || this.#started) return
@@ -280,10 +280,10 @@ class Mail {
     const imap = new server(options)
     imap.listen(143)
     options.SNICallback = (hostname, callback) => {
-      let ssl = Candy.config.ssl ?? {}
+      let ssl = Candy.Config.config.ssl ?? {}
       let sslOptions = {}
-      while (!Candy.config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.')
-      let website = Candy.config.websites[hostname]
+      while (!Candy.Config.config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.')
+      let website = Candy.Config.config.websites[hostname]
       if (
         website &&
         website.cert.ssl &&
@@ -315,7 +315,7 @@ class Mail {
 
   async list(domain) {
     if (!domain) return Candy.Api.result(false, __('Domain is required.'))
-    if (!Candy.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
+    if (!Candy.Config.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
     let accounts = []
     await new Promise((resolve, reject) => {
       this.#db.each(
@@ -360,9 +360,9 @@ class Mail {
     if (!data.to.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
       return Candy.Api.result(false, __('Invalid email address.'))
     let domain = data.from.value[0].address.split('@')[1].split('.')
-    while (domain.length > 2 && !Candy.config.websites[domain.join('.')]) domain.shift()
+    while (domain.length > 2 && !Candy.Config.config.websites[domain.join('.')]) domain.shift()
     domain = domain.join('.')
-    if (!Candy.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
+    if (!Candy.Config.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
     let mail = {
       atttachments: [],
       headerLines: [],

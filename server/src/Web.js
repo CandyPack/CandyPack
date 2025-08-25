@@ -11,35 +11,27 @@ class Web {
 
   async check() {
     if (!this.#loaded) return
-    for (const domain of Object.keys(Candy.config.websites ?? {})) {
-      if (!Candy.config.websites[domain].pid) {
+    for (const domain of Object.keys(Candy.Config.config.websites ?? {})) {
+      if (!Candy.Config.config.websites[domain].pid) {
         this.start(domain)
-      } else if (!this.#watcher[Candy.config.websites[domain].pid]) {
+      } else if (!this.#watcher[Candy.Config.config.websites[domain].pid]) {
         try {
-          process.kill(Candy.config.websites[domain].pid, 'SIGTERM')
+          process.kill(Candy.Config.config.websites[domain].pid, 'SIGTERM')
         } catch (e) {
           console.error(e)
         }
-        Candy.config.websites[domain].pid = null
+        Candy.Config.config.websites[domain].pid = null
         this.start(domain)
       }
       if (this.#logs.log[domain]) {
-        Candy.ext.fs.writeFile(
-          Candy.ext.os.homedir() + '/.candypack/logs/' + domain + '.log',
-          this.#logs.log[domain],
-          function (err) {
-            if (err) log(err)
-          }
-        )
+        Candy.ext.fs.writeFile(Candy.ext.os.homedir() + '/.candypack/logs/' + domain + '.log', this.#logs.log[domain], function (err) {
+          if (err) log(err)
+        })
       }
       if (this.#logs.err[domain]) {
-        Candy.ext.fs.writeFile(
-          Candy.config.websites[domain].path + '/error.log',
-          this.#logs.err[domain],
-          function (err) {
-            if (err) log(err)
-          }
-        )
+        Candy.ext.fs.writeFile(Candy.Config.config.websites[domain].path + '/error.log', this.#logs.err[domain], function (err) {
+          if (err) log(err)
+        })
       }
     }
     this.server()
@@ -62,10 +54,8 @@ class Web {
     for (const iterator of ['http://', 'https://', 'ftp://', 'www.']) {
       if (domain.startsWith(iterator)) domain = domain.replace(iterator, '')
     }
-    if (domain.length < 3 || (!domain.includes('.') && domain != 'localhost'))
-      return Candy.Api.result(false, __('Invalid domain.'))
-    if (Candy.config.websites[domain])
-      return Candy.Api.result(false, await __('Website %s already exists.', domain))
+    if (domain.length < 3 || (!domain.includes('.') && domain != 'localhost')) return Candy.Api.result(false, __('Invalid domain.'))
+    if (Candy.Config.config.websites[domain]) return Candy.Api.result(false, await __('Website %s already exists.', domain))
     web.domain = domain
     if (path && path.length > 0) {
       web.path = Candy.ext.path.resolve(path).replace(/\\/g, '/') + '/'
@@ -75,9 +65,8 @@ class Web {
     if (Candy.ext.path.length > 0) web.path = path
     if (!Candy.ext.fs.existsSync(web.path)) Candy.ext.fs.mkdirSync(web.path, {recursive: true})
     web.subdomain = ['www']
-    if (web.domain.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) || web.domain == 'localhost')
-      web.cert = false
-    Candy.config.websites[web.domain] = web
+    if (web.domain.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) || web.domain == 'localhost') web.cert = false
+    Candy.Config.config.websites[web.domain] = web
     if (web.domain !== 'localhost') {
       Candy.DNS.record(
         {name: web.domain, type: 'A', value: Candy.DNS.ip},
@@ -92,10 +81,8 @@ class Web {
       )
     }
     Candy.ext.childProcess.execSync('npm link candypack', {cwd: web.path})
-    if (Candy.ext.fs.existsSync(web.path + 'node_modules/.bin'))
-      Candy.ext.fs.rmSync(web.path + 'node_modules/.bin', {recursive: true})
-    if (!Candy.ext.fs.existsSync(web.path + '/node_modules'))
-      Candy.ext.fs.mkdirSync(web.path + '/node_modules')
+    if (Candy.ext.fs.existsSync(web.path + 'node_modules/.bin')) Candy.ext.fs.rmSync(web.path + 'node_modules/.bin', {recursive: true})
+    if (!Candy.ext.fs.existsSync(web.path + '/node_modules')) Candy.ext.fs.mkdirSync(web.path + '/node_modules')
     Candy.ext.fs.cpSync(__dirname + '/../../web/', web.path, {recursive: true})
     return Candy.Api.result(true, __('Website %s created.', domain))
   }
@@ -111,7 +98,7 @@ class Web {
   }
 
   list() {
-    let domains = Object.keys(Candy.config.websites ?? {})
+    let domains = Object.keys(Candy.Config.config.websites ?? {})
     if (domains.length == 0) return Candy.Api.result(false, __('No websites found.'))
     return Candy.Api.result(true, __('Websites:') + '\n  ' + domains.join('\n  '))
   }
@@ -119,9 +106,8 @@ class Web {
   request(req, res, secure) {
     let host = req.headers.host
     if (!host) return this.index(req, res)
-    while (!Candy.config.websites[host] && host.includes('.'))
-      host = host.split('.').slice(1).join('.')
-    const website = Candy.config.websites[host]
+    while (!Candy.Config.config.websites[host] && host.includes('.')) host = host.split('.').slice(1).join('.')
+    const website = Candy.Config.config.websites[host]
     if (!website) return this.index(req, res)
     if (!website.pid || !this.#watcher[website.pid]) return this.index(req, res)
     try {
@@ -146,28 +132,17 @@ class Web {
 
   server() {
     if (!this.#loaded) return setTimeout(this.server, 1000)
-    if (Object.keys(Candy.config.websites ?? {}).length == 0) return
-    if (!this.#server_http)
-      this.#server_http = Candy.ext.http
-        .createServer((req, res) => this.request(req, res, false))
-        .listen(80)
-    let ssl = Candy.config.ssl ?? {}
-    if (
-      !this.#server_https &&
-      ssl &&
-      ssl.key &&
-      ssl.cert &&
-      Candy.ext.fs.existsSync(ssl.key) &&
-      Candy.ext.fs.existsSync(ssl.cert)
-    ) {
+    if (Object.keys(Candy.Config.config.websites ?? {}).length == 0) return
+    if (!this.#server_http) this.#server_http = Candy.ext.http.createServer((req, res) => this.request(req, res, false)).listen(80)
+    let ssl = Candy.Config.config.ssl ?? {}
+    if (!this.#server_https && ssl && ssl.key && ssl.cert && Candy.ext.fs.existsSync(ssl.key) && Candy.ext.fs.existsSync(ssl.cert)) {
       this.#server_https = Candy.ext.https
         .createServer(
           {
             SNICallback: (hostname, callback) => {
               let sslOptions
-              while (!Candy.config.websites[hostname] && hostname.includes('.'))
-                hostname = hostname.split('.').slice(1).join('.')
-              let website = Candy.config.websites[hostname]
+              while (!Candy.Config.config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.')
+              let website = Candy.Config.config.websites[hostname]
               if (
                 website &&
                 website.cert &&
@@ -202,16 +177,16 @@ class Web {
   }
 
   set(domain, data) {
-    Candy.config.websites[domain] = Candy.config.websites[domain] = data
+    Candy.Config.config.websites[domain] = Candy.Config.config.websites[domain] = data
   }
 
   async start(domain) {
     if (this.#active[domain] || !this.#loaded) return
     this.#active[domain] = true
-    if (!Candy.config.websites[domain]) return (this.#active[domain] = false)
+    if (!Candy.Config.config.websites[domain]) return (this.#active[domain] = false)
     if (
-      Candy.config.websites[domain].status == 'errored' &&
-      Date.now() - Candy.config.websites[domain].updated < this.#error_counts[domain] * 1000
+      Candy.Config.config.websites[domain].status == 'errored' &&
+      Date.now() - Candy.Config.config.websites[domain].updated < this.#error_counts[domain] * 1000
     )
       return (this.#active[domain] = false)
     let port = 60000
@@ -233,18 +208,17 @@ class Web {
         using = true
       }
     } while (using)
-    Candy.config.websites[domain].port = port
+    Candy.Config.config.websites[domain].port = port
     this.#ports[port] = true
-    if (!Candy.ext.fs.existsSync(Candy.config.websites[domain].path + '/index.js')) {
+    if (!Candy.ext.fs.existsSync(Candy.Config.config.websites[domain].path + '/index.js')) {
       log(__("Website %s doesn't have index.js file.", domain))
       this.#active[domain] = false
       return
     }
-    var child = Candy.ext.childProcess.spawn(
-      'node',
-      [Candy.config.websites[domain].path + '/index.js', port],
-      {cwd: Candy.config.websites[domain].path, detached: true}
-    )
+    var child = Candy.ext.childProcess.spawn('node', [Candy.Config.config.websites[domain].path + '/index.js', port], {
+      cwd: Candy.Config.config.websites[domain].path,
+      detached: true
+    })
     let pid = child.pid
     child.stdout.on('data', data => {
       if (!this.#logs.log[domain]) this.#logs.log[domain] = ''
@@ -259,11 +233,8 @@ class Web {
           .join('\n[LOG][' + Date.now() + '] ') +
         '\n'
       if (this.#logs.log[domain].length > 1000000)
-        this.#logs.log[domain] = this.#logs.log[domain].substr(
-          this.#logs.log[domain].length - 1000000
-        )
-      if (Candy.config.websites[domain].status == 'errored')
-        Candy.config.websites[domain].status = 'running'
+        this.#logs.log[domain] = this.#logs.log[domain].substr(this.#logs.log[domain].length - 1000000)
+      if (Candy.Config.config.websites[domain].status == 'errored') Candy.Config.config.websites[domain].status = 'running'
     })
     child.stderr.on('data', data => {
       if (!this.#logs.err[domain]) this.#logs.err[domain] = ''
@@ -279,39 +250,37 @@ class Web {
         '\n'
       this.#logs.err[domain] += data.toString()
       if (this.#logs.err[domain].length > 1000000)
-        this.#logs.err[domain] = this.#logs.err[domain].substr(
-          this.#logs.err[domain].length - 1000000
-        )
-      Candy.config.websites[domain].status = 'errored'
+        this.#logs.err[domain] = this.#logs.err[domain].substr(this.#logs.err[domain].length - 1000000)
+      Candy.Config.config.websites[domain].status = 'errored'
     })
     child.on('exit', () => {
-      Candy.config.websites[domain].pid = null
-      Candy.config.websites[domain].updated = Date.now()
-      if (Candy.config.websites[domain].status == 'errored') {
-        Candy.config.websites[domain].status = 'errored'
+      Candy.Config.config.websites[domain].pid = null
+      Candy.Config.config.websites[domain].updated = Date.now()
+      if (Candy.Config.config.websites[domain].status == 'errored') {
+        Candy.Config.config.websites[domain].status = 'errored'
         this.#error_counts[domain] = this.#error_counts[domain] ?? 0
         this.#error_counts[domain]++
-      } else Candy.config.websites[domain].status = 'stopped'
+      } else Candy.Config.config.websites[domain].status = 'stopped'
       this.#watcher[pid] = false
-      delete this.#ports[Candy.config.websites[domain].port]
+      delete this.#ports[Candy.Config.config.websites[domain].port]
       this.#active[domain] = false
     })
 
-    Candy.config.websites[domain].pid = pid
-    Candy.config.websites[domain].started = Date.now()
-    Candy.config.websites[domain].status = 'running'
+    Candy.Config.config.websites[domain].pid = pid
+    Candy.Config.config.websites[domain].started = Date.now()
+    Candy.Config.config.websites[domain].status = 'running'
     this.#watcher[pid] = true
     this.#started[domain] = Date.now()
   }
 
   async status() {
     this.init()
-    return Candy.config.websites
+    return Candy.Config.config.websites
   }
 
   async stopAll() {
-    for (const domain of Object.keys(Candy.config.websites ?? {})) {
-      let website = Candy.config.websites[domain]
+    for (const domain of Object.keys(Candy.Config.config.websites ?? {})) {
+      let website = Candy.Config.config.websites[domain]
       if (website.pid) {
         try {
           process.kill(website.pid, 'SIGTERM')

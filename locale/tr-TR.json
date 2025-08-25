@@ -36,5 +36,6 @@
     "Commands:": "Commands:",
     "Debug CandyPack Server": "Debug CandyPack Server",
     "Add a new Service": "Add a new Service",
-    "'%s' is not a valid command.": "'%s' is not a valid command."
+    "'%s' is not a valid command.": "'%s' is not a valid command.",
+    "Service %s already exists.": "Service %s already exists."
 }

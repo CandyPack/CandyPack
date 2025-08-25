@@ -1,9 +1,9 @@
 class Server {
   async check() {
     return new Promise(resolve => {
-      if (!Candy.config.server.watchdog) return resolve(false)
+      if (!Candy.Config.config.server.watchdog) return resolve(false)
       Candy.ext
-        .process('pid', Candy.config.server.watchdog)
+        .process('pid', Candy.Config.config.server.watchdog)
         .then(list => {
           if (list.length > 0) return resolve(true)
           return resolve(false)
@@ -16,7 +16,7 @@ class Server {
   }
 
   #init() {
-    let pid = Candy.config.server.watchdog
+    let pid = Candy.Config.config.server.watchdog
     if (!pid) {
       this.watchdog()
     } else {
@@ -36,8 +36,8 @@ class Server {
     process.on('uncaughtException', err => {
       console.error('Uncaught Exception:', err.stack || err)
     })
-    if (!Candy.config) Candy.config = {}
-    if (!Candy.config.server) Candy.config.server = {}
+    if (!Candy.Config.config) Candy.Config.config = {}
+    if (!Candy.Config.config.server) Candy.Config.config.server = {}
     return new Promise(resolve => {
       var args = process.argv.slice(2)
       switch (args[0]) {
@@ -61,10 +61,7 @@ class Server {
             for (const service of services) {
               let status = 'Stopped'
               if (service.active)
-                status =
-                  service.status == 'running'
-                    ? 'Running'
-                    : service.status.charAt(0).toUpperCase() + service.status.slice(1)
+                status = service.status == 'running' ? 'Running' : service.status.charAt(0).toUpperCase() + service.status.slice(1)
               let row = {}
               row['ID'] = {
                 content: service.id,
@@ -116,8 +113,8 @@ class Server {
 
   async uptime() {
     return new Promise(function (resolve) {
-      if (!Candy.config.server.started) return resolve(0)
-      var uptime = Date.now() - Candy.config.server.started
+      if (!Candy.Config.config.server.started) return resolve(0)
+      var uptime = Date.now() - Candy.Config.config.server.started
       let seconds = Math.floor(uptime / 1000)
       let minutes = Math.floor(seconds / 60)
       let hours = Math.floor(minutes / 60)
@@ -136,7 +133,7 @@ class Server {
 
   async services() {
     return new Promise(resolve => {
-      let services = Candy.config.server.services ?? []
+      let services = Candy.Config.config.server.services ?? []
       let running = 0
       for (const service of services) if (service.active && service.status == 'running') running++
       return resolve(running)
@@ -152,8 +149,8 @@ class Server {
   }
 
   start() {
-    Candy.config.server.pid = process.pid
-    Candy.config.server.started = Date.now()
+    Candy.Config.config.server.pid = process.pid
+    Candy.Config.config.server.started = Date.now()
     Candy.Service.init()
     Candy.DNS.init()
     Candy.Web.init()
@@ -172,13 +169,13 @@ class Server {
   stop() {
     if (!this.check()) return
     try {
-      process.kill(Candy.config.server.watchdog, 'SIGTERM')
-      process.kill(Candy.config.server.pid, 'SIGTERM')
+      process.kill(Candy.Config.config.server.watchdog, 'SIGTERM')
+      process.kill(Candy.Config.config.server.pid, 'SIGTERM')
     } catch (e) {
       console.error('Error stopping services:', e)
     }
-    Candy.config.server.pid = null
-    Candy.config.server.started = null
+    Candy.Config.config.server.pid = null
+    Candy.Config.config.server.started = null
   }
 
   async watchdog() {
@@ -187,8 +184,8 @@ class Server {
       detached: true
     })
 
-    Candy.config.server.watchdog = child.pid
-    Candy.config.server.started = Date.now()
+    Candy.Config.config.server.watchdog = child.pid
+    Candy.Config.config.server.started = Date.now()
     process.exit(0)
   }
 }

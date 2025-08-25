@@ -3,34 +3,37 @@ class SSL {
   #checked = {}
 
   async check() {
-    if (this.#checking || !Candy.config.websites) return
+    if (this.#checking || !Candy.Config.config.websites) return
     this.#checking = true
     this.#self()
-    for (const domain of Object.keys(Candy.config.websites)) {
-      if (Candy.config.websites[domain].cert === false) continue
-      if (!Candy.config.websites[domain].cert?.ssl || Date.now() + 1000 * 60 * 60 * 24 * 30 > Candy.config.websites[domain].cert.ssl.expiry)
+    for (const domain of Object.keys(Candy.Config.config.websites)) {
+      if (Candy.Config.config.websites[domain].cert === false) continue
+      if (
+        !Candy.Config.config.websites[domain].cert?.ssl ||
+        Date.now() + 1000 * 60 * 60 * 24 * 30 > Candy.Config.config.websites[domain].cert.ssl.expiry
+      )
         await this.#ssl(domain)
     }
     this.#checking = false
   }
 
   renew(domain) {
-    if (!Candy.config.websites[domain]) {
-      for (const key of Object.keys(Candy.config.websites)) {
-        for (const subdomain of Candy.config.websites[key].subdomain)
+    if (!Candy.Config.config.websites[domain]) {
+      for (const key of Object.keys(Candy.Config.config.websites)) {
+        for (const subdomain of Candy.Config.config.websites[key].subdomain)
           if (subdomain + '.' + key == domain) {
             domain = key
             break
           }
       }
-      if (!Candy.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
+      if (!Candy.Config.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
     }
     this.#ssl(domain)
     return Candy.Api.result(true, __('SSL certificate for domain %s renewed successfully.', domain))
   }
 
   #self() {
-    let ssl = Candy.config.ssl ?? {}
+    let ssl = Candy.Config.config.ssl ?? {}
     if (ssl && ssl.expiry > Date.now() && ssl.key && ssl.cert && Candy.ext.fs.existsSync(ssl.key) && Candy.ext.fs.existsSync(ssl.cert))
       return
     const attrs = [{name: 'commonName', value: 'CandyPack'}]
@@ -44,7 +47,7 @@ class SSL {
     ssl.key = key_file
     ssl.cert = crt_file
     ssl.expiry = Date.now() + 86400000
-    Candy.config.ssl = ssl
+    Candy.Config.config.ssl = ssl
   }
 
   async #ssl(domain) {
@@ -55,7 +58,7 @@ class SSL {
       accountKey: accountPrivateKey
     })
     let subdomains = [domain]
-    for (const subdomain of Candy.config.websites[domain].subdomain ?? []) subdomains.push(subdomain + '.' + domain)
+    for (const subdomain of Candy.Config.config.websites[domain].subdomain ?? []) subdomains.push(subdomain + '.' + domain)
     const [key, csr] = await Candy.ext.acme.forge.createCsr({
       commonName: domain,
       altNames: subdomains
@@ -115,7 +118,7 @@ class SSL {
       Candy.ext.fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl', {recursive: true})
     Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.key', key)
     Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.crt', cert)
-    let websites = Candy.config.websites ?? {}
+    let websites = Candy.Config.config.websites ?? {}
     let website = websites[domain]
     if (!website) return
     if (!website.cert) website.cert = {}
@@ -125,7 +128,7 @@ class SSL {
       expiry: Date.now() + 1000 * 60 * 60 * 24 * 30 * 3
     }
     websites[domain] = website
-    Candy.config.websites = websites
+    Candy.Config.config.websites = websites
   }
 }
 

@@ -8,7 +8,7 @@ var active = {}
 
 function get(id) {
   if (!loaded && services.length == 0) {
-    services = Candy.config.services ?? []
+    services = Candy.Config.config.services ?? []
     loaded = true
   }
   for (const service of services) {
@@ -28,7 +28,7 @@ function add(file) {
   }
   services.push(service)
   services[service.id] = service
-  Candy.config.services = services
+  Candy.Config.config.services = services
   return true
 }
 
@@ -45,11 +45,11 @@ function set(id, key, value) {
     return false
   }
   services[index] = service
-  Candy.config.services = services
+  Candy.Config.config.services = services
 }
 
 async function check() {
-  services = Candy.config.services ?? []
+  services = Candy.Config.config.services ?? []
   for (const service of services) {
     if (service.active) {
       if (!service.pid) {
@@ -169,7 +169,7 @@ async function run(id) {
 module.exports = {
   check: check,
   init: async function () {
-    services = Candy.config.services ?? []
+    services = Candy.Config.config.services ?? []
     for (const service of services) {
       Candy.ext.fs.readFile(Candy.ext.os.homedir() + '/.candypack/logs/' + service.name + '.log', 'utf8', function (err, data) {
         if (!err) logs[service.id] = data.toString()
@@ -229,7 +229,7 @@ module.exports = {
   },
   status: async function () {
     return new Promise(resolve => {
-      let services = Candy.config.services ?? []
+      let services = Candy.Config.config.services ?? []
       for (const service of services) {
         if (service.status == 'running') {
           var uptime = Date.now() - service.started

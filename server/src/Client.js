@@ -6,7 +6,7 @@ class Client {
       .then(response => {
         let token = response.token
         let secret = response.secret
-        Candy.config.auth = {token: token, secret: secret}
+        Candy.Config.config.auth = {token: token, secret: secret}
         log('CandyPack authenticated!')
       })
       .catch(error => {
