@@ -1,124 +1,14 @@
+require('../../core/Candy.js')
+
+const childProcess = require('child_process')
+const fs = require('fs')
+const os = require('os')
+const readline = require('readline')
+
 class Cli {
   #backgrounds = {red: 41, green: 42, yellow: 43, blue: 44, magenta: 45, white: 47, gray: 100}
   #colors = {red: 31, green: 32, yellow: 33, blue: 34, magenta: 35, white: 37, gray: 90}
 
-  #commands = {
-    auth: {
-      args: ['key'],
-      description: 'Define your server to your CandyPack account'
-    },
-    debug: {
-      description: 'Debug CandyPack Server',
-      action: async () => this.debug()
-    },
-    help: {
-      description: 'List all available commands',
-      action: async () => this.#help()
-    },
-    monit: {
-      description: 'Monitor Website or Service',
-      action: async () => this.monitor()
-    },
-    restart: {
-      description: 'Restart CandyPack Server',
-      action: async () => Candy.Server.restart()
-    },
-    run: {
-      args: ['file'],
-      description: 'Add a new Service',
-      action: async args => {
-        let service = args[0]
-        if (!service.startsWith('/') && !/^[a-zA-Z]:\\|^\\\\/.test(service)) {
-          service = Candy.ext.path.resolve() + '/' + service
-        }
-        await this.#call({action: 'service.start', data: [service]})
-      }
-    },
-
-    mail: {
-      title: 'MAIL',
-      sub: {
-        create: {
-          description: 'Create a new mail account',
-          action: async () =>
-            await this.#call({
-              action: 'mail.create',
-              data: [
-                await this.question(await __('Enter the e-mail address: ')),
-                await this.question(await __('Enter the password: ')),
-                await this.question(await __('Re-enter the password: '))
-              ]
-            })
-        },
-        delete: {
-          description: 'Delete a mail account',
-          action: async () => await this.#call({action: 'mail.delete', data: [await this.question(await __('Enter the e-mail address: '))]})
-        },
-        list: {
-          description: 'List all domain mail accounts',
-          action: async () => await this.#call({action: 'mail.list', data: [await this.question(await __('Enter the domain name: '))]})
-        },
-        password: {
-          description: 'Change mail account password',
-          action: async () =>
-            await this.#call({
-              action: 'mail.password',
-              data: [
-                await this.question(await __('Enter the e-mail address: ')),
-                await this.question(await __('Enter the new password: ')),
-                await this.question(await __('Re-enter the new password: '))
-              ]
-            })
-        }
-      }
-    },
-    ssl: {
-      title: 'SSL',
-      sub: {
-        renew: {
-          description: 'Renew SSL certificate for a domain',
-          action: async () => await this.#call({action: 'ssl.renew', data: [await this.question(await __('Enter the domain name: '))]})
-        }
-      }
-    },
-    subdomain: {
-      title: 'SUBDOMAIN',
-      sub: {
-        create: {
-          description: 'Create a new subdomain',
-          action: async () =>
-            await this.#call({
-              action: 'subdomain.create',
-              data: [await this.question(await __('Enter the subdomain name (subdomain.example.com): '))]
-            })
-        },
-        list: {
-          description: 'List all domain subdomains',
-          action: async () => await this.#call({action: 'subdomain.list', data: [await this.question(await __('Enter the domain name: '))]})
-        }
-      }
-    },
-    web: {
-      title: 'WEBSITE',
-      sub: {
-        create: {
-          description: 'Create a new website',
-          action: async () => {
-            let domain = await this.question('Enter the domain name: ')
-            let path = Candy.ext.path.resolve().replace(/\\/g, '/') + '/' + domain + '/'
-            await this.#call({
-              action: 'web.create',
-              data: [domain, (await this.question(await __('Enter the path to the website (%s): ', path))) ?? path]
-            })
-          }
-        },
-        list: {
-          description: 'List all websites',
-          action: async () => await this.#call({action: 'web.list'})
-        }
-      }
-    }
-  }
   current = ''
   #modules = ['api', 'candy', 'cli', 'client', 'config', 'dns', 'lang', 'mail', 'server', 'service', 'ssl', 'storage', 'subdomain', 'web']
   rl
@@ -133,21 +23,17 @@ class Cli {
   height
   #watch = []
 
-  close() {
-    if (this.rl) this.rl.close()
+  async #boot() {
+    console.log(await __('Starting CandyPack Server...'))
+    const child = childProcess.spawn('node', [__dirname + '/../../watchdog/index.js'], {
+      detached: true,
+      stdio: 'ignore'
+    })
+    child.unref()
   }
 
-  #call(command) {
-    if (!command) return
-    Candy.ext.axios
-      .post('http://127.0.0.1:1453', command, {headers: {Authorization: Candy.Config.config.api.auth}})
-      .then(response => {
-        if (response.data.message) this.log(response.data.message)
-        this.close()
-      })
-      .catch(error => {
-        this.log(error)
-      })
+  close() {
+    if (this.rl) this.rl.close()
   }
 
   #color(text, color, ...args) {
@@ -164,7 +50,7 @@ class Cli {
     process.stdout.write(process.platform === 'win32' ? `title CandyPack Debug\n` : `\x1b]2;CandyPack Debug\x1b\x5c`)
     await this.#debug()
     setInterval(() => this.#debug(), 250)
-    this.rl = Candy.ext.readline.createInterface({
+    this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
     })
@@ -307,11 +193,11 @@ class Cli {
     return {result: result, space: space}
   }
 
-  async #help(commands) {
+  async help(commands) {
     let result = []
     let space = 0
     if (typeof commands == 'string') {
-      let obj = this.#commands
+      let obj = Candy.core('Commands')
       let command = commands.shift()
       if (!obj[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
       obj = obj[command]
@@ -325,9 +211,9 @@ class Cli {
       let lines = detail.result.split('\n')
       for (let line of lines) result.push(line)
     } else {
-      for (const command in this.#commands) {
+      for (const command in Candy.core('Commands')) {
         if (commands && commands !== true && commands[0] !== command) continue
-        let obj = this.#commands[command]
+        let obj = Candy.core('Commands')[command]
         if (commands === true && !obj.action) continue
         let detail = await this.#detail(command, obj)
         if (detail.space > space) space = detail.space
@@ -354,22 +240,22 @@ class Cli {
     return '   '
   }
 
-  init() {
-    if (global.trigger == 'cli') return
+  async init() {
     log('\n', 'CandyPack')
+    if (!(await Candy.cli('Connector').check())) this.#boot()
     let args = process.argv.slice(2)
     let cmds = process.argv.slice(2)
     if (args.length == 0) return this.#status()
     let command = args.shift()
-    if (!this.#commands[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')))
-    let action = this.#commands[command]
+    if (!Candy.core('Commands')[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')))
+    let action = Candy.core('Commands')[command]
     while (args.length > 0 && !action.args) {
       command = args.shift()
-      if (!action.sub || !action.sub[command]) return this.#help(cmds)
+      if (!action.sub || !action.sub[command]) return this.help(cmds)
       action = action.sub[command]
     }
     if (action.action) return action.action(args)
-    else return this.#help(cmds)
+    else return this.help(cmds)
   }
 
   #length(text) {
@@ -397,19 +283,19 @@ class Cli {
     this.logs.selected = this.selected
     let file = null
     if (this.selected < this.domains.length) {
-      file = Candy.ext.os.homedir() + '/.candypack/logs/' + this.domains[this.selected] + '.log'
+      file = os.homedir() + '/.candypack/logs/' + this.domains[this.selected] + '.log'
     } else if (this.selected - this.domains.length < this.services.length) {
-      file = Candy.ext.os.homedir() + '/.candypack/logs/' + this.services[this.selected - this.domains.length].name + '.log'
+      file = os.homedir() + '/.candypack/logs/' + this.services[this.selected - this.domains.length].name + '.log'
     } else {
       this.logging = false
       return
     }
     let log = ''
     let mtime = null
-    if (Candy.ext.fs.existsSync(file)) {
-      mtime = Candy.ext.fs.statSync(file).mtime
+    if (fs.existsSync(file)) {
+      mtime = fs.statSync(file).mtime
       if (this.selected == this.logs.selected && mtime == this.logs.mtime) return
-      log = Candy.ext.fs.readFileSync(file, 'utf8')
+      log = fs.readFileSync(file, 'utf8')
     }
     this.logs.content = log
       .trim()
@@ -442,17 +328,17 @@ class Cli {
       return
     }
 
-    const file = Candy.ext.os.homedir() + '/.candypack/logs/.candypack.log'
+    const file = os.homedir() + '/.candypack/logs/.candypack.log'
     let log = ''
     let mtime = null
 
-    if (Candy.ext.fs.existsSync(file)) {
-      mtime = Candy.ext.fs.statSync(file).mtime
+    if (fs.existsSync(file)) {
+      mtime = fs.statSync(file).mtime
       if (JSON.stringify(this.#watch) === JSON.stringify(this.logs.watched) && mtime == this.logs.mtime) {
         this.logging = false
         return
       }
-      log = Candy.ext.fs.readFileSync(file, 'utf8')
+      log = fs.readFileSync(file, 'utf8')
     }
 
     const selectedModules = this.#watch.map(index => this.#modules[index])
@@ -503,7 +389,7 @@ class Cli {
     process.stdout.write(process.platform === 'win32' ? `title CandyPack Monitor\n` : `\x1b]2;CandyPack Monitor\x1b\x5c`)
     await this.#monitor()
     setInterval(() => this.#monitor(), 250)
-    this.rl = Candy.ext.readline.createInterface({
+    this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
     })
@@ -529,8 +415,8 @@ class Cli {
   #monitor() {
     if (this.printing) return
     this.printing = true
-    this.websites = Candy.Config.config.websites ?? []
-    this.services = Candy.Config.config.services ?? []
+    this.websites = Candy.core('Config').config.websites ?? []
+    this.services = Candy.core('Config').config.services ?? []
     this.domains = Object.keys(this.websites)
     this.width = process.stdout.columns - 5
     this.height = process.stdout.rows - 2
@@ -632,60 +518,71 @@ class Cli {
       auth: false,
       uptime: 0
     }
-    status.online = await Candy.Server.check()
-    status.uptime = await Candy.Server.uptime()
-    status.services = await Candy.Server.services()
-    status.websites = Candy.Config.config.websites ? Object.keys(Candy.Config.config.websites).length : 0
+    status.online = await Candy.cli('Connector').check()
+    var uptime = Date.now() - Candy.core('Config').config.server.started
+    let seconds = Math.floor(uptime / 1000)
+    let minutes = Math.floor(seconds / 60)
+    let hours = Math.floor(minutes / 60)
+    let days = Math.floor(hours / 24)
+    seconds %= 60
+    minutes %= 60
+    hours %= 24
+    let uptimeString = ''
+    if (days) uptimeString += days + 'd '
+    if (hours) uptimeString += hours + 'h '
+    if (minutes && !days) uptimeString += minutes + 'm '
+    if (seconds && !hours) uptimeString += seconds + 's'
+    status.uptime = uptimeString
+    status.services = Candy.core('Config').config.services ? Object.keys(Candy.core('Config').config.services).length : 0
+    status.websites = Candy.core('Config').config.websites ? Object.keys(Candy.core('Config').config.websites).length : 0
     var args = process.argv.slice(2)
-    if (global.trigger == 'candy') {
-      if (args.length == 0) {
-        let length = 0
-        for (let i = 0; i < 2; i++) {
-          for (let iterator of ['Status', 'Uptime', 'Websites', 'Services', 'Auth']) {
-            let title = await __(iterator)
-            if (title.length > length) length = title.length
-            if (i) {
-              let space = ''
-              for (let j = 0; j < length - title.length; j++) space += ' '
-              switch (iterator) {
-                case 'Status':
-                  log(
-                    title +
-                      space +
-                      ' : ' +
-                      (status.online ? '\x1b[32m ' + (await __('Online')) : '\x1b[33m ' + (await __('Offline'))) +
-                      '\x1b[0m'
-                  )
-                  break
-                case 'Uptime':
-                  if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.uptime + '\x1b[0m')
-                  break
-                case 'Websites':
-                  if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.websites + '\x1b[0m')
-                  break
-                case 'Services':
-                  if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.services + '\x1b[0m')
-                  break
-                case 'Auth':
-                  log(
-                    title +
-                      space +
-                      ' : ' +
-                      (status.auth ? '\x1b[32m ' + (await __('Logged in')) : '\x1b[33m ' + (await __('Not logged in'))) +
-                      '\x1b[0m'
-                  )
-                  break
-              }
+    if (args.length == 0) {
+      let length = 0
+      for (let i = 0; i < 2; i++) {
+        for (let iterator of ['Status', 'Uptime', 'Websites', 'Services', 'Auth']) {
+          let title = await __(iterator)
+          if (title.length > length) length = title.length
+          if (i) {
+            let space = ''
+            for (let j = 0; j < length - title.length; j++) space += ' '
+            switch (iterator) {
+              case 'Status':
+                log(
+                  title +
+                    space +
+                    ' : ' +
+                    (status.online ? '\x1b[32m ' + (await __('Online')) : '\x1b[33m ' + (await __('Offline'))) +
+                    '\x1b[0m'
+                )
+                break
+              case 'Uptime':
+                if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.uptime + '\x1b[0m')
+                break
+              case 'Websites':
+                if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.websites + '\x1b[0m')
+                break
+              case 'Services':
+                if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.services + '\x1b[0m')
+                break
+              case 'Auth':
+                log(
+                  title +
+                    space +
+                    ' : ' +
+                    (status.auth ? '\x1b[32m ' + (await __('Logged in')) : '\x1b[33m ' + (await __('Not logged in'))) +
+                    '\x1b[0m'
+                )
+                break
             }
           }
         }
-        if (!status.auth) log(await __('Login on %s to manage all your server operations.', '\x1b[95mhttps://candypack.dev\x1b[0m'))
-        log()
-        log(await __('Commands:'))
-        length = 0
-        this.#help(true)
-        log('')
       }
+      if (!status.auth) log(await __('Login on %s to manage all your server operations.', '\x1b[95mhttps://candypack.dev\x1b[0m'))
+      log()
+      log(await __('Commands:'))
+      length = 0
+      this.help(true)
+      log('')
     }
   }
 
@@ -738,7 +635,7 @@ class Cli {
   question(question) {
     return new Promise(resolve => {
       if (!this.rl) {
-        this.rl = Candy.ext.readline.createInterface({
+        this.rl = readline.createInterface({
           input: process.stdin,
           output: process.stdout
         })

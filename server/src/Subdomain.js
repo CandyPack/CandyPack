@@ -2,36 +2,37 @@ class Subdomain {
   create(subdomain) {
     let domain = subdomain.split('.')
     subdomain = subdomain.trim().split('.')
-    if (subdomain.length < 3) return Candy.Api.result(false, __('Invalid subdomain name.'))
-    if (Candy.Config.config.websites[domain.join('.')]) return Candy.Api.result(false, __('Domain %s already exists.', domain.join('.')))
+    if (subdomain.length < 3) return Candy.server('Api').result(false, __('Invalid subdomain name.'))
+    if (Candy.core('Config').config.websites[domain.join('.')])
+      return Candy.server('Api').result(false, __('Domain %s already exists.', domain.join('.')))
     while (domain.length > 2) {
       domain.shift()
-      if (Candy.Config.config.websites[domain.join('.')]) {
+      if (Candy.core('Config').config.websites[domain.join('.')]) {
         domain = domain.join('.')
         break
       }
     }
-    if (typeof domain == 'object') return Candy.Api.result(false, __('Domain %s not found.', domain.join('.')))
+    if (typeof domain == 'object') return Candy.server('Api').result(false, __('Domain %s not found.', domain.join('.')))
     subdomain = subdomain.join('.').substr(0, subdomain.join('.').length - domain.length - 1)
     let fulldomain = [subdomain, domain].join('.')
-    if (Candy.Config.config.websites[domain].subdomain.includes(subdomain))
-      return Candy.Api.result(false, __('Subdomain %s already exists.', fulldomain))
-    Candy.DNS.record({name: fulldomain, type: 'A'}, {name: 'www.' + fulldomain, type: 'CNAME'}, {name: fulldomain, type: 'MX'})
-    let websites = Candy.Config.config.websites
+    if (Candy.core('Config').config.websites[domain].subdomain.includes(subdomain))
+      return Candy.server('Api').result(false, __('Subdomain %s already exists.', fulldomain))
+    Candy.server('DNS').record({name: fulldomain, type: 'A'}, {name: 'www.' + fulldomain, type: 'CNAME'}, {name: fulldomain, type: 'MX'})
+    let websites = Candy.core('Config').config.websites
     websites[domain].subdomain.push(subdomain)
     websites[domain].subdomain.push('www.' + subdomain)
     websites[domain].subdomain.sort()
-    Candy.Config.config.websites = websites
-    Candy.SSL.renew(domain)
-    return Candy.Api.result(true, __('Subdomain %s created successfully for domain %s.', fulldomain, domain))
+    Candy.core('Config').config.websites = websites
+    Candy.server('SSL').renew(domain)
+    return Candy.server('Api').result(true, __('Subdomain %s created successfully for domain %s.', fulldomain, domain))
   }
 
   list(domain) {
-    if (!Candy.Config.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
-    let subdomains = Candy.Config.config.websites[domain].subdomain.map(subdomain => {
+    if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Domain %s not found.', domain))
+    let subdomains = Candy.core('Config').config.websites[domain].subdomain.map(subdomain => {
       return subdomain + '.' + domain
     })
-    return Candy.Api.result(true, __('Subdomains of %s:', domain) + '\n  ' + subdomains.join('\n  '))
+    return Candy.server('Api').result(true, __('Subdomains of %s:', domain) + '\n  ' + subdomains.join('\n  '))
   }
 }
 

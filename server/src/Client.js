@@ -1,3 +1,5 @@
+const axios = require('axios')
+
 class Client {
   auth(code) {
     log('CandyPack authenticating...')
@@ -6,7 +8,7 @@ class Client {
       .then(response => {
         let token = response.token
         let secret = response.secret
-        Candy.Config.config.auth = {token: token, secret: secret}
+        Candy.core('Config').config.auth = {token: token, secret: secret}
         log('CandyPack authenticated!')
       })
       .catch(error => {
@@ -16,7 +18,7 @@ class Client {
 
   call(action, data) {
     return new Promise((resolve, reject) => {
-      Candy.ext.axios
+      axios
         .post('https://api.candypack.dev/' + action, data)
         .then(response => {
           if (!response.data.result.success) return reject(response.data.result.message)

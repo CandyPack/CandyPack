@@ -1,3 +1,6 @@
+const http = require('http')
+const nodeCrypto = require('crypto')
+
 class Api {
   #commands = {
     'mail.create': (...args) => Candy.Mail.create(...args),
@@ -14,12 +17,12 @@ class Api {
   }
 
   init() {
-    if (!Candy.Config.config.api) Candy.Config.config.api = {}
-    Candy.Config.config.api.auth = Candy.ext.crypto.randomBytes(32).toString('hex')
-    Candy.ext.http
+    if (!Candy.core('Config').config.api) Candy.core('Config').config.api = {}
+    Candy.core('Config').config.api.auth = nodeCrypto.randomBytes(32).toString('hex')
+    http
       .createServer((req, res) => {
         if (req.socket.remoteAddress !== '::ffff:127.0.0.1') return res.end('1')
-        if (req.headers.authorization !== Candy.Config.config.api.auth) return res.end('2')
+        if (req.headers.authorization !== Candy.core('Config').config.api.auth) return res.end('2')
         if (req.method !== 'POST') return res.end()
         let data = ''
         req.on('data', chunk => {

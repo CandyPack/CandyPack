@@ -67,7 +67,7 @@ class smtp {
       content += `--${boundary}--\r\n`
     } else content = obj.text
     if (content) content = content.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n')
-    let dkim = Candy.Config.config.websites[domain].cert?.dkim
+    let dkim = Candy.core('Config').config.websites[domain].cert?.dkim
     let signature = ''
     if (dkim) {
       signature = this.#dkim({

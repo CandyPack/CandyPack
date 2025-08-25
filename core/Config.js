@@ -8,6 +8,18 @@ class Config {
   #saving = false
   #changed = false
 
+  async get(key) {
+    if (this.#loaded) return this.config[key]
+    return new Promise(resolve => {
+      const interval = setInterval(() => {
+        if (this.#loaded) {
+          clearInterval(interval)
+          resolve(this.config[key])
+        }
+      }, 100)
+    })
+  }
+
   async init() {
     this.#dir = os.homedir() + '/.candypack'
     this.#file = this.#dir + '/config.json'

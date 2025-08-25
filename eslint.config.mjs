@@ -6,23 +6,8 @@ import prettierConfig from "eslint-config-prettier";
 
 export default defineConfig([
   {
-    files: ['watchdog/**/*.js', 'cli/**/*.js', 'core/**/*.js'],
-    languageOptions: {
-      globals: {...globals.node},
-      sourceType: 'script'
-    },
-    extends: ['js/recommended'],
-    plugins: {
-      js,
-      prettier: prettierPlugin
-    },
-    rules: {
-      'prettier/prettier': 'error'
-    }
-  },
-  {
-    files: ['server/**/*.js'],
-    ignores: ['server/web/**', 'server/src/Candy.js'],
+    files: ['core/**/*.js', 'watchdog/**/*.js', 'server/**/*.js', 'cli/**/*.js'],
+    ignores: ['server/src/Candy.js'],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -90,7 +75,7 @@ export default defineConfig([
     plugins: {js}
   },
   {
-    files: ['server/web/**/*.js'],
+    files: ['web/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.node,

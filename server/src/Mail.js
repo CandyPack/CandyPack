@@ -1,10 +1,13 @@
+const bcrypt = require('bcrypt')
 const SMTPServer = require('smtp-server').SMTPServer
 const parser = require('mailparser').simpleParser
 const sqlite3 = require('sqlite3').verbose()
 const forge = require('node-forge')
 const fs = require('fs')
+const os = require('os')
 const server = require('./mail/server')
 const smtp = require('./mail/smtp')
+const tls = require('tls')
 
 class Mail {
   #checking = false
@@ -19,72 +22,74 @@ class Mail {
     if (!this.#started) this.init()
     if (!this.#started) return
     this.#checking = true
-    for (const domain of Object.keys(Candy.Config.config.websites)) {
-      if (!Candy.Config.config.websites[domain].DNS || !Candy.Config.config.websites[domain].DNS.MX) continue
-      if (Candy.Config.config.websites[domain].cert !== false && !Candy.Config.config.websites[domain].cert?.dkim) this.#dkim(domain)
+    for (const domain of Object.keys(Candy.core('Config').config.websites)) {
+      if (!Candy.core('Config').config.websites[domain].DNS || !Candy.core('Config').config.websites[domain].DNS.MX) continue
+      if (Candy.core('Config').config.websites[domain].cert !== false && !Candy.core('Config').config.websites[domain].cert?.dkim)
+        this.#dkim(domain)
     }
     this.#checking = false
   }
 
   async create(email, password, retype) {
-    if (!email || !password || !retype) return Candy.Api.result(false, __('All fields are required.'))
-    if (password != retype) return Candy.Api.result(false, __('Passwords do not match.'))
+    if (!email || !password || !retype) return Candy.server('Api').result(false, __('All fields are required.'))
+    if (password != retype) return Candy.server('Api').result(false, __('Passwords do not match.'))
     password = await new Promise((resolve, reject) => {
-      Candy.ext.bcrypt.hash(password, 10, (err, hash) => {
+      bcrypt.hash(password, 10, (err, hash) => {
         if (err) reject(err)
         resolve(hash)
       })
     })
-    if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return Candy.Api.result(false, __('Invalid email address.'))
-    if (await this.exists(email)) return Candy.Api.result(false, __('Mail account %s already exists.', email))
+    if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
+      return Candy.server('Api').result(false, __('Invalid email address.'))
+    if (await this.exists(email)) return Candy.server('Api').result(false, __('Mail account %s already exists.', email))
     let domain = email.split('@')[1]
-    if (!Candy.Config.config.websites[domain]) {
-      for (let d in Candy.Config.config.websites) {
+    if (!Candy.core('Config').config.websites[domain]) {
+      for (let d in Candy.core('Config').config.websites) {
         if (domain.substr(-d.length) != d) continue
-        if (Candy.Config.config.websites[d].subdomain.includes(domain.substr(-d.length))) {
+        if (Candy.core('Config').config.websites[d].subdomain.includes(domain.substr(-d.length))) {
           domain = d
           break
         }
       }
-      return Candy.Api.result(false, __('Domain %s not found.', domain))
+      return Candy.server('Api').result(false, __('Domain %s not found.', domain))
     }
     this.#db.serialize(() => {
       let stmt = this.#db.prepare("INSERT INTO mail_account ('email', 'password', 'domain') VALUES (?, ?, ?)")
       stmt.run(email, password, domain)
       stmt.finalize()
     })
-    return Candy.Api.result(true, __('Mail account %s created successfully.', email))
+    return Candy.server('Api').result(true, __('Mail account %s created successfully.', email))
   }
 
   async delete(email) {
-    if (!email) return Candy.Api.result(false, __('Email address is required.'))
-    if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return Candy.Api.result(false, __('Invalid email address.'))
-    if (!(await this.exists(email))) return Candy.Api.result(false, __('Mail account %s not found.', email))
+    if (!email) return Candy.server('Api').result(false, __('Email address is required.'))
+    if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
+      return Candy.server('Api').result(false, __('Invalid email address.'))
+    if (!(await this.exists(email))) return Candy.server('Api').result(false, __('Mail account %s not found.', email))
     this.#db.serialize(() => {
       let stmt = this.#db.prepare('DELETE FROM mail_account WHERE email = ?')
       stmt.run(email)
       stmt.finalize()
     })
-    return Candy.Api.result(true, __('Mail account %s deleted successfully.', email))
+    return Candy.server('Api').result(true, __('Mail account %s deleted successfully.', email))
   }
 
   #dkim(domain) {
     let keys = forge.pki.rsa.generateKeyPair(1024)
     const privateKeyPem = forge.pki.privateKeyToPem(keys.privateKey)
     let publicKeyPem = forge.pki.publicKeyToPem(keys.publicKey)
-    if (!fs.existsSync(Candy.ext.os.homedir() + '/.candypack/cert/dkim'))
-      fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/cert/dkim', {recursive: true})
-    fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.key', privateKeyPem)
-    fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.pub', publicKeyPem)
+    if (!fs.existsSync(os.homedir() + '/.candypack/cert/dkim')) fs.mkdirSync(os.homedir() + '/.candypack/cert/dkim', {recursive: true})
+    fs.writeFileSync(os.homedir() + '/.candypack/cert/dkim/' + domain + '.key', privateKeyPem)
+    fs.writeFileSync(os.homedir() + '/.candypack/cert/dkim/' + domain + '.pub', publicKeyPem)
     publicKeyPem = publicKeyPem
       .replace('-----BEGIN PUBLIC KEY-----', '')
       .replace('-----END PUBLIC KEY-----', '')
       .replace(/\r\n/g, '')
       .replace(/\n/g, '')
-    if (!Candy.Config.config.websites[domain].cert) Candy.Config.config.websites[domain].cert = {}
-    Candy.Config.config.websites[domain].cert.dkim = {
-      private: Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.key',
-      public: Candy.ext.os.homedir() + '/.candypack/cert/dkim/' + domain + '.pub'
+    if (!Candy.core('Config').config.websites[domain].cert) Candy.core('Config').config.websites[domain].cert = {}
+    Candy.core('Config').config.websites[domain].cert.dkim = {
+      private: os.homedir() + '/.candypack/cert/dkim/' + domain + '.key',
+      public: os.homedir() + '/.candypack/cert/dkim/' + domain + '.pub'
     }
     Candy.DNS.record({
       type: 'TXT',
@@ -104,15 +109,14 @@ class Mail {
 
   init() {
     let start = false
-    for (let domain in Candy.Config.config.websites) {
-      let web = Candy.Config.config.websites[domain]
+    for (let domain in Candy.core('Config').config.websites) {
+      let web = Candy.core('Config').config.websites[domain]
       if (web && web.DNS && web.DNS.MX) start = true
     }
     if (!start || this.#started) return
     this.#started = true
-    if (!Candy.ext.fs.existsSync(Candy.ext.os.homedir() + '/.candypack/db'))
-      Candy.ext.fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/db', {recursive: true})
-    this.#db = new sqlite3.Database(Candy.ext.os.homedir() + '/.candypack/db/mail', err => {
+    if (!fs.existsSync(os.homedir() + '/.candypack/db')) fs.mkdirSync(os.homedir() + '/.candypack/db', {recursive: true})
+    this.#db = new sqlite3.Database(os.homedir() + '/.candypack/db/mail', err => {
       if (err) console.error(err.message)
     })
     this.#db.serialize(() => {
@@ -171,7 +175,7 @@ class Mail {
         if (!auth.username.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
           return callback(new Error('Invalid username or password'))
         self.exists(auth.username).then(async result => {
-          if (result && (await Candy.ext.bcrypt.compare(auth.password, result.password))) return callback(null, {user: auth.username})
+          if (result && (await bcrypt.compare(auth.password, result.password))) return callback(null, {user: auth.username})
           if (!self.#clients[ip]) self.#clients[ip] = {attempts: 0, last: 0}
           self.#clients[ip].attempts++
           self.#clients[ip].last = Date.now()
@@ -280,29 +284,29 @@ class Mail {
     const imap = new server(options)
     imap.listen(143)
     options.SNICallback = (hostname, callback) => {
-      let ssl = Candy.Config.config.ssl ?? {}
+      let ssl = Candy.core('Config').config.ssl ?? {}
       let sslOptions = {}
-      while (!Candy.Config.config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.')
-      let website = Candy.Config.config.websites[hostname]
+      while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.')
+      let website = Candy.core('Config').config.websites[hostname]
       if (
         website &&
         website.cert.ssl &&
         website.cert.ssl.key &&
         website.cert.ssl.cert &&
-        Candy.ext.fs.existsSync(website.cert.ssl.key) &&
-        Candy.ext.fs.existsSync(website.cert.ssl.cert)
+        fs.existsSync(website.cert.ssl.key) &&
+        fs.existsSync(website.cert.ssl.cert)
       ) {
         sslOptions = {
-          key: Candy.ext.fs.readFileSync(website.cert.ssl.key),
-          cert: Candy.ext.fs.readFileSync(website.cert.ssl.cert)
+          key: fs.readFileSync(website.cert.ssl.key),
+          cert: fs.readFileSync(website.cert.ssl.cert)
         }
       } else {
         sslOptions = {
-          key: Candy.ext.fs.readFileSync(ssl.key),
-          cert: Candy.ext.fs.readFileSync(ssl.cert)
+          key: fs.readFileSync(ssl.key),
+          cert: fs.readFileSync(ssl.cert)
         }
       }
-      const ctx = Candy.ext.tls.createSecureContext(sslOptions)
+      const ctx = tls.createSecureContext(sslOptions)
       callback(null, ctx)
     }
     options.secure = true
@@ -314,8 +318,8 @@ class Mail {
   }
 
   async list(domain) {
-    if (!domain) return Candy.Api.result(false, __('Domain is required.'))
-    if (!Candy.Config.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
+    if (!domain) return Candy.server('Api').result(false, __('Domain is required.'))
+    if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Domain %s not found.', domain))
     let accounts = []
     await new Promise((resolve, reject) => {
       this.#db.each(
@@ -331,38 +335,39 @@ class Mail {
         }
       )
     })
-    return Candy.Api.result(true, __('Mail accounts for domain %s.', domain) + '\n' + accounts.join('\n'))
+    return Candy.server('Api').result(true, __('Mail accounts for domain %s.', domain) + '\n' + accounts.join('\n'))
   }
 
   async password(email, password, retype) {
-    if (!email || !password || !retype) return Candy.Api.result(false, __('All fields are required.'))
-    if (password != retype) return Candy.Api.result(false, __('Passwords do not match.'))
+    if (!email || !password || !retype) return Candy.server('Api').result(false, __('All fields are required.'))
+    if (password != retype) return Candy.server('Api').result(false, __('Passwords do not match.'))
     password = await new Promise((resolve, reject) => {
-      Candy.ext.bcrypt.hash(password, 10, (err, hash) => {
+      bcrypt.hash(password, 10, (err, hash) => {
         if (err) reject(err)
         resolve(hash)
       })
     })
-    if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return Candy.Api.result(false, __('Invalid email address.'))
-    if (!this.exists(email)) return Candy.Api.result(false, __('Mail account %s not found.', email))
+    if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
+      return Candy.server('Api').result(false, __('Invalid email address.'))
+    if (!this.exists(email)) return Candy.server('Api').result(false, __('Mail account %s not found.', email))
     this.#db.serialize(() => {
       let stmt = this.#db.prepare('UPDATE mail_account SET password = ? WHERE email = ?')
       stmt.run(password, email)
       stmt.finalize()
     })
-    return Candy.Api.result(true, __('Mail account %s password updated successfully.', email))
+    return Candy.server('Api').result(true, __('Mail account %s password updated successfully.', email))
   }
 
   async send(data) {
-    if (!data || !data.from || !data.to || !data.header) return Candy.Api.result(false, __('All fields are required.'))
+    if (!data || !data.from || !data.to || !data.header) return Candy.server('Api').result(false, __('All fields are required.'))
     if (!data.from.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
-      return Candy.Api.result(false, __('Invalid email address.'))
+      return Candy.server('Api').result(false, __('Invalid email address.'))
     if (!data.to.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
-      return Candy.Api.result(false, __('Invalid email address.'))
+      return Candy.server('Api').result(false, __('Invalid email address.'))
     let domain = data.from.value[0].address.split('@')[1].split('.')
-    while (domain.length > 2 && !Candy.Config.config.websites[domain.join('.')]) domain.shift()
+    while (domain.length > 2 && !Candy.core('Config').config.websites[domain.join('.')]) domain.shift()
     domain = domain.join('.')
-    if (!Candy.Config.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
+    if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Domain %s not found.', domain))
     let mail = {
       atttachments: [],
       headerLines: [],
@@ -375,7 +380,7 @@ class Mail {
     if (data.text) mail.text = data.text
     mail.attachments = data.attachments ?? []
     smtp.send(mail)
-    return Candy.Api.result(true, __('Mail sent successfully.'))
+    return Candy.server('Api').result(true, __('Mail sent successfully.'))
   }
 
   #store(email, data) {

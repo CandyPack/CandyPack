@@ -1,3 +1,3 @@
 require('../core/Candy.js')
 
-Candy.server('Server')
+Candy.cli('Cli')

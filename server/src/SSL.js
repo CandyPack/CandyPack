@@ -1,16 +1,21 @@
+const acme = require('acme-client')
+const fs = require('fs')
+const os = require('os')
+const selfsigned = require('selfsigned')
+
 class SSL {
   #checking = false
   #checked = {}
 
   async check() {
-    if (this.#checking || !Candy.Config.config.websites) return
+    if (this.#checking || !Candy.core('Config').config.websites) return
     this.#checking = true
     this.#self()
-    for (const domain of Object.keys(Candy.Config.config.websites)) {
-      if (Candy.Config.config.websites[domain].cert === false) continue
+    for (const domain of Object.keys(Candy.core('Config').config.websites)) {
+      if (Candy.core('Config').config.websites[domain].cert === false) continue
       if (
-        !Candy.Config.config.websites[domain].cert?.ssl ||
-        Date.now() + 1000 * 60 * 60 * 24 * 30 > Candy.Config.config.websites[domain].cert.ssl.expiry
+        !Candy.core('Config').config.websites[domain].cert?.ssl ||
+        Date.now() + 1000 * 60 * 60 * 24 * 30 > Candy.core('Config').config.websites[domain].cert.ssl.expiry
       )
         await this.#ssl(domain)
     }
@@ -18,48 +23,46 @@ class SSL {
   }
 
   renew(domain) {
-    if (!Candy.Config.config.websites[domain]) {
-      for (const key of Object.keys(Candy.Config.config.websites)) {
-        for (const subdomain of Candy.Config.config.websites[key].subdomain)
+    if (!Candy.core('Config').config.websites[domain]) {
+      for (const key of Object.keys(Candy.core('Config').config.websites)) {
+        for (const subdomain of Candy.core('Config').config.websites[key].subdomain)
           if (subdomain + '.' + key == domain) {
             domain = key
             break
           }
       }
-      if (!Candy.Config.config.websites[domain]) return Candy.Api.result(false, __('Domain %s not found.', domain))
+      if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Domain %s not found.', domain))
     }
     this.#ssl(domain)
-    return Candy.Api.result(true, __('SSL certificate for domain %s renewed successfully.', domain))
+    return Candy.server('Api').result(true, __('SSL certificate for domain %s renewed successfully.', domain))
   }
 
   #self() {
-    let ssl = Candy.Config.config.ssl ?? {}
-    if (ssl && ssl.expiry > Date.now() && ssl.key && ssl.cert && Candy.ext.fs.existsSync(ssl.key) && Candy.ext.fs.existsSync(ssl.cert))
-      return
+    let ssl = Candy.core('Config').config.ssl ?? {}
+    if (ssl && ssl.expiry > Date.now() && ssl.key && ssl.cert && fs.existsSync(ssl.key) && fs.existsSync(ssl.cert)) return
     const attrs = [{name: 'commonName', value: 'CandyPack'}]
-    const pems = Candy.ext.selfsigned.generate(attrs, {days: 365, keySize: 2048})
-    if (!Candy.ext.fs.existsSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl'))
-      Candy.ext.fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl', {recursive: true})
-    let key_file = Candy.ext.os.homedir() + '/.candypack/cert/ssl/candypack.key'
-    let crt_file = Candy.ext.os.homedir() + '/.candypack/cert/ssl/candypack.crt'
-    Candy.ext.fs.writeFileSync(key_file, pems.private)
-    Candy.ext.fs.writeFileSync(crt_file, pems.cert)
+    const pems = selfsigned.generate(attrs, {days: 365, keySize: 2048})
+    if (!fs.existsSync(os.homedir() + '/.candypack/cert/ssl')) fs.mkdirSync(os.homedir() + '/.candypack/cert/ssl', {recursive: true})
+    let key_file = os.homedir() + '/.candypack/cert/ssl/candypack.key'
+    let crt_file = os.homedir() + '/.candypack/cert/ssl/candypack.crt'
+    fs.writeFileSync(key_file, pems.private)
+    fs.writeFileSync(crt_file, pems.cert)
     ssl.key = key_file
     ssl.cert = crt_file
     ssl.expiry = Date.now() + 86400000
-    Candy.Config.config.ssl = ssl
+    Candy.core('Config').config.ssl = ssl
   }
 
   async #ssl(domain) {
     if (this.#checked[domain]?.interval > Date.now()) return
-    const accountPrivateKey = await Candy.ext.acme.forge.createPrivateKey()
-    const client = new Candy.ext.acme.Client({
-      directoryUrl: Candy.ext.acme.directory.letsencrypt.production,
+    const accountPrivateKey = await acme.forge.createPrivateKey()
+    const client = new acme.Client({
+      directoryUrl: acme.directory.letsencrypt.production,
       accountKey: accountPrivateKey
     })
     let subdomains = [domain]
-    for (const subdomain of Candy.Config.config.websites[domain].subdomain ?? []) subdomains.push(subdomain + '.' + domain)
-    const [key, csr] = await Candy.ext.acme.forge.createCsr({
+    for (const subdomain of Candy.core('Config').config.websites[domain].subdomain ?? []) subdomains.push(subdomain + '.' + domain)
+    const [key, csr] = await acme.forge.createCsr({
       commonName: domain,
       altNames: subdomains
     })
@@ -72,7 +75,7 @@ class SSL {
         challengeCreateFn: async (authz, challenge, keyAuthorization) => {
           return new Promise(resolve => {
             if (challenge.type == 'dns-01') {
-              Candy.DNS.record({
+              Candy.server('DNS').record({
                 name: '_acme-challenge.' + authz.identifier.value,
                 type: 'TXT',
                 value: keyAuthorization,
@@ -86,7 +89,7 @@ class SSL {
         challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
           return new Promise(resolve => {
             if (challenge.type == 'dns-01') {
-              Candy.DNS.delete({
+              Candy.server('DNS').delete({
                 name: '_acme-challenge.' + authz.identifier.value,
                 type: 'TXT',
                 value: keyAuthorization
@@ -114,21 +117,20 @@ class SSL {
     }
     if (!cert) return
     delete this.#checked[domain]
-    if (!Candy.ext.fs.existsSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl'))
-      Candy.ext.fs.mkdirSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl', {recursive: true})
-    Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.key', key)
-    Candy.ext.fs.writeFileSync(Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.crt', cert)
-    let websites = Candy.Config.config.websites ?? {}
+    if (!fs.existsSync(os.homedir() + '/.candypack/cert/ssl')) fs.mkdirSync(os.homedir() + '/.candypack/cert/ssl', {recursive: true})
+    fs.writeFileSync(os.homedir() + '/.candypack/cert/ssl/' + domain + '.key', key)
+    fs.writeFileSync(os.homedir() + '/.candypack/cert/ssl/' + domain + '.crt', cert)
+    let websites = Candy.core('Config').config.websites ?? {}
     let website = websites[domain]
     if (!website) return
     if (!website.cert) website.cert = {}
     website.cert.ssl = {
-      key: Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.key',
-      cert: Candy.ext.os.homedir() + '/.candypack/cert/ssl/' + domain + '.crt',
+      key: os.homedir() + '/.candypack/cert/ssl/' + domain + '.key',
+      cert: os.homedir() + '/.candypack/cert/ssl/' + domain + '.crt',
       expiry: Date.now() + 1000 * 60 * 60 * 24 * 30 * 3
     }
     websites[domain] = website
-    Candy.Config.config.websites = websites
+    Candy.core('Config').config.websites = websites
   }
 }
 

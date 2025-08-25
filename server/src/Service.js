@@ -1,3 +1,8 @@
+const childProcess = require('child_process')
+const fs = require('fs')
+const os = require('os')
+const path = require('path')
+
 var services = []
 var watcher = {}
 var loaded = false
@@ -8,7 +13,7 @@ var active = {}
 
 function get(id) {
   if (!loaded && services.length == 0) {
-    services = Candy.Config.config.services ?? []
+    services = Candy.core('Config').config.services ?? []
     loaded = true
   }
   for (const service of services) {
@@ -18,17 +23,17 @@ function get(id) {
 }
 
 function add(file) {
-  let name = Candy.ext.path.basename(file)
+  let name = path.basename(file)
   if (name.substr(-3) == '.js') name = name.substr(0, name.length - 3)
   let service = {
     id: services.length,
-    name: Candy.ext.path.basename(file),
+    name: path.basename(file),
     file: file,
     active: true
   }
   services.push(service)
   services[service.id] = service
-  Candy.Config.config.services = services
+  Candy.core('Config').config.services = services
   return true
 }
 
@@ -45,11 +50,11 @@ function set(id, key, value) {
     return false
   }
   services[index] = service
-  Candy.Config.config.services = services
+  Candy.core('Config').config.services = services
 }
 
 async function check() {
-  services = Candy.Config.config.services ?? []
+  services = Candy.core('Config').config.services ?? []
   for (const service of services) {
     if (service.active) {
       if (!service.pid) {
@@ -67,23 +72,13 @@ async function check() {
       }
     }
     if (logs[service.id])
-      Candy.ext.fs.writeFile(
-        Candy.ext.os.homedir() + '/.candypack/logs/' + service.name + '.log',
-        logs[service.id],
-        'utf8',
-        function (err) {
-          if (err) console.log(err)
-        }
-      )
+      fs.writeFile(os.homedir() + '/.candypack/logs/' + service.name + '.log', logs[service.id], 'utf8', function (err) {
+        if (err) console.log(err)
+      })
     if (errs[service.id])
-      Candy.ext.fs.writeFile(
-        Candy.ext.os.homedir() + '/.candypack/logs/' + service.name + '.err.log',
-        errs[service.id],
-        'utf8',
-        function (err) {
-          if (err) console.log(err)
-        }
-      )
+      fs.writeFile(os.homedir() + '/.candypack/logs/' + service.name + '.err.log', errs[service.id], 'utf8', function (err) {
+        if (err) console.log(err)
+      })
   }
 }
 
@@ -101,8 +96,8 @@ async function run(id) {
     return
   }
   set(id, 'updated', Date.now())
-  var child = Candy.ext.childProcess.spawn('node', [service.file], {
-    cwd: Candy.ext.path.dirname(service.file),
+  var child = childProcess.spawn('node', [service.file], {
+    cwd: path.dirname(service.file),
     detached: true
   })
   let pid = child.pid
@@ -169,9 +164,9 @@ async function run(id) {
 module.exports = {
   check: check,
   init: async function () {
-    services = Candy.Config.config.services ?? []
+    services = Candy.core('Config').config.services ?? []
     for (const service of services) {
-      Candy.ext.fs.readFile(Candy.ext.os.homedir() + '/.candypack/logs/' + service.name + '.log', 'utf8', function (err, data) {
+      fs.readFile(os.homedir() + '/.candypack/logs/' + service.name + '.log', 'utf8', function (err, data) {
         if (!err) logs[service.id] = data.toString()
       })
     }
@@ -180,15 +175,15 @@ module.exports = {
   start: async function (file) {
     return new Promise(resolve => {
       if (file && file.length > 0) {
-        file = Candy.ext.path.resolve(file)
-        if (Candy.ext.fs.existsSync(file)) {
+        file = path.resolve(file)
+        if (fs.existsSync(file)) {
           if (!get(file)) add(file)
-          else return resolve(Candy.Api.result(true, __('Service %s already exists.', file)))
+          else return resolve(Candy.server('Api').result(true, __('Service %s already exists.', file)))
         } else {
-          return resolve(Candy.Api.result(false, __('Service file %s not found.', file)))
+          return resolve(Candy.server('Api').result(false, __('Service file %s not found.', file)))
         }
       } else {
-        return resolve(Candy.Api.result(false, __('Service file not specified.')))
+        return resolve(Candy.server('Api').result(false, __('Service file not specified.')))
       }
     })
   },
@@ -206,10 +201,10 @@ module.exports = {
           set(id, 'started', null)
           set(id, 'active', false)
         } else {
-          log(Candy.Lang.get('Service %s is not running.', id))
+          log(Candy.core('Lang').get('Service %s is not running.', id))
         }
       } else {
-        log(Candy.Lang.get('Service %s not found.', id))
+        log(Candy.core('Lang').get('Service %s not found.', id))
       }
     })
   },
@@ -229,7 +224,7 @@ module.exports = {
   },
   status: async function () {
     return new Promise(resolve => {
-      let services = Candy.Config.config.services ?? []
+      let services = Candy.core('Config').config.services ?? []
       for (const service of services) {
         if (service.status == 'running') {
           var uptime = Date.now() - service.started

@@ -94,7 +94,7 @@ async function performStartupChecks() {
       try {
         process.kill(config.server.watchdog, 'SIGTERM')
         console.log(`Terminated old watchdog process with PID: ${config.server.watchdog}`)
-      } catch (e) {
+      } catch {
         // It's okay if the process doesn't exist anymore
       }
     }
@@ -104,7 +104,7 @@ async function performStartupChecks() {
       try {
         process.kill(config.server.pid, 'SIGTERM')
         console.log(`Terminated old server process with PID: ${config.server.pid}`)
-      } catch (e) {
+      } catch {
         // It's okay if the process doesn't exist anymore
       }
     }

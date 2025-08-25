@@ -1,7 +1,7 @@
 class Candy {
   Cli = require('./Cli.js')
   Config = require('../../core/Config.js')
-  Lang = require('./Lang.js')
+  Lang = require('../../core/Lang.js')
   Server = require('./Server.js')
 
   ext = {
