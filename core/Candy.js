@@ -55,6 +55,17 @@ class CandyPack {
     }
     return this.#resolve(key, singleton)
   }
+
+  watchdog(name, singleton = false) {
+    const key = `watchdog:${name}`
+    if (!this._registry.has(key)) {
+      const modPath = `../watchdog/src/${name}`
+      const Mod = require(modPath)
+      if (Mod.init) Mod.init()
+      this.#register(key, Mod, singleton)
+    }
+    return this.#resolve(key, singleton)
+  }
 }
 
 if (!global.Candy) {
