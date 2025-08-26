@@ -62,38 +62,29 @@ class Watchdog {
    */
   async #performStartupChecks() {
     try {
-      const config = Candy.core('Config')
-
-      // Wait for config to be loaded by getting a dummy key
-      await config.get('dummy_key_to_wait_for_load')
-
-      const configData = config.config
-
-      if (!configData.server) configData.server = {}
-
       // Kill previous watchdog process if it exists and is different from the current one
-      if (configData.server.watchdog && configData.server.watchdog !== process.pid) {
+      if (Candy.core('Config').config.server.watchdog && Candy.core('Config').config.server.watchdog !== process.pid) {
         try {
-          process.kill(configData.server.watchdog, 'SIGTERM')
-          console.log(`Terminated old watchdog process with PID: ${configData.server.watchdog}`)
+          process.kill(Candy.core('Config').config.server.watchdog, 'SIGTERM')
+          console.log(`Terminated old watchdog process with PID: ${Candy.core('Config').config.server.watchdog}`)
         } catch {
           // It's okay if the process doesn't exist anymore
         }
       }
 
       // Kill previous server process if it exists
-      if (configData.server.pid) {
+      if (Candy.core('Config').config.server.pid) {
         try {
-          process.kill(configData.server.pid, 'SIGTERM')
-          console.log(`Terminated old server process with PID: ${configData.server.pid}`)
+          process.kill(Candy.core('Config').config.server.pid, 'SIGTERM')
+          console.log(`Terminated old server process with PID: ${Candy.core('Config').config.server.pid}`)
         } catch {
           // It's okay if the process doesn't exist anymore
         }
       }
 
       // Update config with current watchdog's info
-      configData.server.watchdog = process.pid
-      configData.server.started = Date.now()
+      Candy.core('Config').config.server.watchdog = process.pid
+      Candy.core('Config').config.server.started = Date.now()
 
       return true
     } catch (error) {

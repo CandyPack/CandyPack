@@ -27,65 +27,61 @@ class Config {
     if (!fs.existsSync(this.#dir)) fs.mkdirSync(this.#dir)
     if (!fs.existsSync(this.#file)) this.#save()
     else await this.#load()
-    if (global.trigger === 'cli') setInterval(() => this.#save(), 500)
+    setInterval(() => this.#save(), 500).unref()
     this.config = this.#proxy(this.config)
   }
 
-  async #load() {
-    return new Promise(resolve => {
-      if (this.#saving && this.#loaded) return resolve()
-      if (!fs.existsSync(this.#file)) {
+  #load() {
+    if (this.#saving && this.#loaded) return
+    if (!fs.existsSync(this.#file)) {
+      this.#loaded = true
+      return
+    }
+    let data = fs.readFileSync(this.#file, 'utf8')
+    if (!data) {
+      console.log('Error reading config file:', this.#file)
+      this.#loaded = true
+      this.#save()
+      return
+    }
+    try {
+      if (data.length > 2) {
+        data = JSON.parse(data)
         this.#loaded = true
-        return resolve()
       }
-      fs.readFile(this.#file, 'utf8', (err, data) => {
-        if (err) {
-          console.log(err)
-          this.#loaded = true
-          this.#save()
-          return resolve()
+    } catch {
+      console.log('Error parsing config file:', this.#file)
+    }
+    if (!this.#loaded) {
+      if (data.length > 2) {
+        var backup = this.#dir + '/config-corrupted.json'
+        if (fs.existsSync(this.#file)) fs.copyFileSync(this.#file, backup)
+      }
+      if (fs.existsSync(this.#file + '.bak')) {
+        data = fs.readFileSync(this.#file + '.bak', 'utf8')
+        if (!data) {
+          console.error('Error reading backup file:', this.#file + '.bak')
+          this.#save(true)
+          return
         }
         try {
-          if (data.length > 2) {
-            data = JSON.parse(data)
-            this.#loaded = true
-          }
-        } catch {
-          console.log('Error parsing config file:', this.#file)
+          data = JSON.parse(data)
+          fs.promises.writeFile(this.#file, JSON.stringify(data, null, 4), 'utf8')
+        } catch (e) {
+          console.log(e)
+          this.#save(true)
         }
-        if (!this.#loaded) {
-          if (data.length > 2) {
-            var backup = this.#dir + '/config-corrupted.json'
-            if (fs.existsSync(this.#file)) fs.copyFileSync(this.#file, backup)
-          }
-          if (fs.existsSync(this.#file + '.bak')) {
-            fs.readFile(this.#file + '.bak', 'utf8', async (err, data) => {
-              if (err) {
-                console.log(err)
-                this.#save(true)
-                return resolve()
-              }
-              try {
-                data = JSON.parse(data)
-                await fs.promises.writeFile(this.#file, JSON.stringify(data, null, 4), 'utf8')
-              } catch (e) {
-                console.log(e)
-                this.#save(true)
-              }
-              this.config = data
-              return resolve()
-            })
-          } else {
-            this.config = {}
-            this.#save(true)
-            return resolve()
-          }
-        } else {
-          this.config = data
-          return resolve()
-        }
-      })
-    })
+        this.config = data
+        return
+      } else {
+        this.config = {}
+        this.#save(true)
+        return
+      }
+    } else {
+      this.config = data
+      return
+    }
   }
 
   #proxy(target) {

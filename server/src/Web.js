@@ -64,9 +64,8 @@ class Web {
       if (domain.startsWith(iterator)) domain = domain.replace(iterator, '')
     }
     if (domain.length < 3 || (!domain.includes('.') && domain != 'localhost'))
-      return Candy.server('Api').result(false, await __('Invalid domain.'))
-    if (Candy.core('Config').config.websites[domain])
-      return Candy.server('Api').result(false, await __('Website %s already exists.', domain))
+      return Candy.server('Api').result(false, __('Invalid domain.'))
+    if (Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Website %s already exists.', domain))
     web.domain = domain
     if (path && path.length > 0) {
       web.path = path.resolve(path).replace(/\\/g, '/') + '/'
@@ -95,7 +94,7 @@ class Web {
     if (fs.existsSync(web.path + 'node_modules/.bin')) fs.rmSync(web.path + 'node_modules/.bin', {recursive: true})
     if (!fs.existsSync(web.path + '/node_modules')) fs.mkdirSync(web.path + '/node_modules')
     fs.cpSync(__dirname + '/../../web/', web.path, {recursive: true})
-    return Candy.server('Api').result(true, await __('Website %s created.', domain))
+    return Candy.server('Api').result(true, __('Website %s created.', domain))
   }
 
   index(req, res) {
@@ -110,8 +109,8 @@ class Web {
 
   async list() {
     let domains = Object.keys(Candy.core('Config').config.websites ?? {})
-    if (domains.length == 0) return Candy.server('Api').result(false, await __('No websites found.'))
-    return Candy.server('Api').result(true, (await __('Websites:')) + '\n  ' + domains.join('\n  '))
+    if (domains.length == 0) return Candy.server('Api').result(false, __('No websites found.'))
+    return Candy.server('Api').result(true, __('Websites:') + '\n  ' + domains.join('\n  '))
   }
 
   request(req, res, secure) {
@@ -223,7 +222,7 @@ class Web {
     Candy.core('Config').config.websites[domain].port = port
     this.#ports[port] = true
     if (!fs.existsSync(Candy.core('Config').config.websites[domain].path + '/index.js')) {
-      log(await __("Website %s doesn't have index.js file.", domain))
+      log(__("Website %s doesn't have index.js file.", domain))
       this.#active[domain] = false
       return
     }

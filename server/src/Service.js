@@ -173,17 +173,17 @@ class Service {
   }
 
   async start(file) {
-    return new Promise(async resolve => {
+    return new Promise(resolve => {
       if (file && file.length > 0) {
         file = path.resolve(file)
         if (fs.existsSync(file)) {
           if (!this.#get(file)) this.#add(file)
-          else return resolve(Candy.server('Api').result(true, await __('Service %s already exists.', file)))
+          else return resolve(Candy.server('Api').result(true, __('Service %s already exists.', file)))
         } else {
-          return resolve(Candy.server('Api').result(false, await __('Service file %s not found.', file)))
+          return resolve(Candy.server('Api').result(false, __('Service file %s not found.', file)))
         }
       } else {
-        return resolve(Candy.server('Api').result(false, await __('Service file not specified.')))
+        return resolve(Candy.server('Api').result(false, __('Service file not specified.')))
       }
     })
   }
@@ -202,10 +202,10 @@ class Service {
           this.#set(id, 'started', null)
           this.#set(id, 'active', false)
         } else {
-          log(await __('Service %s is not running.', id))
+          log(__('Service %s is not running.', id))
         }
       } else {
-        log(await __('Service %s not found.', id))
+        log(__('Service %s not found.', id))
       }
     })
   }

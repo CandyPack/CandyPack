@@ -24,7 +24,7 @@ class Cli {
   #watch = []
 
   async #boot() {
-    console.log(await __('Starting CandyPack Server...'))
+    console.log(__('Starting CandyPack Server...'))
     const child = childProcess.spawn('node', [__dirname + '/../../watchdog/index.js'], {
       detached: true,
       stdio: 'ignore'
@@ -91,12 +91,12 @@ class Cli {
     result = this.#color('\n' + this.#spacing('CANDYPACK', this.width, 'center') + '\n\n', 'magenta', 'bold')
     result += this.#color(' ┌', 'gray')
     result += this.#color('─'.repeat(5), 'gray')
-    let title = this.#color(await __('Modules'), null)
+    let title = this.#color(__('Modules'), null)
     result += ' ' + this.#color(title) + ' '
     result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
     result += this.#color('┬', 'gray')
     result += this.#color('─'.repeat(5), 'gray')
-    title = this.#color(await __('Logs'), null)
+    title = this.#color(__('Logs'), null)
     result += ' ' + this.#color(title) + ' '
     result += this.#color('─'.repeat(this.width - c1 - title.length - 7), 'gray')
     result += this.#color('┐ \n', 'gray')
@@ -162,7 +162,7 @@ class Cli {
     }
     if (!raw) {
       if (text == 'CandyPack') output = this.#color(output, 'magenta')
-      if (text == (await __('Running'))) output = this.#color(output, 'green')
+      if (text == __('Running')) output = this.#color(output, 'green')
       if (text == '\u2713') output = this.#color(output, 'green')
       if (text == '\u2717') output = this.#color(output, 'red')
     }
@@ -175,7 +175,7 @@ class Cli {
     if (obj.title) result += '\n\x1b[90m' + (await obj.title) + '\x1b\n'
     if (obj.description) {
       let args = obj.args ? ' <' + obj.args.join('> <') + '>' : ''
-      let line = '\x1b[91mcandy ' + command + '\x1b[0m\x1b[90m' + args + '\x1b[0m : ' + (await __(obj.description))
+      let line = '\x1b[91mcandy ' + command + '\x1b[0m\x1b[90m' + args + '\x1b[0m : ' + __(obj.description)
       result += line
       line = line.split(':')[0]
       if (line.length > space) space = line.length
@@ -199,11 +199,11 @@ class Cli {
     if (typeof commands == 'string') {
       let obj = Candy.core('Commands')
       let command = commands.shift()
-      if (!obj[command]) return log(await __(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
+      if (!obj[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
       obj = obj[command]
       while (commands.length > 0 && commands.length && obj.sub[commands[0]]) {
         command = commands.shift()
-        if (!obj.sub[command]) return log(await __(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
+        if (!obj.sub[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
         obj = obj.sub[command]
       }
       let detail = await this.#detail(command, obj)
@@ -247,7 +247,7 @@ class Cli {
     let cmds = process.argv.slice(2)
     if (args.length == 0) return this.#status()
     let command = args.shift()
-    if (!Candy.core('Commands')[command]) return log(await __(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')))
+    if (!Candy.core('Commands')[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')))
     let action = Candy.core('Commands')[command]
     while (args.length > 0 && !action.args) {
       command = args.shift()
@@ -430,12 +430,12 @@ class Cli {
     let service = -1
     if (this.domains.length) {
       result += this.#color('─'.repeat(5), 'gray')
-      let title = this.#color(await __('Websites'), null)
+      let title = this.#color(__('Websites'), null)
       result += ' ' + this.#color(title) + ' '
       result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
     } else if (this.services.length) {
       result += this.#color('─'.repeat(5), 'gray')
-      let title = this.#color(await __('Services'), null)
+      let title = this.#color(__('Services'), null)
       result += ' ' + this.#color(title) + ' '
       result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
       service++
@@ -459,7 +459,7 @@ class Cli {
       } else if (this.services.length && service == -1) {
         result += this.#color(' ├', 'gray')
         result += this.#color('─'.repeat(5), 'gray')
-        let title = this.#color(await __('Services'), null)
+        let title = this.#color(__('Services'), null)
         result += ' ' + this.#color(title) + ' '
         result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
         result += this.#color('┤', 'gray')
@@ -540,20 +540,14 @@ class Cli {
       let length = 0
       for (let i = 0; i < 2; i++) {
         for (let iterator of ['Status', 'Uptime', 'Websites', 'Services', 'Auth']) {
-          let title = await __(iterator)
+          let title = __(iterator)
           if (title.length > length) length = title.length
           if (i) {
             let space = ''
             for (let j = 0; j < length - title.length; j++) space += ' '
             switch (iterator) {
               case 'Status':
-                log(
-                  title +
-                    space +
-                    ' : ' +
-                    (status.online ? '\x1b[32m ' + (await __('Online')) : '\x1b[33m ' + (await __('Offline'))) +
-                    '\x1b[0m'
-                )
+                log(title + space + ' : ' + (status.online ? '\x1b[32m ' + __('Online') : '\x1b[33m ' + __('Offline')) + '\x1b[0m')
                 break
               case 'Uptime':
                 if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.uptime + '\x1b[0m')
@@ -565,21 +559,15 @@ class Cli {
                 if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.services + '\x1b[0m')
                 break
               case 'Auth':
-                log(
-                  title +
-                    space +
-                    ' : ' +
-                    (status.auth ? '\x1b[32m ' + (await __('Logged in')) : '\x1b[33m ' + (await __('Not logged in'))) +
-                    '\x1b[0m'
-                )
+                log(title + space + ' : ' + (status.auth ? '\x1b[32m ' + __('Logged in') : '\x1b[33m ' + __('Not logged in')) + '\x1b[0m')
                 break
             }
           }
         }
       }
-      if (!status.auth) log(await __('Login on %s to manage all your server operations.', '\x1b[95mhttps://candypack.dev\x1b[0m'))
+      if (!status.auth) log(__('Login on %s to manage all your server operations.', '\x1b[95mhttps://candypack.dev\x1b[0m'))
       log()
-      log(await __('Commands:'))
+      log(__('Commands:'))
       length = 0
       this.help(true)
       log('')
