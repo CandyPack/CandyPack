@@ -1,9 +1,9 @@
 /** @type {import('jest').Config} */
 const config = {
   verbose: true,
-  roots: ['<rootDir>/tests'],
+  roots: ['<rootDir>/test'],
    testMatch: [
-    '**/tests/**/*.test.js',
+    '**/test/**/*.test.js',
     '**/?(*.)+(spec|test).js'
   ],
 };
