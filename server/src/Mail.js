@@ -31,8 +31,8 @@ class Mail {
   }
 
   async create(email, password, retype) {
-    if (!email || !password || !retype) return Candy.server('Api').result(false, __('All fields are required.'))
-    if (password != retype) return Candy.server('Api').result(false, __('Passwords do not match.'))
+    if (!email || !password || !retype) return Candy.server('Api').result(false, await __('All fields are required.'))
+    if (password != retype) return Candy.server('Api').result(false, await __('Passwords do not match.'))
     password = await new Promise((resolve, reject) => {
       bcrypt.hash(password, 10, (err, hash) => {
         if (err) reject(err)
@@ -40,8 +40,8 @@ class Mail {
       })
     })
     if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
-      return Candy.server('Api').result(false, __('Invalid email address.'))
-    if (await this.exists(email)) return Candy.server('Api').result(false, __('Mail account %s already exists.', email))
+      return Candy.server('Api').result(false, await __('Invalid email address.'))
+    if (await this.exists(email)) return Candy.server('Api').result(false, await __('Mail account %s already exists.', email))
     let domain = email.split('@')[1]
     if (!Candy.core('Config').config.websites[domain]) {
       for (let d in Candy.core('Config').config.websites) {
@@ -51,27 +51,27 @@ class Mail {
           break
         }
       }
-      return Candy.server('Api').result(false, __('Domain %s not found.', domain))
+      return Candy.server('Api').result(false, await __('Domain %s not found.', domain))
     }
     this.#db.serialize(() => {
       let stmt = this.#db.prepare("INSERT INTO mail_account ('email', 'password', 'domain') VALUES (?, ?, ?)")
       stmt.run(email, password, domain)
       stmt.finalize()
     })
-    return Candy.server('Api').result(true, __('Mail account %s created successfully.', email))
+    return Candy.server('Api').result(true, await __('Mail account %s created successfully.', email))
   }
 
   async delete(email) {
-    if (!email) return Candy.server('Api').result(false, __('Email address is required.'))
+    if (!email) return Candy.server('Api').result(false, await __('Email address is required.'))
     if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
-      return Candy.server('Api').result(false, __('Invalid email address.'))
-    if (!(await this.exists(email))) return Candy.server('Api').result(false, __('Mail account %s not found.', email))
+      return Candy.server('Api').result(false, await __('Invalid email address.'))
+    if (!(await this.exists(email))) return Candy.server('Api').result(false, await __('Mail account %s not found.', email))
     this.#db.serialize(() => {
       let stmt = this.#db.prepare('DELETE FROM mail_account WHERE email = ?')
       stmt.run(email)
       stmt.finalize()
     })
-    return Candy.server('Api').result(true, __('Mail account %s deleted successfully.', email))
+    return Candy.server('Api').result(true, await __('Mail account %s deleted successfully.', email))
   }
 
   #dkim(domain) {
@@ -318,8 +318,8 @@ class Mail {
   }
 
   async list(domain) {
-    if (!domain) return Candy.server('Api').result(false, __('Domain is required.'))
-    if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Domain %s not found.', domain))
+    if (!domain) return Candy.server('Api').result(false, await __('Domain is required.'))
+    if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, await __('Domain %s not found.', domain))
     let accounts = []
     await new Promise((resolve, reject) => {
       this.#db.each(
@@ -335,12 +335,12 @@ class Mail {
         }
       )
     })
-    return Candy.server('Api').result(true, __('Mail accounts for domain %s.', domain) + '\n' + accounts.join('\n'))
+    return Candy.server('Api').result(true, (await __('Mail accounts for domain %s.', domain)) + '\n' + accounts.join('\n'))
   }
 
   async password(email, password, retype) {
-    if (!email || !password || !retype) return Candy.server('Api').result(false, __('All fields are required.'))
-    if (password != retype) return Candy.server('Api').result(false, __('Passwords do not match.'))
+    if (!email || !password || !retype) return Candy.server('Api').result(false, await __('All fields are required.'))
+    if (password != retype) return Candy.server('Api').result(false, await __('Passwords do not match.'))
     password = await new Promise((resolve, reject) => {
       bcrypt.hash(password, 10, (err, hash) => {
         if (err) reject(err)
@@ -348,26 +348,26 @@ class Mail {
       })
     })
     if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
-      return Candy.server('Api').result(false, __('Invalid email address.'))
-    if (!this.exists(email)) return Candy.server('Api').result(false, __('Mail account %s not found.', email))
+      return Candy.server('Api').result(false, await __('Invalid email address.'))
+    if (!this.exists(email)) return Candy.server('Api').result(false, await __('Mail account %s not found.', email))
     this.#db.serialize(() => {
       let stmt = this.#db.prepare('UPDATE mail_account SET password = ? WHERE email = ?')
       stmt.run(password, email)
       stmt.finalize()
     })
-    return Candy.server('Api').result(true, __('Mail account %s password updated successfully.', email))
+    return Candy.server('Api').result(true, await __('Mail account %s password updated successfully.', email))
   }
 
   async send(data) {
-    if (!data || !data.from || !data.to || !data.header) return Candy.server('Api').result(false, __('All fields are required.'))
+    if (!data || !data.from || !data.to || !data.header) return Candy.server('Api').result(false, await __('All fields are required.'))
     if (!data.from.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
-      return Candy.server('Api').result(false, __('Invalid email address.'))
+      return Candy.server('Api').result(false, await __('Invalid email address.'))
     if (!data.to.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/))
-      return Candy.server('Api').result(false, __('Invalid email address.'))
+      return Candy.server('Api').result(false, await __('Invalid email address.'))
     let domain = data.from.value[0].address.split('@')[1].split('.')
     while (domain.length > 2 && !Candy.core('Config').config.websites[domain.join('.')]) domain.shift()
     domain = domain.join('.')
-    if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Domain %s not found.', domain))
+    if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, await __('Domain %s not found.', domain))
     let mail = {
       atttachments: [],
       headerLines: [],
@@ -380,7 +380,7 @@ class Mail {
     if (data.text) mail.text = data.text
     mail.attachments = data.attachments ?? []
     smtp.send(mail)
-    return Candy.server('Api').result(true, __('Mail sent successfully.'))
+    return Candy.server('Api').result(true, await __('Mail sent successfully.'))
   }
 
   #store(email, data) {

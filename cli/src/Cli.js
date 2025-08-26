@@ -91,12 +91,12 @@ class Cli {
     result = this.#color('\n' + this.#spacing('CANDYPACK', this.width, 'center') + '\n\n', 'magenta', 'bold')
     result += this.#color(' ┌', 'gray')
     result += this.#color('─'.repeat(5), 'gray')
-    let title = this.#color(__('Modules'), null)
+    let title = this.#color(await __('Modules'), null)
     result += ' ' + this.#color(title) + ' '
     result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
     result += this.#color('┬', 'gray')
     result += this.#color('─'.repeat(5), 'gray')
-    title = this.#color(__('Logs'), null)
+    title = this.#color(await __('Logs'), null)
     result += ' ' + this.#color(title) + ' '
     result += this.#color('─'.repeat(this.width - c1 - title.length - 7), 'gray')
     result += this.#color('┐ \n', 'gray')
@@ -162,7 +162,7 @@ class Cli {
     }
     if (!raw) {
       if (text == 'CandyPack') output = this.#color(output, 'magenta')
-      if (text == __('Running')) output = this.#color(output, 'green')
+      if (text == (await __('Running'))) output = this.#color(output, 'green')
       if (text == '\u2713') output = this.#color(output, 'green')
       if (text == '\u2717') output = this.#color(output, 'red')
     }
@@ -199,11 +199,11 @@ class Cli {
     if (typeof commands == 'string') {
       let obj = Candy.core('Commands')
       let command = commands.shift()
-      if (!obj[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
+      if (!obj[command]) return log(await __(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
       obj = obj[command]
       while (commands.length > 0 && commands.length && obj.sub[commands[0]]) {
         command = commands.shift()
-        if (!obj.sub[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
+        if (!obj.sub[command]) return log(await __(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
         obj = obj.sub[command]
       }
       let detail = await this.#detail(command, obj)
@@ -247,7 +247,7 @@ class Cli {
     let cmds = process.argv.slice(2)
     if (args.length == 0) return this.#status()
     let command = args.shift()
-    if (!Candy.core('Commands')[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')))
+    if (!Candy.core('Commands')[command]) return log(await __(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')))
     let action = Candy.core('Commands')[command]
     while (args.length > 0 && !action.args) {
       command = args.shift()
@@ -430,12 +430,12 @@ class Cli {
     let service = -1
     if (this.domains.length) {
       result += this.#color('─'.repeat(5), 'gray')
-      let title = this.#color(__('Websites'), null)
+      let title = this.#color(await __('Websites'), null)
       result += ' ' + this.#color(title) + ' '
       result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
     } else if (this.services.length) {
       result += this.#color('─'.repeat(5), 'gray')
-      let title = this.#color(__('Services'), null)
+      let title = this.#color(await __('Services'), null)
       result += ' ' + this.#color(title) + ' '
       result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
       service++
@@ -459,7 +459,7 @@ class Cli {
       } else if (this.services.length && service == -1) {
         result += this.#color(' ├', 'gray')
         result += this.#color('─'.repeat(5), 'gray')
-        let title = this.#color(__('Services'), null)
+        let title = this.#color(await __('Services'), null)
         result += ' ' + this.#color(title) + ' '
         result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
         result += this.#color('┤', 'gray')

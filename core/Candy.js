@@ -23,7 +23,7 @@ class CandyPack {
     return this.#instantiate(entry.value)
   }
 
-  core(name, singleton = false) {
+  core(name, singleton = true) {
     const key = `core:${name}`
     if (!this._registry.has(key)) {
       const modPath = `../core/${name}`
