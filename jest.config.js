@@ -6,6 +6,11 @@ const config = {
     '**/test/**/*.test.js',
     '**/?(*.)+(spec|test).js'
   ],
+  collectCoverage: true,
+  coverageDirectory: "coverage",
+  collectCoverageFrom: [
+    "core/**/*.js"
+  ],
 };
 
 module.exports = config;

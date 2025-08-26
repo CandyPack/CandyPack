@@ -3,3 +3,6 @@ yarn.lock
 package-lock.json
 /node_modules
 *.log
+
+# Test coverage
+/coverage
