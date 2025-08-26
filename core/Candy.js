@@ -23,7 +23,7 @@ class CandyPack {
     return this.#instantiate(entry.value)
   }
 
-  core(name, singleton = false) {
+  core(name, singleton = true) {
     const key = `core:${name}`
     if (!this._registry.has(key)) {
       const modPath = `../core/${name}`
@@ -34,7 +34,7 @@ class CandyPack {
     return this.#resolve(key, singleton)
   }
 
-  cli(name, singleton = false) {
+  cli(name, singleton = true) {
     const key = `cli:${name}`
     if (!this._registry.has(key)) {
       const modPath = `../cli/src/${name}`
@@ -45,7 +45,7 @@ class CandyPack {
     return this.#resolve(key, singleton)
   }
 
-  server(name, singleton = false) {
+  server(name, singleton = true) {
     const key = `server:${name}`
     if (!this._registry.has(key)) {
       const modPath = `../server/src/${name}`
@@ -56,7 +56,7 @@ class CandyPack {
     return this.#resolve(key, singleton)
   }
 
-  watchdog(name, singleton = false) {
+  watchdog(name, singleton = true) {
     const key = `watchdog:${name}`
     if (!this._registry.has(key)) {
       const modPath = `../watchdog/src/${name}`

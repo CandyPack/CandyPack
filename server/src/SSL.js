@@ -31,10 +31,10 @@ class SSL {
             break
           }
       }
-      if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Domain %s not found.', domain))
+      if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, await __('Domain %s not found.', domain))
     }
     this.#ssl(domain)
-    return Candy.server('Api').result(true, __('SSL certificate for domain %s renewed successfully.', domain))
+    return Candy.server('Api').result(true, await __('SSL certificate for domain %s renewed successfully.', domain))
   }
 
   #self() {

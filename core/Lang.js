@@ -1,63 +1,60 @@
-const fs = require('fs')
+const fs = require('fs').promises
+const path = require('path')
 
-var locale = Intl.DateTimeFormat().resolvedOptions().locale
-var file = __dirname + '/../locale/' + locale + '.json'
-var strings = {}
-var saving = false
-var queue = false
+class Lang {
+  #locale
+  #file
+  #strings = {}
+  #savePromise = Promise.resolve()
+  #loaded
 
-async function save() {
-  if (saving) {
-    if (queue) return
-    queue = true
-    setTimeout(save, 200)
-    return
+  constructor() {
+    this.#locale = Intl.DateTimeFormat().resolvedOptions().locale
+    this.#file = path.join(__dirname, '..', 'locale', `${this.#locale}.json`)
+    this.#loaded = this.#load()
   }
-  saving = true
-  return new Promise(resolve => {
-    fs.writeFile(file, JSON.stringify(strings, null, 4), 'utf8', function (err) {
-      if (err) log(err)
-      saving = false
-      return resolve()
-    })
-  })
-}
 
-async function load() {
-  return new Promise(resolve => {
-    fs.readFile(file, 'utf8', function (err, data) {
-      if (err) {
-        save()
-        resolve()
-      }
+  #save() {
+    this.#savePromise = this.#savePromise.then(async () => {
       try {
-        strings = JSON.parse(data)
-      } catch (e) {
-        console.error('Error parsing language file:', e)
-        save()
+        await fs.writeFile(this.#file, JSON.stringify(this.#strings, null, 4), 'utf8')
+      } catch (err) {
+        console.error('Error saving language file:', err)
       }
-      resolve()
     })
-  })
-}
+    return this.#savePromise
+  }
 
-module.exports = {
-  init: async function () {
-    if (!fs.existsSync(file)) save()
-    else await load()
-  },
-  get: function (key, ...args) {
-    if (key == 'CandyPack') return 'CandyPack'
-    if (!strings[key]) {
-      strings[key] = key
-      save()
+  async #load() {
+    try {
+      const data = await fs.readFile(this.#file, 'utf8')
+      this.#strings = JSON.parse(data)
+    } catch (err) {
+      this.#strings = {}
+      await this.#save()
     }
-    let text = strings[key]
+  }
+
+  async get(key, ...args) {
+    await this.#loaded
+
+    if (key === 'CandyPack') return 'CandyPack'
+
+    let text = this.#strings[key]
+
+    if (text === undefined) {
+      text = key
+      this.#strings[key] = text
+      this.#save()
+    }
+
     if (args.length > 0) {
-      for (var i = 0; i < args.length; i++) {
-        text = text.replace('%s', args[i])
+      for (const arg of args) {
+        text = text.replace('%s', arg)
       }
     }
     return text
   }
 }
+
+module.exports = Lang
