@@ -26,7 +26,7 @@ class Connector {
           if (!server.watchdog) return resolve(false)
           findProcess('pid', server.watchdog)
             .then(list => {
-              if (list.length > 0) return resolve(true)
+              if (list.length > 0 && list[0].name == 'node') return resolve(true)
               return resolve(false)
             })
             .catch(err => {
