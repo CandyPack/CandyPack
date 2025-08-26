@@ -1,5 +1,0 @@
-{
-    "route": {
-        "/assets/js/candy.js": "${candy}/framework/web/candy.js"
-    }
-}

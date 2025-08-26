@@ -1,5 +1,3 @@
 #!/usr/bin/env node
 
-global.trigger = 'candy';
-
-require('../server/cli.js');
+require('../cli/index.js')
