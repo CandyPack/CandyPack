@@ -1,3 +1,5 @@
+require('../core/Candy.js')
+
 /**
  * @file Watchdog for candypack server
  * This script ensures that the main server process is always running.
@@ -13,7 +15,6 @@ const path = require('path')
 
 const CANDYPACK_HOME = path.join(os.homedir(), '.candypack')
 const LOG_DIR = path.join(CANDYPACK_HOME, 'logs')
-const CONFIG_PATH = path.join(CANDYPACK_HOME, 'config.json')
 const SERVER_SCRIPT_PATH = path.join(__dirname, '..', 'server', 'index.js')
 
 const MAX_RESTARTS_IN_WINDOW = 100
@@ -59,60 +60,38 @@ async function saveLogs() {
  */
 async function performStartupChecks() {
   try {
-    // Ensure .candypack directory and config file exist
-    await fs.mkdir(CANDYPACK_HOME, {recursive: true})
-    try {
-      await fs.access(CONFIG_PATH)
-    } catch {
-      await fs.writeFile(CONFIG_PATH, '{}', 'utf8')
-    }
+    const config = Candy.core('Config')
 
-    let config
-    try {
-      const configData = await fs.readFile(CONFIG_PATH, 'utf8')
-      config = JSON.parse(configData)
-    } catch (error) {
-      // If reading or parsing fails, try to read a backup config file
-      if (fs.existsSync(CONFIG_PATH + '.bak')) {
-        const backupData = await fs.readFile(CONFIG_PATH + '.bak', 'utf8')
-        try {
-          config = JSON.parse(backupData)
-        } catch (error) {
-          console.error('Error reading or parsing backup config file, resetting it.', error)
-          config = {}
-        }
-      } else {
-        console.error('Error reading or parsing config file, resetting it.', error)
-        config = {}
-      }
-    }
+    // Wait for config to be loaded by getting a dummy key
+    await config.get('dummy_key_to_wait_for_load')
 
-    if (!config.server) config.server = {}
+    const configData = config.config
+
+    if (!configData.server) configData.server = {}
 
     // Kill previous watchdog process if it exists and is different from the current one
-    if (config.server.watchdog && config.server.watchdog !== process.pid) {
+    if (configData.server.watchdog && configData.server.watchdog !== process.pid) {
       try {
-        process.kill(config.server.watchdog, 'SIGTERM')
-        console.log(`Terminated old watchdog process with PID: ${config.server.watchdog}`)
+        process.kill(configData.server.watchdog, 'SIGTERM')
+        console.log(`Terminated old watchdog process with PID: ${configData.server.watchdog}`)
       } catch {
         // It's okay if the process doesn't exist anymore
       }
     }
 
     // Kill previous server process if it exists
-    if (config.server.pid) {
+    if (configData.server.pid) {
       try {
-        process.kill(config.server.pid, 'SIGTERM')
-        console.log(`Terminated old server process with PID: ${config.server.pid}`)
+        process.kill(configData.server.pid, 'SIGTERM')
+        console.log(`Terminated old server process with PID: ${configData.server.pid}`)
       } catch {
         // It's okay if the process doesn't exist anymore
       }
     }
 
     // Update config with current watchdog's info
-    config.server.watchdog = process.pid
-    config.server.started = Date.now()
-    await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 4), 'utf8')
+    configData.server.watchdog = process.pid
+    configData.server.started = Date.now()
 
     return true
   } catch (error) {
@@ -135,6 +114,8 @@ async function startServer() {
   await fs.mkdir(LOG_DIR, {recursive: true})
 
   const child = spawn('node', [SERVER_SCRIPT_PATH, 'start'], {detached: true})
+
+  Candy.core('Config').config.server.pid = child.pid
 
   console.log(`Server process started with PID: ${child.pid}`)
 
