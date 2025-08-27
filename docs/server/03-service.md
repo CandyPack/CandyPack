@@ -1,4 +1,4 @@
-# Running a Service ⚙️
+# ⚙️ Running a Service
 
 CandyPack allows you to run custom applications or services persistently in the background. This is useful for Node.js applications, scripts, or any other long-running processes.
 
@@ -26,4 +26,4 @@ or from within the app's directory:
 candy run index.js
 ```
 
-Once started, CandyPack will monitor the service and automatically restart it if it crashes. You can view its status and logs using the `monit` and `debug` commands.
+Once started, CandyPack will monitor the service and automatically restart it if it crashes. You can view its status using the `monit` command.

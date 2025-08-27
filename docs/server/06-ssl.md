@@ -1,4 +1,4 @@
-# Managing SSL 🔒
+# 🔒 Managing SSL
 
 CandyPack automates the process of obtaining and renewing SSL certificates for your websites, ensuring they are always served over a secure HTTPS connection.
 
