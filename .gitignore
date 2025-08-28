@@ -1,5 +1,47 @@
-.DS_STORE
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 yarn.lock
 package-lock.json
-/node_modules
+pnpm-lock.yaml
+
+# Test Coverage
+coverage/
+.nyc_output/
+
+# Logs
+logs
 *.log
+*.log.*
+
+# OS-generated
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist/
+build/
+out/
+tmp/
+temp/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jest cache
+jest-cache/
+jest-*
+
+# TypeScript
+*.tsbuildinfo

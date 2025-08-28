@@ -1,0 +1,49 @@
+name: Auto-generate PR Description
+
+on:
+  pull_request:
+    types: [opened]
+    branches:
+      - main
+
+jobs:
+  update-pr-description:
+    runs-on: ubuntu-latest
+    # Only run for PRs from `dev` to `main`
+    if: github.head_ref == 'dev' && github.base_ref == 'main'
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history for all branches and tags to get the commit messages
+          fetch-depth: 0
+
+      - name: Generate PR Body
+        id: generate_body
+        run: |
+          # Get commit messages from the PR's commits
+          COMMITS=$(git log origin/${{ github.base_ref }}..origin/${{ github.head_ref }} --pretty=format:"* %s")
+          # Set the multiline output for the next step
+          {
+            echo 'body<<EOF'
+            echo "This PR includes the following changes:"
+            echo ""
+            echo "$COMMITS"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update PR Title and Body
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              title: 'Sync `dev` to `main`',
+              body: `${{ steps.generate_body.outputs.body }}`
+            });

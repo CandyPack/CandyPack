@@ -1,1 +1,0 @@
-Candy.Route.page('/', 'index');
