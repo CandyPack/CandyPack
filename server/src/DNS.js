@@ -24,7 +24,6 @@ class DNS {
   }
 
   init() {
-    if (!Candy.core('Config').config.DNS) Candy.core('Config').config.DNS = {}
     this.#udp = dns.createServer()
     this.#tcp = dns.createTCPServer()
     axios
