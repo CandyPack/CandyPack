@@ -1,3 +1,4 @@
+const nodeCrypto = require('crypto')
 const fs = require('fs')
 const os = require('os')
 
@@ -28,6 +29,6 @@ module.exports = {
         }
       }
     }
-    this.encrypt.key = crypto.createHash('md5').update(this.encrypt.key).digest('hex')
+    this.encrypt.key = nodeCrypto.createHash('md5').update(this.encrypt.key).digest('hex')
   }
 }
