@@ -1,4 +1,5 @@
 const childProcess = require('child_process')
+const findProcess = require('find-process').default
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -62,11 +63,18 @@ class Service {
           this.#run(service.id)
         } else {
           if (!this.#watcher[service.pid]) {
-            try {
-              process.kill(service.pid, 'SIGTERM')
-            } catch {
-              console.error('Failed to kill process:', service.pid)
-            }
+            findProcess('pid', service.pid)
+              .then(list => {
+                if (list.length == 0 || list[0].name != 'node') return
+                try {
+                  process.kill(service.pid, 'SIGTERM')
+                } catch {
+                  console.error('Failed to kill process:', service.pid)
+                }
+              })
+              .catch(err => {
+                console.error('Error checking process:', err)
+              })
             this.#run(service.id)
             this.#set(service.id, 'pid', null)
           }
@@ -194,7 +202,18 @@ class Service {
       if (service) {
         if (service.pid) {
           try {
-            process.kill(service.pid, 'SIGTERM')
+            findProcess('pid', service.pid)
+              .then(list => {
+                if (list.length == 0 || list[0].name != 'node') return
+                try {
+                  process.kill(service.pid, 'SIGTERM')
+                } catch {
+                  console.error('Failed to kill process:', service.pid)
+                }
+              })
+              .catch(err => {
+                console.error('Error checking process:', err)
+              })
           } catch {
             console.error('Failed to kill process:', service.pid)
           }
@@ -211,18 +230,7 @@ class Service {
   }
 
   stopAll() {
-    for (const service of this.#services) {
-      if (service.pid) {
-        try {
-          process.kill(service.pid, 'SIGTERM')
-        } catch {
-          console.error('Failed to kill process:', service.pid)
-        }
-        this.#set(service.id, 'pid', null)
-        this.#set(service.id, 'started', null)
-        this.#set(service.id, 'active', false)
-      }
-    }
+    for (const service of this.#services) this.stop(service.id)
   }
 
   async status() {

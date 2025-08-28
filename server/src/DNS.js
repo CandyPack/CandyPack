@@ -39,7 +39,7 @@ class DNS {
   }
 
   #publish() {
-    if (this.#loaded || !Object.keys(Candy.core('Config').config.websites ?? []).length) return
+    if (this.#loaded || !Object.keys(Candy.core('Config').config.websites ?? {}).length) return
     this.#loaded = true
     this.#udp.on('request', (request, response) => this.#request(request, response))
     this.#tcp.on('request', (request, response) => this.#request(request, response))

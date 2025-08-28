@@ -1,4 +1,5 @@
 const childProcess = require('child_process')
+const findProcess = require('find-process').default
 const fs = require('fs')
 const http = require('http')
 const https = require('https')
@@ -24,11 +25,18 @@ class Web {
       if (!Candy.core('Config').config.websites[domain].pid) {
         this.start(domain)
       } else if (!this.#watcher[Candy.core('Config').config.websites[domain].pid]) {
-        try {
-          process.kill(Candy.core('Config').config.websites[domain].pid, 'SIGTERM')
-        } catch (e) {
-          console.error(e)
-        }
+        findProcess('pid', Candy.core('Config').config.websites[domain].pid)
+          .then(list => {
+            if (list.length == 0 || list[0].name != 'node') return
+            try {
+              process.kill(Candy.core('Config').config.websites[domain].pid, 'SIGTERM')
+            } catch (e) {
+              console.error(e)
+            }
+          })
+          .catch(err => {
+            console.error('Error checking process:', err)
+          })
         Candy.core('Config').config.websites[domain].pid = null
         this.start(domain)
       }
