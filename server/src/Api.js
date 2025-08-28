@@ -3,17 +3,18 @@ const nodeCrypto = require('crypto')
 
 class Api {
   #commands = {
-    'mail.create': (...args) => Candy.Mail.create(...args),
-    'mail.delete': (...args) => Candy.Mail.delete(...args),
-    'mail.list': (...args) => Candy.Mail.list(...args),
-    'mail.password': (...args) => Candy.Mail.password(...args),
-    'mail.send': (...args) => Candy.Mail.send(...args),
-    'service.start': (...args) => Candy.Service.start(...args),
-    'ssl.renew': (...args) => Candy.SSL.renew(...args),
-    'subdomain.create': (...args) => Candy.Subdomain.create(...args),
-    'subdomain.list': (...args) => Candy.Subdomain.list(...args),
-    'web.create': (...args) => Candy.Web.create(...args),
-    'web.list': (...args) => Candy.Web.list(...args)
+    'mail.create': (...args) => Candy.server('Mail').create(...args),
+    'mail.delete': (...args) => Candy.server('Mail').delete(...args),
+    'mail.list': (...args) => Candy.server('Mail').list(...args),
+    'mail.password': (...args) => Candy.server('Mail').password(...args),
+    'mail.send': (...args) => Candy.server('Mail').send(...args),
+    'service.start': (...args) => Candy.server('Service').start(...args),
+    'server.stop': () => Candy.server('Server').stop(),
+    'ssl.renew': (...args) => Candy.server('SSL').renew(...args),
+    'subdomain.create': (...args) => Candy.server('Subdomain').create(...args),
+    'subdomain.list': (...args) => Candy.server('Subdomain').list(...args),
+    'web.create': (...args) => Candy.server('Web').create(...args),
+    'web.list': (...args) => Candy.server('Web').list(...args)
   }
 
   init() {

@@ -8,25 +8,17 @@ class Config {
   #saving = false
   #changed = false
 
-  async get(key) {
-    if (this.#loaded) return this.config[key]
-    return new Promise(resolve => {
-      const interval = setInterval(() => {
-        if (this.#loaded) {
-          clearInterval(interval)
-          resolve(this.config[key])
-        }
-      }, 100)
-    })
+  force() {
+    this.#save()
   }
 
-  async init() {
+  init() {
     this.#dir = os.homedir() + '/.candypack'
     this.#file = this.#dir + '/config.json'
     this.config = {}
     if (!fs.existsSync(this.#dir)) fs.mkdirSync(this.#dir)
     if (!fs.existsSync(this.#file)) this.#save()
-    else await this.#load()
+    else this.#load()
     setInterval(() => this.#save(), 500).unref()
     this.config = this.#proxy(this.config)
   }
@@ -105,6 +97,11 @@ class Config {
       }
     }
     return new Proxy(target, handler)
+  }
+
+  reload() {
+    this.#loaded = false
+    this.#load()
   }
 
   #save() {

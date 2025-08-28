@@ -106,8 +106,7 @@ class Service {
     }
     this.#set(id, 'updated', Date.now())
     var child = childProcess.spawn('node', [service.file], {
-      cwd: path.dirname(service.file),
-      detached: true
+      cwd: path.dirname(service.file)
     })
     let pid = child.pid
     child.stdout.on('data', data => {
@@ -196,37 +195,35 @@ class Service {
     })
   }
 
-  async stop(id) {
-    return new Promise(() => {
-      let service = this.#get(id)
-      if (service) {
-        if (service.pid) {
-          try {
-            findProcess('pid', service.pid)
-              .then(list => {
-                if (list.length == 0 || list[0].name != 'node') return
-                try {
-                  process.kill(service.pid, 'SIGTERM')
-                } catch {
-                  console.error('Failed to kill process:', service.pid)
-                }
-              })
-              .catch(err => {
-                console.error('Error checking process:', err)
-              })
-          } catch {
-            console.error('Failed to kill process:', service.pid)
-          }
-          this.#set(id, 'pid', null)
-          this.#set(id, 'started', null)
-          this.#set(id, 'active', false)
-        } else {
-          log(__('Service %s is not running.', id))
+  stop(id) {
+    let service = this.#get(id)
+    if (service) {
+      if (service.pid) {
+        try {
+          findProcess('pid', service.pid)
+            .then(list => {
+              if (list.length == 0 || list[0].name != 'node') return
+              try {
+                process.kill(service.pid, 'SIGTERM')
+              } catch {
+                console.error('Failed to kill process:', service.pid)
+              }
+            })
+            .catch(err => {
+              console.error('Error checking process:', err)
+            })
+        } catch {
+          console.error('Failed to kill process:', service.pid)
         }
+        this.#set(id, 'pid', null)
+        this.#set(id, 'started', null)
+        this.#set(id, 'active', false)
       } else {
-        log(__('Service %s not found.', id))
+        log(__('Service %s is not running.', id))
       }
-    })
+    } else {
+      log(__('Service %s not found.', id))
+    }
   }
 
   stopAll() {
@@ -234,28 +231,26 @@ class Service {
   }
 
   async status() {
-    return new Promise(resolve => {
-      let services = Candy.core('Config').config.services ?? []
-      for (const service of services) {
-        if (service.status == 'running') {
-          var uptime = Date.now() - service.started
-          let seconds = Math.floor(uptime / 1000)
-          let minutes = Math.floor(seconds / 60)
-          let hours = Math.floor(minutes / 60)
-          let days = Math.floor(hours / 24)
-          seconds %= 60
-          minutes %= 60
-          hours %= 24
-          let uptimeString = ''
-          if (days) uptimeString += days + 'd '
-          if (hours) uptimeString += hours + 'h '
-          if (minutes) uptimeString += minutes + 'm '
-          if (seconds) uptimeString += seconds + 's'
-          service.uptime = uptimeString
-        }
+    let services = Candy.core('Config').config.services ?? []
+    for (const service of services) {
+      if (service.status == 'running') {
+        var uptime = Date.now() - service.started
+        let seconds = Math.floor(uptime / 1000)
+        let minutes = Math.floor(seconds / 60)
+        let hours = Math.floor(minutes / 60)
+        let days = Math.floor(hours / 24)
+        seconds %= 60
+        minutes %= 60
+        hours %= 24
+        let uptimeString = ''
+        if (days) uptimeString += days + 'd '
+        if (hours) uptimeString += hours + 'h '
+        if (minutes) uptimeString += minutes + 'm '
+        if (seconds) uptimeString += seconds + 's'
+        service.uptime = uptimeString
       }
-      return resolve(services)
-    })
+    }
+    return services
   }
 }
 

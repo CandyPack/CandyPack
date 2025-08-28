@@ -37,5 +37,6 @@
     "Debug CandyPack Server": "CandyPack Hata Ayıklama",
     "Add a new Service": "Yeni Bir Hizmet Ekle",
     "List all websites": "Tüm web sitelerini listele",
-    "Offline": "Çevrimdışı"
+    "Offline": "Çevrimdışı",
+    "No websites found.": "No websites found."
 }

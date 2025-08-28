@@ -1,4 +1,5 @@
 const {spawn} = require('child_process')
+const findProcess = require('find-process').default
 const fs = require('fs').promises
 const os = require('os')
 const path = require('path')
@@ -18,10 +19,6 @@ class Watchdog {
   #restartCount = 0
   #lastRestartTimestamp = 0
   #isSaving = false
-
-  constructor() {
-    // The init method will be called by Candy.watchdog()
-  }
 
   init() {
     // Set up periodic log saving. This is done only once.
@@ -64,29 +61,42 @@ class Watchdog {
     try {
       // Kill previous watchdog process if it exists and is different from the current one
       if (Candy.core('Config').config.server.watchdog && Candy.core('Config').config.server.watchdog !== process.pid) {
-        try {
-          process.kill(Candy.core('Config').config.server.watchdog, 'SIGTERM')
-          console.log(`Terminated old watchdog process with PID: ${Candy.core('Config').config.server.watchdog}`)
-        } catch {
-          // It's okay if the process doesn't exist anymore
-        }
+        await new Promise(resolve => {
+          findProcess('pid', Candy.core('Config').config.server.watchdog).then(list => {
+            resolve()
+            if (list.length == 0 || list[0].name != 'node') return
+            try {
+              process.kill(Candy.core('Config').config.server.watchdog, 'SIGTERM')
+              console.log(`Terminated old watchdog process with PID: ${Candy.core('Config').config.server.watchdog}`)
+            } catch {
+              // It's okay if the process doesn't exist anymore
+            }
+          })
+        })
       }
 
       // Kill previous server process if it exists
       if (Candy.core('Config').config.server.pid) {
-        try {
-          process.kill(Candy.core('Config').config.server.pid, 'SIGTERM')
-          console.log(`Terminated old server process with PID: ${Candy.core('Config').config.server.pid}`)
-        } catch {
-          // It's okay if the process doesn't exist anymore
-        }
+        await new Promise(resolve => {
+          findProcess('pid', Candy.core('Config').config.server.pid).then(list => {
+            resolve()
+            if (list.length == 0 || list[0].name != 'node') return
+            try {
+              process.kill(Candy.core('Config').config.server.pid, 'SIGTERM')
+              console.log(`Terminated old server process with PID: ${Candy.core('Config').config.server.pid}`)
+            } catch {
+              // It's okay if the process doesn't exist anymore
+            }
+          })
+        })
       }
 
       // Update config with current watchdog's info
       Candy.core('Config').config.server.watchdog = process.pid
       Candy.core('Config').config.server.started = Date.now()
+      Candy.core('Config').force()
 
-      return true
+      return new Promise(resolve => setTimeout(() => resolve(true), 1000))
     } catch (error) {
       console.error('Error during startup checks:', error)
       return false
@@ -106,10 +116,13 @@ class Watchdog {
     // Ensure log directory exists before starting
     await fs.mkdir(LOG_DIR, {recursive: true})
 
-    const child = spawn('node', [SERVER_SCRIPT_PATH, 'start'], {detached: true})
+    const child = spawn('node', [SERVER_SCRIPT_PATH])
+
+    process.on('exit', () => child.kill())
 
     Candy.core('Config').config.server.pid = child.pid
 
+    console.log(`Watchdog process started with PID: ${process.pid}`)
     console.log(`Server process started with PID: ${child.pid}`)
 
     child.stdout.on('data', data => {
@@ -121,6 +134,7 @@ class Watchdog {
     })
 
     child.on('close', code => {
+      Candy.core('Config').reload()
       this.#errorBuffer += `[ERR][${new Date().toISOString()}] Process closed with code ${code}\n`
 
       // Reset restart count if the last restart was a while ago

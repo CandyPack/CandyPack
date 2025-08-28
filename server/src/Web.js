@@ -235,8 +235,7 @@ class Web {
       return
     }
     var child = childProcess.spawn('node', [Candy.core('Config').config.websites[domain].path + '/index.js', port], {
-      cwd: Candy.core('Config').config.websites[domain].path,
-      detached: true
+      cwd: Candy.core('Config').config.websites[domain].path
     })
     let pid = child.pid
     child.stdout.on('data', data => {
@@ -297,7 +296,7 @@ class Web {
     return Candy.core('Config').config.websites
   }
 
-  async stopAll() {
+  stopAll() {
     for (const domain of Object.keys(Candy.core('Config').config.websites ?? {})) {
       let website = Candy.core('Config').config.websites[domain]
       if (website.pid) {

@@ -23,13 +23,19 @@ class Cli {
   height
   #watch = []
 
-  async #boot() {
-    console.log(__('Starting CandyPack Server...'))
-    const child = childProcess.spawn('node', [__dirname + '/../../watchdog/index.js'], {
-      detached: true,
-      stdio: 'ignore'
+  #boot() {
+    return new Promise(resolve => {
+      console.log(__('Starting CandyPack Server...'))
+      const child = childProcess.spawn('node', [__dirname + '/../../watchdog/index.js'], {
+        detached: true,
+        stdio: 'ignore'
+      })
+      child.unref()
+      setTimeout(() => {
+        Candy.core('Config').reload()
+        resolve()
+      }, 1000)
     })
-    child.unref()
   }
 
   close() {
@@ -242,7 +248,7 @@ class Cli {
 
   async init() {
     log('\n', 'CandyPack')
-    if (!(await Candy.cli('Connector').check())) this.#boot()
+    if (!(await Candy.cli('Connector').check())) await this.#boot()
     let args = process.argv.slice(2)
     let cmds = process.argv.slice(2)
     if (args.length == 0) return this.#status()
