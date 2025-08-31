@@ -25,29 +25,38 @@ Unsure where to begin contributing to CandyPack? You can start by looking throug
 *   [Good first issues](https://github.com/CandyPack/CandyPack/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) - issues which should only require a few lines of code, and a test or two.
 *   [Help wanted issues](https://github.com/CandyPack/CandyPack/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) - issues which should be a bit more involved than `good first issue` issues.
 
-### Pull Requests
+### Development Workflow
 
-We welcome pull requests from the community. Here's a quick guide:
+Our development process follows a branching model similar to Git Flow. This helps us keep the `main` branch stable and ready for release at all times.
 
-1.  **Fork the repo** and create your branch from `main`.
-2.  If you've added code that should be tested, add tests.
-3.  If you've changed APIs, update the documentation.
-4.  Ensure the test suite passes.
-5.  Make sure your code lints.
-6.  Issue that pull request!
+1.  **Branching:**
+    *   All new features or bug fixes should be developed on a feature branch.
+    *   Create your feature branch from the `dev` branch: `git checkout -b your-feature-name dev`.
+    *   Never create a feature branch directly from `main`.
 
-## Styleguides
+2.  **Making Changes:**
+    *   Make your code changes, ensuring you follow the project's coding standards.
+    *   Add tests for any new code.
+    *   Ensure all tests pass (`npm test`) and the code lints correctly.
 
-### Git Commit Messages
+3.  **Committing Changes:**
+    *   This project uses **Conventional Commits**. This is a requirement for our automated release process.
+    *   Your commit messages must be in the format: `<type>(<scope>): <subject>`.
+        *   **type:** `feat` (new feature), `fix` (bug fix), `docs`, `style`, `refactor`, `test`, `chore`.
+        *   **scope:** (Optional) The part of the project you're working on (e.g., `server`, `framework`).
+    *   Example: `feat(server): add rate limiting to API endpoints`
 
-*   Use the present tense ("Add feature" not "Added feature").
-*   Use the imperative mood ("Move cursor to..." not "Moves cursor to...").
-*   Limit the first line to 72 characters or less.
-*   Reference issues and pull requests liberally after the first line.
+4.  **Submitting a Pull Request:**
+    *   Once your feature is complete, push your branch to your fork.
+    *   Open a Pull Request (PR) from your feature branch to the `dev` branch of the main repository.
+    *   Provide a clear description of the changes in your PR.
+    *   After your PR is reviewed and merged, you can safely delete your feature branch.
 
-### JavaScript Styleguide
+The `main` branch is only updated by merging `dev` into it during a new release. Direct pushes or PRs to `main` are not permitted.
 
-All JavaScript must adhere to the style defined in the `.prettierrc` file.
+## Code Style
+
+All JavaScript must adhere to the style defined in the `.prettierrc` file. The linter will automatically check this.
 
 ---
 
