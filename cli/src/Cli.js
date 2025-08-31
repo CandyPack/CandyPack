@@ -23,7 +23,7 @@ class Cli {
   height
   #watch = []
 
-  #boot() {
+  boot() {
     return new Promise(resolve => {
       console.log(__('Starting CandyPack Server...'))
       const child = childProcess.spawn('node', [__dirname + '/../../watchdog/index.js'], {
@@ -248,7 +248,7 @@ class Cli {
 
   async init() {
     log('\n', 'CandyPack')
-    if (!(await Candy.cli('Connector').check())) await this.#boot()
+    if (!(await Candy.cli('Connector').check())) await this.boot()
     let args = process.argv.slice(2)
     let cmds = process.argv.slice(2)
     if (args.length == 0) return this.#status()
