@@ -1,3 +1,10 @@
+## [0.4.1](https://github.com/CandyPack/CandyPack/compare/v0.4.0...v0.4.1) (2025-08-31)
+
+
+### Bug Fixes
+
+* **server:** Refactor server restart and initialization logic ([#15](https://github.com/CandyPack/CandyPack/issues/15)) ([6cc688e](https://github.com/CandyPack/CandyPack/commit/6cc688ed95212fa73d022e3f2d8e773a17fe299e))
+
 # [0.4.0](https://github.com/CandyPack/CandyPack/compare/v0.3.1...v0.4.0) (2025-08-28)
 
 
