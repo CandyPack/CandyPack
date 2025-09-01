@@ -1,8 +1,8 @@
-# 🌐 Managing Websites
+# Managing Websites
 
 One of the primary functions of CandyPack is to create and manage websites. The `web` command is your entry point for all website-related operations.
 
-## Create a Website
+## 🌐 Create a Website
 This command helps you set up a new website on your server. CandyPack will ask for the domain name and the path to the website's files.
 
 ### Usage
@@ -20,7 +20,7 @@ $ candy web create
 > Enter the path to the website (/home/user/example.com/):
 ```
 
-## List Websites
+## 📋 List Websites
 To see a list of all websites currently configured on your server, use the `list` command.
 
 ### Usage

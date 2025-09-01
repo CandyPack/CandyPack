@@ -1,8 +1,8 @@
-# 🔗 Managing Subdomains
+# Managing Subdomains
 
 CandyPack makes it easy to manage subdomains for your main websites. The `subdomain` command is used for all subdomain-related tasks.
 
-## Create a Subdomain
+## 🔗 Create a Subdomain
 This command allows you to create a new subdomain. CandyPack will automatically configure it to point to a directory with the same name inside your main domain's root directory.
 
 ### Usage
@@ -17,7 +17,7 @@ $ candy subdomain create
 > Enter the subdomain name (subdomain.example.com): blog.example.com
 ```
 
-## List Subdomains
+## 📋 List Subdomains
 To see a list of all subdomains configured for a specific domain, use the `list` command.
 
 ### Usage
