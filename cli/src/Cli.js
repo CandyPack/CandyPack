@@ -635,6 +635,7 @@ class Cli {
         })
       }
       this.rl.question(question, answer => {
+        this.rl.close()
         return resolve(answer.trim())
       })
     })
