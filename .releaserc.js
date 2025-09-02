@@ -7,7 +7,9 @@ module.exports = {
     ["@semantic-release/release-notes-generator", {
       preset: 'conventionalcommits',
       writerOpts: {
-        transform: (commit, context) => {
+        transform: (c, context) => {
+          const commit = JSON.parse(JSON.stringify(c));
+
           const map = {
             feat: "✨ What's New",
             fix: '🛠️ Fixes & Improvements',
@@ -21,7 +23,6 @@ module.exports = {
             ci: '🤖 CI'
           };
 
-          if (!commit.type) return commit;
           commit.type = map[commit.type] || commit.type;
 
           const hide = ['🎨 Style', '🔧 Maintenance & Cleanup', '🏗️ Build', '🤖 CI'];
