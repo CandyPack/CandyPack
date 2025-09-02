@@ -25,6 +25,7 @@ class Cli {
 
   boot() {
     return new Promise(resolve => {
+      Candy.core('Process').stopAll()
       console.log(__('Starting CandyPack Server...'))
       const child = childProcess.spawn('node', [__dirname + '/../../watchdog/index.js'], {
         detached: true,

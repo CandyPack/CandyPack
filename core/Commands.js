@@ -21,7 +21,7 @@ module.exports = {
   },
   restart: {
     description: 'Restart CandyPack Server',
-    action: async () => Candy.cli('Connector').call({action: 'server.restart'})
+    action: async () => Candy.cli('Cli').boot()
   },
   run: {
     args: ['file'],

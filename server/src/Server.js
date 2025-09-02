@@ -16,6 +16,11 @@ class Server {
       }, 1000)
     }, 1000)
   }
+
+  stop() {
+    Candy.server('Service').stopAll()
+    Candy.server('Web').stopAll()
+  }
 }
 
 module.exports = new Server()

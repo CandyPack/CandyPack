@@ -1,5 +1,4 @@
 const childProcess = require('child_process')
-const findProcess = require('find-process').default
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -63,18 +62,7 @@ class Service {
           this.#run(service.id)
         } else {
           if (!this.#watcher[service.pid]) {
-            findProcess('pid', service.pid)
-              .then(list => {
-                if (list.length == 0 || list[0].name != 'node') return
-                try {
-                  process.kill(service.pid, 'SIGTERM')
-                } catch {
-                  console.error('Failed to kill process:', service.pid)
-                }
-              })
-              .catch(err => {
-                console.error('Error checking process:', err)
-              })
+            Candy.core('Process').stop(service.pid)
             this.#run(service.id)
             this.#set(service.id, 'pid', null)
           }
@@ -177,6 +165,7 @@ class Service {
       })
     }
     this.#loaded = true
+    this.stopAll()
   }
 
   async start(file) {
@@ -199,22 +188,7 @@ class Service {
     let service = this.#get(id)
     if (service) {
       if (service.pid) {
-        try {
-          findProcess('pid', service.pid)
-            .then(list => {
-              if (list.length == 0 || list[0].name != 'node') return
-              try {
-                process.kill(service.pid, 'SIGTERM')
-              } catch {
-                console.error('Failed to kill process:', service.pid)
-              }
-            })
-            .catch(err => {
-              console.error('Error checking process:', err)
-            })
-        } catch {
-          console.error('Failed to kill process:', service.pid)
-        }
+        Candy.core('Process').stop(service.pid)
         this.#set(id, 'pid', null)
         this.#set(id, 'started', null)
         this.#set(id, 'active', false)

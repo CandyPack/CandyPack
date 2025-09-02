@@ -1,5 +1,4 @@
 const childProcess = require('child_process')
-const findProcess = require('find-process').default
 const fs = require('fs')
 const http = require('http')
 const https = require('https')
@@ -19,24 +18,17 @@ class Web {
   #started = {}
   #watcher = {}
 
+  constructor() {
+    this.stopAll()
+  }
+
   async check() {
     if (!this.#loaded) return
     for (const domain of Object.keys(Candy.core('Config').config.websites ?? {})) {
       if (!Candy.core('Config').config.websites[domain].pid) {
         this.start(domain)
       } else if (!this.#watcher[Candy.core('Config').config.websites[domain].pid]) {
-        findProcess('pid', Candy.core('Config').config.websites[domain].pid)
-          .then(list => {
-            if (list.length == 0 || list[0].name != 'node') return
-            try {
-              process.kill(Candy.core('Config').config.websites[domain].pid, 'SIGTERM')
-            } catch (e) {
-              console.error(e)
-            }
-          })
-          .catch(err => {
-            console.error('Error checking process:', err)
-          })
+        Candy.core('Process').stop(Candy.core('Config').config.websites[domain].pid)
         Candy.core('Config').config.websites[domain].pid = null
         this.start(domain)
       }
@@ -300,11 +292,7 @@ class Web {
     for (const domain of Object.keys(Candy.core('Config').config.websites ?? {})) {
       let website = Candy.core('Config').config.websites[domain]
       if (website.pid) {
-        try {
-          process.kill(website.pid, 'SIGTERM')
-        } catch (e) {
-          console.log(e)
-        }
+        Candy.core('Process').stop(website.pid)
         website.pid = null
         this.set(domain, website)
       }
