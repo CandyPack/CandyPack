@@ -1,0 +1,78 @@
+{
+  "server": [
+    {
+      "file": "01-installation.md",
+      "title": "Installation"
+    },
+    {
+      "file": "02-get-started.md",
+      "title": "Getting Started"
+    },
+    {
+      "file": "03-service.md",
+      "title": "Running a Service"
+    },
+    {
+      "file": "04-web.md",
+      "title": "Managing Websites"
+    },
+    {
+      "file": "05-subdomain.md",
+      "title": "Managing Subdomains"
+    },
+    {
+      "file": "06-ssl.md",
+      "title": "Managing SSL"
+    },
+    {
+      "file": "07-mail.md",
+      "title": "Managing Mail"
+    }
+  ],
+  "framework": [
+    {
+      "file": "01-overview.md",
+      "title": "Welcome to the CandyPack Framework!"
+    },
+    {
+      "file": "02-structure.md",
+      "title": "Where Do I Put My Files?"
+    },
+    {
+      "file": "03-config.md",
+      "title": "Configuring Your Application"
+    },
+    {
+      "file": "04-routing.md",
+      "title": "Routing: Directing Your Web Traffic"
+    },
+    {
+      "file": "05-controllers.md",
+      "title": "Controllers: The Brains of Your App"
+    },
+    {
+      "file": "06-request-and-response.md",
+      "title": "Handling Requests and Sending Responses"
+    },
+    {
+      "file": "07-views.md",
+      "title": "Views: Making Things Pretty"
+    },
+    {
+      "file": "08-authentication.md",
+      "title": "Authentication & Security"
+    },
+    {
+      "file": "09-database.md",
+      "title": "Talking to Your Database"
+    },
+    {
+      "file": "10-mail.md",
+      "title": "Sending Emails"
+    },
+    {
+      "file": "11-validation.md",
+      "title": "Validating User Input"
+    }
+  ]
+}

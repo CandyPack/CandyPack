@@ -1,3 +1,5 @@
+const {log} = Candy.server('Log', false).init('Client')
+
 const axios = require('axios')
 
 class Client {
@@ -25,7 +27,7 @@ class Client {
           resolve(response.data.data)
         })
         .catch(error => {
-          console.log(error.response.data)
+          log(error.response.data)
           reject(error.response.data)
         })
     })

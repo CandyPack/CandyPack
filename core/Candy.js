@@ -71,5 +71,4 @@ class CandyPack {
 if (!global.Candy) {
   global.Candy = new CandyPack()
   global.__ = (...args) => Candy.core('Lang').get(...args)
-  global.log = (...args) => console.log(...args)
 }

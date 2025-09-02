@@ -12,7 +12,6 @@ export default defineConfig([
       globals: {
         ...globals.node,
         Candy: 'readonly',
-        log: 'readonly',
         __: 'readonly'
       },
       sourceType: 'script'

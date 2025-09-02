@@ -1,3 +1,5 @@
+const {log, error} = Candy.server('Log', false).init('Mail', 'IMAP')
+
 class Connection {
   #auth
   #actions = {
@@ -31,7 +33,7 @@ class Connection {
 
   #authenticate() {
     this.#write('+ Ready for authentication\r\n')
-    log('mail', 'imap', 'Authenticate request from: ' + this.#socket.remoteAddress.replace('::ffff:', ''))
+    log('Authenticate request from: ' + this.#socket.remoteAddress.replace('::ffff:', ''))
     this.#wait = true
     this.#socket.once('data', data => {
       data = data.toString().trim()
@@ -49,11 +51,11 @@ class Connection {
             err => {
               if (err) {
                 this.#write(`${this.#request.id} NO Authentication failed\r\n`)
-                log('mail', 'imap', 'Authentication failed for: ' + auth[1])
+                log('Authentication failed for: ' + auth[1])
                 this.#auth = false
               } else {
                 this.#write(`${this.#request.id} OK Authentication successful\r\n`)
-                log('mail', 'imap', 'Authentication successful for: ' + auth[1])
+                log('Authentication successful for: ' + auth[1])
                 this.#auth = auth[1]
               }
             }
@@ -72,7 +74,7 @@ class Connection {
   }
 
   #bad() {
-    console.error('mail', 'imap', 'Unknown command', this.#request.action)
+    error('Unknown command', this.#request.action)
     this.#write(`${this.#request.id} BAD Unknown command\r\n`)
   }
 
@@ -408,7 +410,7 @@ class Connection {
             try {
               flags = data.flags ? JSON.parse(data.flags) : []
             } catch {
-              console.error('Error parsing flags', data.flags)
+              error('Error parsing flags', data.flags)
             }
             flags = flags.map(flag => '\\' + flag)
             this.#write('FLAGS (' + flags.join(' ') + ') ')

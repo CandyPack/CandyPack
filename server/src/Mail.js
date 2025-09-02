@@ -1,3 +1,5 @@
+const {log, error} = Candy.server('Log', false).init('Service')
+
 const bcrypt = require('bcrypt')
 const SMTPServer = require('smtp-server').SMTPServer
 const parser = require('mailparser').simpleParser
@@ -117,7 +119,7 @@ class Mail {
     this.#started = true
     if (!fs.existsSync(os.homedir() + '/.candypack/db')) fs.mkdirSync(os.homedir() + '/.candypack/db', {recursive: true})
     this.#db = new sqlite3.Database(os.homedir() + '/.candypack/db/mail', err => {
-      if (err) console.error(err.message)
+      if (err) error(err.message)
     })
     this.#db.serialize(() => {
       this.#db.run(`CREATE TABLE IF NOT EXISTS mail_received ('id'          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -184,19 +186,19 @@ class Mail {
       },
       onData(stream, session, callback) {
         parser(stream, {}, async (err, parsed) => {
-          if (err) return console.error(err)
-          // console.log('ON DATA:', session);
+          if (err) return error(err)
+          // log('ON DATA:', session);
           if (!parsed.to.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
-            console.error('Invalid recipient:', parsed.to.value[0].address)
+            error('Invalid recipient:', parsed.to.value[0].address)
             return callback(new Error('Invalid recipient'))
           }
           if (!parsed.from.value[0].address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
-            console.error('Invalid sender:', parsed.from.value[0].address)
+            error('Invalid sender:', parsed.from.value[0].address)
             return callback(new Error('Invalid sender'))
           }
           let sender = await self.exists(parsed.from.value[0].address)
           if (sender && (!session.user || parsed.from.value[0].address !== session.user)) {
-            console.error('Unexpected sender:', parsed.from.value[0].address)
+            error('Unexpected sender:', parsed.from.value[0].address)
             return callback(new Error('Unexpected sender'))
           }
           if (
@@ -204,7 +206,7 @@ class Mail {
             !['hostmaster', 'postmaster'].includes(parsed.to.value[0].address.split('@')[0]) &&
             !(await self.exists(parsed.to.value[0].address))
           ) {
-            console.error('Unexpected recipient:', parsed.to.value[0].address)
+            error('Unexpected recipient:', parsed.to.value[0].address)
             return callback(new Error('Unexpected recipient'))
           }
           await self.#store(session.user ?? parsed.to.value[0].address, parsed)
@@ -225,7 +227,7 @@ class Mail {
           [data.email, data.mailbox],
           (err, rows) => {
             if (err) {
-              console.error(err)
+              error(err)
               return callback(false)
             }
             callback(rows)
@@ -246,7 +248,7 @@ class Mail {
           [data.address, data.mailbox],
           (err, row) => {
             if (err) {
-              console.error(err)
+              error(err)
               return callback(err)
             }
             callback(row)
@@ -266,7 +268,7 @@ class Mail {
               [flag, data.address, uid[0], uid[1], `%${flag}%`],
               err => {
                 if (err) {
-                  console.error(err)
+                  error(err)
                   return callback(err)
                 }
               }
@@ -275,7 +277,7 @@ class Mail {
         callback()
       },
       onError(err) {
-        console.error('Error:', err)
+        error('Error:', err)
       }
     }
     let serv = new SMTPServer(options)
@@ -312,7 +314,7 @@ class Mail {
     options.secure = true
     this.#server_smtp = new SMTPServer(options)
     this.#server_smtp.listen(465)
-    this.#server_smtp.on('error', err => console.error('SMTP Server Error: ', err))
+    this.#server_smtp.on('error', err => error('SMTP Server Error: ', err))
     const imap_sec = new server(options)
     imap_sec.listen(993)
   }
@@ -422,7 +424,7 @@ class Mail {
           ],
           async err => {
             if (!err) return resolve(true)
-            console.error(err)
+            error(err)
             return resolve(await this.#store(email, data))
           }
         )

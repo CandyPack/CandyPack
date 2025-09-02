@@ -1,5 +1,4 @@
 const {spawn} = require('child_process')
-const findProcess = require('find-process').default
 const fs = require('fs').promises
 const os = require('os')
 const path = require('path')
@@ -60,36 +59,17 @@ class Watchdog {
   async #performStartupChecks() {
     try {
       // Kill previous watchdog process if it exists and is different from the current one
-      if (Candy.core('Config').config.server.watchdog && Candy.core('Config').config.server.watchdog !== process.pid) {
-        await new Promise(resolve => {
-          findProcess('pid', Candy.core('Config').config.server.watchdog).then(list => {
-            resolve()
-            if (list.length == 0 || list[0].name != 'node') return
-            try {
-              process.kill(Candy.core('Config').config.server.watchdog, 'SIGTERM')
-              console.log(`Terminated old watchdog process with PID: ${Candy.core('Config').config.server.watchdog}`)
-            } catch {
-              // It's okay if the process doesn't exist anymore
-            }
-          })
-        })
-      }
+      if (Candy.core('Config').config.server.watchdog && Candy.core('Config').config.server.watchdog !== process.pid)
+        await Candy.core('Process').stop(Candy.core('Config').config.server.watchdog)
 
       // Kill previous server process if it exists
-      if (Candy.core('Config').config.server.pid) {
-        await new Promise(resolve => {
-          findProcess('pid', Candy.core('Config').config.server.pid).then(list => {
-            resolve()
-            if (list.length == 0 || list[0].name != 'node') return
-            try {
-              process.kill(Candy.core('Config').config.server.pid, 'SIGTERM')
-              console.log(`Terminated old server process with PID: ${Candy.core('Config').config.server.pid}`)
-            } catch {
-              // It's okay if the process doesn't exist anymore
-            }
-          })
-        })
-      }
+      if (Candy.core('Config').config.server.pid) await Candy.core('Process').stop(Candy.core('Config').config.server.pid)
+
+      for (const domain of Object.keys(Candy.core('Config').config?.websites ?? []))
+        if (Candy.core('Config').config.websites[domain].pid)
+          await Candy.core('Process').stop(Candy.core('Config').config.websites[domain].pid)
+
+      for (const service of Candy.core('Config').config.services) if (service.pid) await Candy.core('Process').stop(service.pid)
 
       // Update config with current watchdog's info
       Candy.core('Config').config.server.watchdog = process.pid

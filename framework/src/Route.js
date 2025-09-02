@@ -290,6 +290,16 @@ class Route {
   }
 
   page(path, file) {
+    if (file === undefined) {
+      return {
+        view: (...args) => {
+          this.set('page', path, _candy => {
+            _candy.View.set(...args)
+            return
+          })
+        }
+      }
+    }
     this.set('page', path, file)
   }
 
@@ -302,6 +312,22 @@ class Route {
   }
 
   authPage(path, authFile, file) {
+    if (file === undefined) {
+      return {
+        view: (...args) => {
+          if (authFile)
+            this.set('#page', path, _candy => {
+              _candy.View.set(...args)
+              return
+            })
+          else
+            this.set('page', path, _candy => {
+              _candy.View.set(...args)
+              return
+            })
+        }
+      }
+    }
     if (authFile) this.set('#page', path, authFile)
     if (file) this.page(path, file)
   }
