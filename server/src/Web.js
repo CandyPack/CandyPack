@@ -1,3 +1,5 @@
+const {log} = Candy.server('Log', false).init('Web')
+
 const childProcess = require('child_process')
 const fs = require('fs')
 const http = require('http')

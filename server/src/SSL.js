@@ -1,3 +1,5 @@
+const {log} = Candy.server('Log', false).init('SSL')
+
 const acme = require('acme-client')
 const fs = require('fs')
 const os = require('os')
@@ -112,7 +114,7 @@ class SSL {
       if (!this.#checked[domain]) this.#checked[domain] = {error: 0}
       if (this.#checked[domain].error < 5) this.#checked[domain].error = this.#checked[domain] ? this.#checked[domain].error + 1 : 1
       this.#checked[domain].interval = this.#checked[domain].error * 1000 * 60 * 5 + Date.now()
-      console.log(e)
+      log(e)
       return
     }
     if (!cert) return

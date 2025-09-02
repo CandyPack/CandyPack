@@ -1,3 +1,5 @@
+const {log, error} = Candy.server('Log', false).init('DNS')
+
 const axios = require('axios')
 const dns = require('native-dns')
 
@@ -29,11 +31,11 @@ class DNS {
     axios
       .get('https://curlmyip.org/')
       .then(res => {
-        console.log('Server IP:', res.data.replace('\n', ''))
+        log('Server IP:', res.data.replace('\n', ''))
         this.ip = res.data.replace('\n', '')
       })
       .catch(function (err) {
-        console.error('DNS', err)
+        error('DNS', err)
       })
     this.#publish()
   }
@@ -43,8 +45,8 @@ class DNS {
     this.#loaded = true
     this.#udp.on('request', (request, response) => this.#request(request, response))
     this.#tcp.on('request', (request, response) => this.#request(request, response))
-    this.#udp.on('error', err => console.error('DNS', err.stack))
-    this.#tcp.on('error', err => console.error('DNS', err.stack))
+    this.#udp.on('error', err => error('DNS', err.stack))
+    this.#tcp.on('error', err => error('DNS', err.stack))
     this.#udp.serve(53)
     this.#tcp.serve(53)
   }

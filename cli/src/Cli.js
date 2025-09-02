@@ -207,11 +207,11 @@ class Cli {
     if (typeof commands == 'string') {
       let obj = Candy.core('Commands')
       let command = commands.shift()
-      if (!obj[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
+      if (!obj[command]) return console.log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
       obj = obj[command]
       while (commands.length > 0 && commands.length && obj.sub[commands[0]]) {
         command = commands.shift()
-        if (!obj.sub[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
+        if (!obj.sub[command]) return console.log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
         obj = obj.sub[command]
       }
       let detail = await this.#detail(command, obj)
@@ -238,7 +238,7 @@ class Cli {
       })
     }
     result.push('')
-    for (let line of result) log(line)
+    for (let line of result) console.log(line)
   }
 
   #icon(status, selected) {
@@ -249,13 +249,14 @@ class Cli {
   }
 
   async init() {
-    log('\n', 'CandyPack')
+    console.log('\n', 'CandyPack')
     if (!(await Candy.cli('Connector').check())) await this.boot()
     let args = process.argv.slice(2)
     let cmds = process.argv.slice(2)
     if (args.length == 0) return this.#status()
     let command = args.shift()
-    if (!Candy.core('Commands')[command]) return log(__(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')))
+    if (!Candy.core('Commands')[command])
+      return console.log(__(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')))
     let action = Candy.core('Commands')[command]
     while (args.length > 0 && !action.args) {
       command = args.shift()
@@ -356,7 +357,7 @@ class Cli {
       .split('\n')
       .map(line => {
         const lowerCaseLine = line.toLowerCase()
-        const moduleName = selectedModules.find(name => lowerCaseLine.includes(name.toLowerCase()))
+        const moduleName = selectedModules.find(name => lowerCaseLine.includes(`[${name}]`.toLowerCase()))
         return {line, moduleName}
       })
       .filter(item => item.moduleName)
@@ -364,9 +365,9 @@ class Cli {
         let {line, moduleName} = item
         if ('[LOG]' == line.substr(0, 5) || '[ERR]' == line.substr(0, 5)) {
           const isError = '[ERR]' == line.substr(0, 5)
-          const date = parseInt(line.substr(6, 13))
-          const originalMessage = line.substr(21)
-          const cleanedMessage = originalMessage.replace(new RegExp(moduleName, 'i'), '').trim()
+          const date = line.substr(6, 24)
+          const originalMessage = line.substr(34 + moduleName.length)
+          const cleanedMessage = originalMessage.trim()
           const dateColor = isError ? 'red' : 'green'
 
           line =
@@ -515,7 +516,7 @@ class Cli {
     if (direction == 'right') return ' '.repeat(len - this.#length(text)) + text
     if (direction == 'center')
       return ' '.repeat(Math.floor((len - this.#length(text)) / 2)) + text + ' '.repeat(Math.ceil((len - this.#length(text)) / 2))
-    if (this.#length(text) > len) return text.substr(0, len)
+    if (this.#length(text) > len) return text.substr(0, text.length - this.#length(text) + len)
     return text + ' '.repeat(len - this.#length(text))
   }
 
@@ -555,30 +556,32 @@ class Cli {
             for (let j = 0; j < length - title.length; j++) space += ' '
             switch (iterator) {
               case 'Status':
-                log(title + space + ' : ' + (status.online ? '\x1b[32m ' + __('Online') : '\x1b[33m ' + __('Offline')) + '\x1b[0m')
+                console.log(title + space + ' : ' + (status.online ? '\x1b[32m ' + __('Online') : '\x1b[33m ' + __('Offline')) + '\x1b[0m')
                 break
               case 'Uptime':
-                if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.uptime + '\x1b[0m')
+                if (status.online) console.log(title + space + ' : ' + '\x1b[32m ' + status.uptime + '\x1b[0m')
                 break
               case 'Websites':
-                if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.websites + '\x1b[0m')
+                if (status.online) console.log(title + space + ' : ' + '\x1b[32m ' + status.websites + '\x1b[0m')
                 break
               case 'Services':
-                if (status.online) log(title + space + ' : ' + '\x1b[32m ' + status.services + '\x1b[0m')
+                if (status.online) console.log(title + space + ' : ' + '\x1b[32m ' + status.services + '\x1b[0m')
                 break
               case 'Auth':
-                log(title + space + ' : ' + (status.auth ? '\x1b[32m ' + __('Logged in') : '\x1b[33m ' + __('Not logged in')) + '\x1b[0m')
+                console.log(
+                  title + space + ' : ' + (status.auth ? '\x1b[32m ' + __('Logged in') : '\x1b[33m ' + __('Not logged in')) + '\x1b[0m'
+                )
                 break
             }
           }
         }
       }
-      if (!status.auth) log(__('Login on %s to manage all your server operations.', '\x1b[95mhttps://candypack.dev\x1b[0m'))
-      log()
-      log(__('Commands:'))
+      if (!status.auth) console.log(__('Login on %s to manage all your server operations.', '\x1b[95mhttps://candypack.dev\x1b[0m'))
+      console.log()
+      console.log(__('Commands:'))
       length = 0
       this.help(true)
-      log('')
+      console.log('')
     }
   }
 

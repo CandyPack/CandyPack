@@ -1,3 +1,5 @@
+const {log, error} = Candy.server('Log', false).init('Mail', 'SMTP')
+
 const dns = require('dns')
 const net = require('net')
 const tls = require('tls')
@@ -40,13 +42,13 @@ class smtp {
             response = await this.#command(socket, `EHLO ${sender}\r\n`)
             resolve(socket)
           })
-          socket.on('error', error => {
-            console.error('Error connecting to the server (TLS):', error)
+          socket.on('error', err => {
+            error('Error connecting to the server (TLS):', err)
             return resolve(false)
           })
         })
-      socket.on('error', error => {
-        console.error('Error connecting to the server:', error)
+      socket.on('error', err => {
+        error('Error connecting to the server:', err)
         return resolve(false)
       })
     })

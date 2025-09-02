@@ -1,3 +1,5 @@
+const {log, error} = Candy.server('Log', false).init('Service')
+
 const childProcess = require('child_process')
 const fs = require('fs')
 const os = require('os')
@@ -59,9 +61,11 @@ class Service {
     for (const service of this.#services) {
       if (service.active) {
         if (!service.pid) {
+          log('Service %s is not running. Starting...', service.name)
           this.#run(service.id)
         } else {
           if (!this.#watcher[service.pid]) {
+            log('Service %s (PID %s) is not running. Restarting...', service.name, service.pid)
             Candy.core('Process').stop(service.pid)
             this.#run(service.id)
             this.#set(service.id, 'pid', null)
@@ -70,11 +74,11 @@ class Service {
       }
       if (this.#logs[service.id])
         fs.writeFile(os.homedir() + '/.candypack/logs/' + service.name + '.log', this.#logs[service.id], 'utf8', function (err) {
-          if (err) console.log(err)
+          if (err) error(err)
         })
       if (this.#errs[service.id])
         fs.writeFile(os.homedir() + '/.candypack/logs/' + service.name + '.err.log', this.#errs[service.id], 'utf8', function (err) {
-          if (err) console.log(err)
+          if (err) error(err)
         })
     }
   }
@@ -86,12 +90,15 @@ class Service {
     if (!service) return
     if (this.#error_counts[id] > 10) {
       this.#active[id] = false
+      log('Service %s has exceeded the maximum error limit. Please check the logs for more details.', service.name)
       return
     }
     if ((service.status == 'errored' || service.status == 'stopped') && Date.now() - service.updated < this.#error_counts[id] * 1000) {
       this.#active[id] = false
+      log('Service %s is in a cooldown period.', service.name)
       return
     }
+    log('Starting service %s...', service.name)
     this.#set(id, 'updated', Date.now())
     var child = childProcess.spawn('node', [service.file], {
       cwd: path.dirname(service.file)
@@ -154,6 +161,7 @@ class Service {
   }
 
   async init() {
+    log('Initializing services...')
     this.#services = Candy.core('Config').config.services ?? []
     for (const service of this.#services) {
       fs.readFile(os.homedir() + '/.candypack/logs/' + service.name + '.log', 'utf8', (err, data) => {
@@ -193,10 +201,6 @@ class Service {
     } else {
       log(__('Service %s not found.', id))
     }
-  }
-
-  stopAll() {
-    for (const service of this.#services) this.stop(service.id)
   }
 
   async status() {
