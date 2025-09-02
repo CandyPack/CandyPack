@@ -3,9 +3,10 @@ const findProcess = require('find-process').default
 class Process {
   stop(pid) {
     return new Promise(resolve => {
-      findProcess(pid)
+      findProcess('pid', pid)
         .then(list => {
-          for (const proc of list) if (proc.name == 'node') proc.kill()
+          console.log(list)
+          for (const proc of list) if (proc.name == 'node') process.kill(proc.pid, 'SIGTERM')
         })
         .catch(() => {})
         .finally(() => {
@@ -15,11 +16,11 @@ class Process {
   }
 
   async stopAll() {
-    await this.stop(Candy.core('Config').config.server.watchdog)
-    await this.stop(Candy.core('Config').config.server.pid)
-    for (const domain of Object.keys(Candy.core('Config').config.websites))
-      await this.stop(Candy.core('Config').config.websites[domain].pid)
-    for (const service of Candy.core('Config').config.services) await this.stop(service.pid)
+    if (Candy.core('Config').config.server.watchdog) await this.stop(Candy.core('Config').config.server.watchdog)
+    if (Candy.core('Config').config.server.pid) await this.stop(Candy.core('Config').config.server.pid)
+    for (const domain of Object.keys(Candy.core('Config').config?.websites ?? []))
+      if (Candy.core('Config').config.websites[domain].pid) await this.stop(Candy.core('Config').config.websites[domain].pid)
+    for (const service of Candy.core('Config').config.services) if (service.pid) await this.stop(service.pid)
   }
 }
 

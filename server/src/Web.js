@@ -18,10 +18,6 @@ class Web {
   #started = {}
   #watcher = {}
 
-  constructor() {
-    this.stopAll()
-  }
-
   async check() {
     if (!this.#loaded) return
     for (const domain of Object.keys(Candy.core('Config').config.websites ?? {})) {

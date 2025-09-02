@@ -129,10 +129,6 @@ class Service {
         status: 'errored',
         updated: Date.now()
       })
-      // watcher[pid] = false;
-      // error_counts[id] = error_counts[id] ?? 0;
-      // error_counts[id]++;
-      // active[id] = false;
     })
     child.on('exit', () => {
       if (this.#get(service.id).status == 'running') {
@@ -165,7 +161,6 @@ class Service {
       })
     }
     this.#loaded = true
-    this.stopAll()
   }
 
   async start(file) {
