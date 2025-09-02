@@ -294,7 +294,8 @@ class Route {
       return {
         view: (...args) => {
           this.set('page', path, _candy => {
-            return _candy.View.set(...args)
+            _candy.View.set(...args)
+            return
           })
         }
       }
@@ -316,11 +317,13 @@ class Route {
         view: (...args) => {
           if (authFile)
             this.set('#page', path, _candy => {
-              return _candy.View.set(...args)
+              _candy.View.set(...args)
+              return
             })
           else
             this.set('page', path, _candy => {
-              return _candy.View.set(...args)
+              _candy.View.set(...args)
+              return
             })
         }
       }
