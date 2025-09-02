@@ -9,14 +9,19 @@ class Log {
 
   error(...arg) {
     console.error(this.module, ...arg)
-    console.log('\n--- CANDYPACK ---')
   }
 
   log(...arg) {
     if (!arg.length) return this
+    if (arg[0].includes('%s')) {
+      let split = arg[0].split('%s')
+      for (let i = 0; i < split.length - 1; i++) {
+        split[i] += arg[1] || ''
+        arg.splice(1, 1)
+      }
+    }
     console.log(this.module, ...arg)
-    console.log('\n--- CANDYPACK ---')
   }
 }
 
-module.exports = new Log()
+module.exports = Log

@@ -61,7 +61,6 @@ class Service {
     for (const service of this.#services) {
       if (service.active) {
         if (!service.pid) {
-          log('Service %s is not running. Starting...', service.name)
           this.#run(service.id)
         } else {
           if (!this.#watcher[service.pid]) {
@@ -88,6 +87,7 @@ class Service {
     this.#active[id] = true
     let service = this.#get(id)
     if (!service) return
+    log('Service %s is not running. Starting...', service.name)
     if (this.#error_counts[id] > 10) {
       this.#active[id] = false
       log('Service %s has exceeded the maximum error limit. Please check the logs for more details.', service.name)

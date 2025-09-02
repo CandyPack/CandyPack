@@ -7,6 +7,13 @@ class Config {
   #loaded = false
   #saving = false
   #changed = false
+  config = {
+    server: {
+      pid: null,
+      started: null,
+      watchdog: null
+    }
+  }
 
   force() {
     this.#save()
@@ -15,7 +22,6 @@ class Config {
   init() {
     this.#dir = os.homedir() + '/.candypack'
     this.#file = this.#dir + '/config.json'
-    this.config = {}
     if (!fs.existsSync(this.#dir)) fs.mkdirSync(this.#dir)
     if (!fs.existsSync(this.#file)) this.#save()
     else this.#load()
