@@ -3,16 +3,21 @@ const {log, error} = Candy.server('Log', false).init('Mail', 'IMAP')
 class Connection {
   #auth
   #actions = {
+    APPEND: () => this.#append(),
     AUTHENTICATE: () => this.#authenticate(),
     CAPABILITY: () => this.#capability(),
     CLOSE: () => this.#close(),
+    CREATE: () => this.#create(),
+    DELETE: () => this.#delete(),
     EXAMINE: () => this.#examine(),
+    EXPUNGE: () => this.#expunge(),
     FETCH: () => this.#fetch(),
     LIST: () => this.#list(),
     LSUB: () => this.#lsub(),
     LOGIN: () => this.#login(),
     LOGOUT: () => this.#logout(),
     NOOP: () => this.#noop(),
+    RENAME: () => this.#rename(),
     SELECT: () => this.#select(),
     STATUS: () => this.#status(),
     STORE: () => this.#store()
@@ -73,6 +78,26 @@ class Connection {
     })
   }
 
+  #append() {
+    if (!this.#auth) return this.#write(`${this.#request.id} NO Authentication required\r\n`)
+    if (!this.#options.onAppend || typeof this.#options.onAppend != 'function')
+      return this.#write(`${this.#request.id} NO APPEND failed\r\n`)
+    let mailbox = this.#commands[2]
+    let flags = this.#commands[3]
+    let size = this.#commands[4]
+    if (size.startsWith('{') && size.endsWith('}')) size = size.substr(1, size.length - 2)
+    this.#write('+ Ready for literal data\r\n')
+    this.#wait = true
+    this.#socket.once('data', data => {
+      this.#options.onAppend({ address: this.#auth, mailbox: mailbox, flags: flags, message: data.toString() }, err => {
+        if (err) return this.#write(`${this.#request.id} NO APPEND failed\r\n`)
+        this.#write(`${this.#request.id} OK APPEND completed\r
+`)
+      })
+      this.#wait = false
+    })
+  }
+
   #bad() {
     error('Unknown command', this.#request.action)
     this.#write(`${this.#request.id} BAD Unknown command\r\n`)
@@ -84,7 +109,30 @@ class Connection {
   }
 
   #close() {
+    if (this.#box) this.#expunge()
     this.#write(`${this.#request.id} OK CLOSE completed\r\n`)
+  }
+
+  #create() {
+    if (!this.#auth) return this.#write(`${this.#request.id} NO Authentication required\r\n`)
+    if (!this.#options.onCreate || typeof this.#options.onCreate != 'function')
+      return this.#write(`${this.#request.id} NO CREATE failed\r\n`)
+    let mailbox = this.#commands.slice(2).join(' ')
+    this.#options.onCreate({ address: this.#auth, mailbox: mailbox }, err => {
+      if (err) return this.#write(`${this.#request.id} NO CREATE failed\r\n`)
+      this.#write(`${this.#request.id} OK CREATE completed\r\n`)
+    })
+  }
+
+  #delete() {
+    if (!this.#auth) return this.#write(`${this.#request.id} NO Authentication required\r\n`)
+    if (!this.#options.onDelete || typeof this.#options.onDelete != 'function')
+      return this.#write(`${this.#request.id} NO DELETE failed\r\n`)
+    let mailbox = this.#commands.slice(2).join(' ')
+    this.#options.onDelete({ address: this.#auth, mailbox: mailbox }, err => {
+      if (err) return this.#write(`${this.#request.id} NO DELETE failed\r\n`)
+      this.#write(`${this.#request.id} OK DELETE completed\r\n`)
+    })
   }
 
   #data(data) {
@@ -124,6 +172,17 @@ class Connection {
       if (data.uidvalidity !== undefined) this.#write('* OK [UIDVALIDITY ' + data.uidvalidity + '] UIDs valid\r\n')
       if (data.uidnext !== undefined) this.#write('* OK [UIDNEXT ' + data.uidnext + '] Predicted next UID\r\n')
       this.#write(`${this.#request.id} OK [READ-ONLY] EXAMINE completed\r\n`)
+    })
+  }
+
+  #expunge() {
+    if (!this.#auth) return this.#write(`${this.#request.id} NO Authentication required\r\n`)
+    if (!this.#options.onExpunge || typeof this.#options.onExpunge != 'function')
+      return this.#write(`${this.#request.id} NO EXPUNGE failed\r\n`)
+    this.#options.onExpunge({ address: this.#auth, mailbox: this.#box }, (err, uids) => {
+      if (err) return this.#write(`${this.#request.id} NO EXPUNGE failed\r\n`)
+      for (let uid of uids) this.#write(`* ${uid} EXPUNGE\r\n`)
+      this.#write(`${this.#request.id} OK EXPUNGE completed\r\n`)
     })
   }
 
@@ -200,12 +259,13 @@ class Connection {
 
   #list() {
     if (!this.#auth) return this.#write(`${this.#request.id} NO Authentication required\r\n`)
-    this.#write('* LIST (\\HasNoChildren) "/" INBOX\r\n')
-    this.#write('* LIST (\\HasNoChildren) "/" Drafts\r\n')
-    this.#write('* LIST (\\HasNoChildren) "/" Sent\r\n')
-    this.#write('* LIST (\\HasNoChildren) "/" Spam\r\n')
-    this.#write('* LIST (\\HasNoChildren) "/" Trash\r\n')
-    this.#write(`${this.#request.id} OK LIST completed\r\n`)
+    if (!this.#options.onList || typeof this.#options.onList != 'function')
+      return this.#write(`${this.#request.id} NO LIST failed\r\n`)
+    this.#options.onList({ address: this.#auth }, (err, boxes) => {
+      if (err) return this.#write(`${this.#request.id} NO LIST failed\r\n`)
+      for (let box of boxes) this.#write(`* LIST (\HasNoChildren) "/" ${box}\r\n`)
+      this.#write(`${this.#request.id} OK LIST completed\r\n`)
+    })
   }
 
   listen() {
@@ -221,8 +281,13 @@ class Connection {
 
   #lsub() {
     if (!this.#auth) return this.#write(`${this.#request.id} NO Authentication required\r\n`)
-    this.#write('* LSUB (\\HasNoChildren) "/" "INBOX"\r\n')
-    this.#write(`${this.#request.id} OK LSUB completed\r\n`)
+    if (!this.#options.onLsub || typeof this.#options.onLsub != 'function')
+      return this.#write(`${this.#request.id} NO LSUB failed\r\n`)
+    this.#options.onLsub({ address: this.#auth }, (err, boxes) => {
+      if (err) return this.#write(`${this.#request.id} NO LSUB failed\r\n`)
+      for (let box of boxes) this.#write(`* LSUB (\\HasNoChildren) "/" "${box}"\r\n`)
+      this.#write(`${this.#request.id} OK LSUB completed\r\n`)
+    })
   }
 
   #login() {
@@ -263,6 +328,169 @@ class Connection {
     this.#write(`${this.#request.id} OK NOOP completed\r\n`)
   }
 
+  #prepareBody(request, data, boundary) {
+    let body = { keys: '', header: '', content: '' }
+    for (let obj of request.fields.length ? request.fields : [{ value: 'HEADER' }, { value: 'TEXT' }]) {
+      let fields = obj.fields ? obj.fields.map(field => field.value.toLowerCase()) : []
+      if (request.fields.length) body.keys += obj.value + (obj.peek ? '.' + obj.peek : '')
+      if (fields.length > 0) body.keys += ' ('
+      if (obj.value == 'HEADER') {
+        for (let line of data.headerLines) {
+          let include = true
+          if (obj.peek)
+            if (obj.peek == 'FIELDS') include = fields.includes(line.key)
+            else if (obj.peek == 'FIELDS.NOT') include = !fields.includes(line.key)
+          if (include) {
+            if (fields.length > 0) body.keys += line.key + ' '
+            if (line.key.toLowerCase() == 'content-type') {
+              if (data.attachments.length > 0) {
+                body.header += 'Content-Type: multipart/mixed; boundary="' + boundary + '"\r\n'
+              } else if (data.html && data.html.length > 1 && data.text && data.text.length > 1) {
+                body.header += 'Content-Type: multipart/alternative; boundary="' + boundary + '_alt"\r\n'
+              } else if (!data.text || data.text.length < 1) {
+                body.header += 'Content-Type: text/html; charset=utf-8\r\n'
+              } else if (!data.html || data.html.length < 1) {
+                body.header += 'Content-Type: text/plain; charset=utf-8\r\n'
+              }
+            } else body.header += line.line + '\r\n'
+          }
+        }
+        if ((obj.peek ?? '') !== 'FIELDS.NOT') {
+          for (let field of fields) {
+            if (!data.headerLines.find(line => line.key == field)) {
+              if (fields.length > 0) body.keys += field + ' '
+              else body.header += field + ': \r\n'
+            }
+          }
+        }
+        body.header = body.header.trim()
+        if (fields.length > 0) body.keys = body.keys.trim() + ')'
+      } else if (obj.value == 'TEXT') {
+        if (body.header.length) body.content += body.header + '\r\n\r\n'
+        if (data.html.length > 1 || data.attachments.length) {
+          if (data.attachments.length && data.html && data.html.length && data.text && data.text.length) {
+            body.content += '--' + boundary + '\r\n'
+            body.content += 'Content-Type: multipart/alternative; boundary="' + boundary + '_alt"\r\n'
+          }
+          if (data.text && data.text.length) {
+            body.content += '\r\n--' + boundary + '_alt\r\n'
+            body.content += 'Content-Type: text/plain; charset=utf-8\r\n'
+            body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n'
+            body.content += data.text
+            body.content += '\r\n--' + boundary + '_alt\r\n'
+          }
+          if (data.html.length) {
+            if (data.text && data.text.length) {
+              body.content += 'Content-Type: text/html; charset=utf-8\r\n'
+              body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n'
+            }
+            body.content += data.html
+            if (data.text && data.text.length) body.content += '\r\n--' + boundary + '_alt--\r\n'
+          }
+          for (let attachment of data.attachments) {
+            body.content += '\r\n--' + boundary + '\r\n'
+            body.content += 'Content-Type: ' + attachment.contentType + '; name="' + attachment.filename + '"\r\n'
+            body.content += 'Content-Transfer-Encoding: base64\r\n'
+            body.content += 'Content-Disposition: attachment; filename="' + attachment.filename + '"\r\n\r\n'
+            body.content += Buffer.from(attachment.content.data).toString('base64')
+          }
+          if (data.attachments.length) body.content += '--' + boundary + '--\r\n'
+        } else body.content += data.text
+      } else if (!isNaN(obj.value)) {
+        obj.value = parseInt(obj.value)
+        if (obj.value === 1 || (obj.value === 2 && !data.attachments.length)) {
+          if (obj.peek === 2 || obj.value === 2) body.content += data.html
+          else body.content += data.text
+        } else if (obj.value > 1 && data.attachments[obj.value - 2])
+          body.content += Buffer.from(data.attachments[obj.value - 2].content.data).toString('base64') + '\r\n'
+      }
+    }
+    if (body.content == '') body.content = body.header
+    body.content = body.content.replace(/\r\n/g, '\n')
+    this.#write('BODY[' + body.keys + '] {' + Buffer.byteLength(body.content, 'utf8') + '}\r\n')
+    this.#write(body.content)
+  }
+
+  #prepareBodyStructure(data, boundary) {
+    let structure = ''
+    if (data.text && data.text.length && data.html && data.html.length) structure += '('
+    if (data.text && data.text.length)
+      structure +=
+        '("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' +
+        Buffer.byteLength(data.text, 'utf8') +
+        ' ' +
+        data.text.split('\n').length +
+        ' NIL NIL NIL NIL)'
+    if (data.html && data.html.length)
+      structure +=
+        '("TEXT" "HTML"  ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' +
+        Buffer.byteLength(data.html, 'utf8') +
+        ' ' +
+        data.html.split('\n').length +
+        ')'
+    if (data.text && data.text.length && data.html && data.html.length)
+      structure += ' "ALTERNATIVE" ("BOUNDARY" "' + boundary + '_alt") NIL NIL NIL'
+    if (data.text && data.text.length && data.html && data.html.length) structure += ')'
+    for (let attachment of data.attachments)
+      structure +=
+        '("APPLICATION" "' +
+        attachment.contentType.split('/')[1].toUpperCase() +
+        '" ("NAME" "' +
+        attachment.filename +
+        '") NIL NIL "BASE64" ' +
+        Buffer.from(attachment.content.data).toString('base64').length +
+        ' NIL ("ATTACHMENT" ("FILENAME" "' +
+        attachment.filename +
+        '")) NIL NIL)'
+    if (data.attachments.length) structure += ' "MIXED" ("BOUNDARY" "' + boundary + '") NIL NIL NIL'
+    this.#write('BODYSTRUCTURE ' + structure)
+  }
+
+  #prepareEnvelope(data) {
+    let envelope = ''
+    let from = JSON.parse(data.from)
+    envelope += '"' + data.date + '" '
+    envelope += '"' + data.subject + '" '
+    envelope += '"<' + from.value.address + '>" '
+    this.#write('ENVELOPE (' + envelope + ') ')
+  }
+
+  #prepareInternalDate(data) {
+    let date = new Date(data.date)
+    this.#write('INTERNALDATE "' + date.toUTCString() + '" ')
+  }
+
+  #prepareFlags(data) {
+    let flags = []
+    try {
+      flags = data.flags ? JSON.parse(data.flags) : []
+    } catch {
+      error('Error parsing flags', data.flags)
+    }
+    flags = flags.map(flag => '\\' + flag)
+    this.#write('FLAGS (' + flags.join(' ') + ') ')
+  }
+
+  #prepareRfc822(data) {
+    this.#write('RFC822.SIZE ' + data.html.length + ' ')
+  }
+
+  #prepareUid(data) {
+    this.#write('UID ' + data.uid + ' ')
+  }
+
+  #rename() {
+    if (!this.#auth) return this.#write(`${this.#request.id} NO Authentication required\r\n`)
+    if (!this.#options.onRename || typeof this.#options.onRename != 'function')
+      return this.#write(`${this.#request.id} NO RENAME failed\r\n`)
+    let oldMailbox = this.#commands[2]
+    let newMailbox = this.#commands[3]
+    this.#options.onRename({ address: this.#auth, oldMailbox: oldMailbox, newMailbox: newMailbox }, err => {
+      if (err) return this.#write(`${this.#request.id} NO RENAME failed\r\n`)
+      this.#write(`${this.#request.id} OK RENAME completed\r\n`)
+    })
+  }
+
   #prepare(requests, data) {
     data.attachments = data.attachments ? JSON.parse(data.attachments) : []
     for (let request of requests) {
@@ -271,156 +499,26 @@ class Connection {
       if (boundary) boundary = boundary.line.replace(/"/g, '').split('boundary=')[1]
       if (!boundary) boundary = 'boundary' + data.id
       switch (request.value) {
-        case 'BODY': {
-          let body = {keys: '', header: '', content: ''}
-          for (let obj of request.fields.length ? request.fields : [{value: 'HEADER'}, {value: 'TEXT'}]) {
-            let fields = obj.fields ? obj.fields.map(field => field.value.toLowerCase()) : []
-            if (request.fields.length) body.keys += obj.value + (obj.peek ? '.' + obj.peek : '')
-            if (fields.length > 0) body.keys += ' ('
-            if (obj.value == 'HEADER') {
-              for (let line of data.headerLines) {
-                let include = true
-                if (obj.peek)
-                  if (obj.peek == 'FIELDS') include = fields.includes(line.key)
-                  else if (obj.peek == 'FIELDS.NOT') include = !fields.includes(line.key)
-                if (include) {
-                  if (fields.length > 0) body.keys += line.key + ' '
-                  if (line.key.toLowerCase() == 'content-type') {
-                    if (data.attachments.length > 0) {
-                      body.header += 'Content-Type: multipart/mixed; boundary="' + boundary + '"\r\n'
-                    } else if (data.html && data.html.length > 1 && data.text && data.text.length > 1) {
-                      body.header += 'Content-Type: multipart/alternative; boundary="' + boundary + '_alt"\r\n'
-                    } else if (!data.text || data.text.length < 1) {
-                      body.header += 'Content-Type: text/html; charset=utf-8\r\n'
-                    } else if (!data.html || data.html.length < 1) {
-                      body.header += 'Content-Type: text/plain; charset=utf-8\r\n'
-                    }
-                  } else body.header += line.line + '\r\n'
-                }
-              }
-              if ((obj.peek ?? '') !== 'FIELDS.NOT') {
-                for (let field of fields) {
-                  if (!data.headerLines.find(line => line.key == field)) {
-                    if (fields.length > 0) body.keys += field + ' '
-                    else body.header += field + ': \r\n'
-                  }
-                }
-              }
-              body.header = body.header.trim()
-              if (fields.length > 0) body.keys = body.keys.trim() + ')'
-            } else if (obj.value == 'TEXT') {
-              if (body.header.length) body.content += body.header + '\r\n\r\n'
-              if (data.html.length > 1 || data.attachments.length) {
-                if (data.attachments.length && data.html && data.html.length && data.text && data.text.length) {
-                  body.content += '--' + boundary + '\r\n'
-                  body.content += 'Content-Type: multipart/alternative; boundary="' + boundary + '_alt"\r\n'
-                }
-                if (data.text && data.text.length) {
-                  body.content += '\r\n--' + boundary + '_alt\r\n'
-                  body.content += 'Content-Type: text/plain; charset=utf-8\r\n'
-                  body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n'
-                  body.content += data.text
-                  body.content += '\r\n--' + boundary + '_alt\r\n'
-                }
-                if (data.html.length) {
-                  if (data.text && data.text.length) {
-                    body.content += 'Content-Type: text/html; charset=utf-8\r\n'
-                    body.content += 'Content-Transfer-Encoding: quoted-printable\r\n\r\n'
-                  }
-                  body.content += data.html
-                  if (data.text && data.text.length) body.content += '\r\n--' + boundary + '_alt--\r\n'
-                }
-                for (let attachment of data.attachments) {
-                  body.content += '\r\n--' + boundary + '\r\n'
-                  body.content += 'Content-Type: ' + attachment.contentType + '; name="' + attachment.filename + '"\r\n'
-                  body.content += 'Content-Transfer-Encoding: base64\r\n'
-                  body.content += 'Content-Disposition: attachment; filename="' + attachment.filename + '"\r\n\r\n'
-                  body.content += Buffer.from(attachment.content.data).toString('base64')
-                }
-                if (data.attachments.length) body.content += '--' + boundary + '--\r\n'
-              } else body.content += data.text
-            } else if (!isNaN(obj.value)) {
-              obj.value = parseInt(obj.value)
-              if (obj.value === 1 || (obj.value === 2 && !data.attachments.length)) {
-                if (obj.peek === 2 || obj.value === 2) body.content += data.html
-                else body.content += data.text
-              } else if (obj.value > 1 && data.attachments[obj.value - 2])
-                body.content += Buffer.from(data.attachments[obj.value - 2].content.data).toString('base64') + '\r\n'
-            }
-          }
-          if (body.content == '') body.content = body.header
-          body.content = body.content.replace(/\r\n/g, '\n')
-          this.#write('BODY[' + body.keys + '] {' + Buffer.byteLength(body.content, 'utf8') + '}\r\n')
-          this.#write(body.content)
+        case 'BODY':
+          this.#prepareBody(request, data, boundary)
           break
-        }
-        case 'BODYSTRUCTURE': {
-          let structure = ''
-          if (data.text && data.text.length && data.html && data.html.length) structure += '('
-          if (data.text && data.text.length)
-            structure +=
-              '("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' +
-              Buffer.byteLength(data.text, 'utf8') +
-              ' ' +
-              data.text.split('\n').length +
-              ' NIL NIL NIL NIL)'
-          if (data.html && data.html.length)
-            structure +=
-              '("TEXT" "HTML"  ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" ' +
-              Buffer.byteLength(data.html, 'utf8') +
-              ' ' +
-              data.html.split('\n').length +
-              ')'
-          if (data.text && data.text.length && data.html && data.html.length)
-            structure += ' "ALTERNATIVE" ("BOUNDARY" "' + boundary + '_alt") NIL NIL NIL'
-          if (data.text && data.text.length && data.html && data.html.length) structure += ')'
-          for (let attachment of data.attachments)
-            structure +=
-              '("APPLICATION" "' +
-              attachment.contentType.split('/')[1].toUpperCase() +
-              '" ("NAME" "' +
-              attachment.filename +
-              '") NIL NIL "BASE64" ' +
-              Buffer.from(attachment.content.data).toString('base64').length +
-              ' NIL ("ATTACHMENT" ("FILENAME" "' +
-              attachment.filename +
-              '")) NIL NIL)'
-          if (data.attachments.length) structure += ' "MIXED" ("BOUNDARY" "' + boundary + '") NIL NIL NIL'
-          this.#write('BODYSTRUCTURE ' + structure)
+        case 'BODYSTRUCTURE':
+          this.#prepareBodyStructure(data, boundary)
           break
-        }
-        case 'ENVELOPE': {
-          let envelope = ''
-          let from = JSON.parse(data.from)
-          envelope += '"' + data.date + '" '
-          envelope += '"' + data.subject + '" '
-          envelope += '"<' + from.value.address + '>" '
-          this.#write('ENVELOPE (' + envelope + ') ')
+        case 'ENVELOPE':
+          this.#prepareEnvelope(data)
           break
-        }
         case 'INTERNALDATE':
-          {
-            let date = new Date(data.date)
-            this.#write('INTERNALDATE "' + date.toUTCString() + '" ')
-          }
+          this.#prepareInternalDate(data)
           break
         case 'FLAGS':
-          {
-            let flags = []
-            try {
-              flags = data.flags ? JSON.parse(data.flags) : []
-            } catch {
-              error('Error parsing flags', data.flags)
-            }
-            flags = flags.map(flag => '\\' + flag)
-            this.#write('FLAGS (' + flags.join(' ') + ') ')
-          }
+          this.#prepareFlags(data)
           break
         case 'RFC822':
-          this.#write('RFC822.SIZE ' + data.html.length + ' ')
+          this.#prepareRfc822(data)
           break
         case 'UID':
-          this.#write('UID ' + data.uid + ' ')
+          this.#prepareUid(data)
           break
       }
     }
@@ -466,14 +564,25 @@ class Connection {
   #store() {
     let uids = this.#request.uid.split(',')
     for (let field of this.#request.requests) {
+      let action
       switch (field.value) {
-        case '+FLAGS': {
-          let flags = field.fields.map(flag => flag.value.replace('\\', '').toLowerCase())
-          this.#options.onStore({address: this.#auth, uids: uids, flags: flags}, this.#options, data => {
-            if (field.peek !== 'SILENT') for (let uid of uids) this.#write('* ' + uid + ' FETCH (FLAGS (' + data.flags.join(' ') + '))\r\n')
-            this.#write(`${this.#request.id} OK STORE completed\r\n`)
-          })
-        }
+        case '+FLAGS':
+          action = 'add'
+          break
+        case '-FLAGS':
+          action = 'remove'
+          break
+        case 'FLAGS':
+          action = 'set'
+          break
+      }
+      if (action) {
+        let flags = field.fields.map(flag => flag.value.replace('\\', '').toLowerCase())
+        this.#options.onStore({ address: this.#auth, uids: uids, action: action, flags: flags }, this.#options, data => {
+          if (field.peek !== 'SILENT')
+            for (let uid of uids) this.#write('* ' + uid + ' FETCH (FLAGS (' + data.flags.join(' ') + '))\r\n')
+          this.#write(`${this.#request.id} OK STORE completed\r\n`)
+        })
       }
     }
   }
