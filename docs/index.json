@@ -40,33 +40,33 @@
     },
     {
       "file": "04-web",
-      "title": "Websites",
+      "title": "web",
       "children": [
         {
           "file": "01-create-a-website.md",
-          "title": "candy web create"
+          "title": "create"
         },
         {
           "file": "02-list-websites.md",
-          "title": "candy web list"
+          "title": "list"
         },
         {
           "file": "03-delete-a-website.md",
-          "title": "candy web delete"
+          "title": "delete"
         }
       ]
     },
     {
       "file": "05-subdomain",
-      "title": "Subdomains",
+      "title": "subdomain",
       "children": [
         {
           "file": "01-create-a-subdomain.md",
-          "title": "candy subdomain create"
+          "title": "create"
         },
         {
           "file": "02-list-subdomains.md",
-          "title": "candy subdomain list"
+          "title": "list"
         }
       ]
     },
@@ -76,7 +76,7 @@
       "children": [
         {
           "file": "01-renew-an-ssl-certificate.md",
-          "title": "candy ssl renew"
+          "title": "renew"
         }
       ]
     },
