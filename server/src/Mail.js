@@ -195,20 +195,28 @@ class Mail {
         })
       },
       onExpunge(data, callback) {
-        self.#db.all("SELECT uid FROM mail_received WHERE email = ? AND mailbox = ? AND flags LIKE '%deleted%'", [data.address, data.mailbox], (err, rows) => {
-          if (err) {
-            error(err)
-            return callback(err)
-          }
-          let uids = rows.map(row => row.uid)
-          self.#db.run("DELETE FROM mail_received WHERE email = ? AND mailbox = ? AND flags LIKE '%deleted%'", [data.address, data.mailbox], err => {
+        self.#db.all(
+          "SELECT uid FROM mail_received WHERE email = ? AND mailbox = ? AND flags LIKE '%deleted%'",
+          [data.address, data.mailbox],
+          (err, rows) => {
             if (err) {
               error(err)
               return callback(err)
             }
-            callback(null, uids)
-          })
-        })
+            let uids = rows.map(row => row.uid)
+            self.#db.run(
+              "DELETE FROM mail_received WHERE email = ? AND mailbox = ? AND flags LIKE '%deleted%'",
+              [data.address, data.mailbox],
+              err => {
+                if (err) {
+                  error(err)
+                  return callback(err)
+                }
+                callback(null, uids)
+              }
+            )
+          }
+        )
       },
       onData(stream, session, callback) {
         parser(stream, {}, async (err, parsed) => {
@@ -259,13 +267,17 @@ class Mail {
         })
       },
       onRename(data, callback) {
-        self.#db.run('UPDATE mail_box SET title = ? WHERE email = ? AND title = ?', [data.newMailbox, data.address, data.oldMailbox], err => {
-          if (err) {
-            error(err)
-            return callback(err)
+        self.#db.run(
+          'UPDATE mail_box SET title = ? WHERE email = ? AND title = ?',
+          [data.newMailbox, data.address, data.oldMailbox],
+          err => {
+            if (err) {
+              error(err)
+              return callback(err)
+            }
+            callback()
           }
-          callback()
-        })
+        )
       },
       onFetch(data, session, callback) {
         let limit = ``

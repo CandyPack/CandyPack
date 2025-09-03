@@ -42,6 +42,7 @@ class Cli {
 
   close() {
     if (this.rl) this.rl.close()
+    this.rl = null
   }
 
   #color(text, color, ...args) {
@@ -640,7 +641,7 @@ class Cli {
         })
       }
       this.rl.question(question, answer => {
-        this.rl.close()
+        this.close()
         return resolve(answer.trim())
       })
     })
