@@ -12,6 +12,7 @@
     "Login on %s to manage all your server operations.": "Login on %s to manage all your server operations.",
     "Start a CandyPack Service": "Start a CandyPack Service",
     "Create a new Website": "Create a new Website",
+    "Delete a website": "Delete a website",
     "List all CandyPack Services": "List all CandyPack Services",
     "List all CandyPack Websites": "List all CandyPack Websites",
     "Websites": "Websites",

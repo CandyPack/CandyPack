@@ -12,6 +12,7 @@
     "Login on %s to manage all your server operations.": "Tüm sunucu işlemlerinizi yönetmek için %s üzerinde giriş yapın.",
     "Start a CandyPack Service": "CandyPack Hizmeti Başlat",
     "Create a new Website": "Yeni Bir Web Sitesi Oluştur",
+    "Delete a website": "Bir web sitesi sil",
     "List all CandyPack Services": "Tüm CandyPack Hizmetlerini Listele",
     "List all CandyPack Websites": "Tüm CandyPack Web Sitelerini Listele",
     "Websites": "Web Siteleri",
