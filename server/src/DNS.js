@@ -51,186 +51,254 @@ class DNS {
   #publish() {
     if (this.#loaded || !Object.keys(Candy.core('Config').config.websites ?? {}).length) return
     this.#loaded = true
-    this.#udp.on('request', (request, response) => this.#request(request, response))
-    this.#tcp.on('request', (request, response) => this.#request(request, response))
-    this.#udp.on('error', err => error('DNS', err.stack))
-    this.#tcp.on('error', err => error('DNS', err.stack))
-    this.#udp.serve(53)
-    this.#tcp.serve(53)
+    this.#udp.on('request', (request, response) => {
+      try {
+        this.#request(request, response)
+      } catch (err) {
+        error('DNS UDP request handler error:', err.message)
+      }
+    })
+    this.#tcp.on('request', (request, response) => {
+      try {
+        this.#request(request, response)
+      } catch (err) {
+        error('DNS TCP request handler error:', err.message)
+      }
+    })
+    this.#udp.on('error', err => error('DNS UDP Server Error:', err.stack))
+    this.#tcp.on('error', err => error('DNS TCP Server Error:', err.stack))
+
+    try {
+      this.#udp.serve(53)
+      this.#tcp.serve(53)
+      log('DNS servers started on port 53')
+    } catch (err) {
+      error('Failed to start DNS servers:', err.message)
+    }
   }
 
   #request(request, response) {
-    // Basic rate limiting
-    const clientIP = request.address?.address || 'unknown'
-    const now = Date.now()
+    try {
+      // Basic rate limiting
+      const clientIP = request.address?.address || 'unknown'
+      const now = Date.now()
 
-    if (!this.#requestCount.has(clientIP)) {
-      this.#requestCount.set(clientIP, {count: 1, firstRequest: now})
-    } else {
-      const clientData = this.#requestCount.get(clientIP)
-      if (now - clientData.firstRequest > this.#rateLimitWindow) {
-        // Reset window
+      if (!this.#requestCount.has(clientIP)) {
         this.#requestCount.set(clientIP, {count: 1, firstRequest: now})
       } else {
-        clientData.count++
-        if (clientData.count > this.#rateLimit) {
-          log(`Rate limit exceeded for ${clientIP}`)
-          return response.send()
+        const clientData = this.#requestCount.get(clientIP)
+        if (now - clientData.firstRequest > this.#rateLimitWindow) {
+          // Reset window
+          this.#requestCount.set(clientIP, {count: 1, firstRequest: now})
+        } else {
+          clientData.count++
+          if (clientData.count > this.#rateLimit) {
+            log(`Rate limit exceeded for ${clientIP}`)
+            return response.send()
+          }
         }
       }
+
+      // Validate request structure
+      if (!request || !response || !response.question || !response.question[0]) {
+        log(`Invalid DNS request structure from ${clientIP}`)
+        return response.send()
+      }
+
+      const questionName = response.question[0].name.toLowerCase()
+      const questionType = response.question[0].type
+      response.question[0].name = questionName
+
+      let domain = questionName
+      while (!Candy.core('Config').config.websites[domain] && domain.includes('.')) {
+        domain = domain.split('.').slice(1).join('.')
+      }
+
+      if (!Candy.core('Config').config.websites[domain] || !Candy.core('Config').config.websites[domain].DNS) {
+        return response.send()
+      }
+
+      const dnsRecords = Candy.core('Config').config.websites[domain].DNS
+
+      // Only process records relevant to the question type for better performance
+      switch (questionType) {
+        case dns.consts.NAME_TO_QTYPE.A:
+          this.#processARecords(dnsRecords.A, questionName, response)
+          break
+        case dns.consts.NAME_TO_QTYPE.AAAA:
+          this.#processAAAARecords(dnsRecords.AAAA, questionName, response)
+          break
+        case dns.consts.NAME_TO_QTYPE.CNAME:
+          this.#processCNAMERecords(dnsRecords.CNAME, questionName, response)
+          break
+        case dns.consts.NAME_TO_QTYPE.MX:
+          this.#processMXRecords(dnsRecords.MX, questionName, response)
+          break
+        case dns.consts.NAME_TO_QTYPE.TXT:
+          this.#processTXTRecords(dnsRecords.TXT, questionName, response)
+          break
+        case dns.consts.NAME_TO_QTYPE.NS:
+          this.#processNSRecords(dnsRecords.NS, questionName, response, domain)
+          break
+        case dns.consts.NAME_TO_QTYPE.SOA:
+          this.#processSOARecords(dnsRecords.SOA, questionName, response)
+          break
+        default:
+          // For ANY queries or unknown types, process all relevant records
+          this.#processARecords(dnsRecords.A, questionName, response)
+          this.#processAAAARecords(dnsRecords.AAAA, questionName, response)
+          this.#processCNAMERecords(dnsRecords.CNAME, questionName, response)
+          this.#processMXRecords(dnsRecords.MX, questionName, response)
+          this.#processTXTRecords(dnsRecords.TXT, questionName, response)
+          this.#processNSRecords(dnsRecords.NS, questionName, response, domain)
+          this.#processSOARecords(dnsRecords.SOA, questionName, response)
+      }
+
+      response.send()
+    } catch (err) {
+      error('DNS request processing error:', err.message)
+      // Log client info for debugging
+      const clientIP = request?.address?.address || 'unknown'
+      log(`Error processing DNS request from ${clientIP}`)
+
+      // Try to send an empty response if possible
+      try {
+        if (response && typeof response.send === 'function') {
+          response.send()
+        }
+      } catch (sendErr) {
+        error('Failed to send DNS error response:', sendErr.message)
+      }
     }
-
-    const questionName = response.question[0].name.toLowerCase()
-    const questionType = response.question[0].type
-    response.question[0].name = questionName
-
-    let domain = questionName
-    while (!Candy.core('Config').config.websites[domain] && domain.includes('.')) {
-      domain = domain.split('.').slice(1).join('.')
-    }
-
-    if (!Candy.core('Config').config.websites[domain] || !Candy.core('Config').config.websites[domain].DNS) {
-      return response.send()
-    }
-
-    const dnsRecords = Candy.core('Config').config.websites[domain].DNS
-
-    // Only process records relevant to the question type for better performance
-    switch (questionType) {
-      case dns.consts.NAME_TO_QTYPE.A:
-        this.#processARecords(dnsRecords.A, questionName, response)
-        break
-      case dns.consts.NAME_TO_QTYPE.AAAA:
-        this.#processAAAARecords(dnsRecords.AAAA, questionName, response)
-        break
-      case dns.consts.NAME_TO_QTYPE.CNAME:
-        this.#processCNAMERecords(dnsRecords.CNAME, questionName, response)
-        break
-      case dns.consts.NAME_TO_QTYPE.MX:
-        this.#processMXRecords(dnsRecords.MX, questionName, response)
-        break
-      case dns.consts.NAME_TO_QTYPE.TXT:
-        this.#processTXTRecords(dnsRecords.TXT, questionName, response)
-        break
-      case dns.consts.NAME_TO_QTYPE.NS:
-        this.#processNSRecords(dnsRecords.NS, questionName, response, domain)
-        break
-      case dns.consts.NAME_TO_QTYPE.SOA:
-        this.#processSOARecords(dnsRecords.SOA, questionName, response)
-        break
-      default:
-        // For ANY queries or unknown types, process all relevant records
-        this.#processARecords(dnsRecords.A, questionName, response)
-        this.#processAAAARecords(dnsRecords.AAAA, questionName, response)
-        this.#processCNAMERecords(dnsRecords.CNAME, questionName, response)
-        this.#processMXRecords(dnsRecords.MX, questionName, response)
-        this.#processTXTRecords(dnsRecords.TXT, questionName, response)
-        this.#processNSRecords(dnsRecords.NS, questionName, response, domain)
-        this.#processSOARecords(dnsRecords.SOA, questionName, response)
-    }
-
-    response.send()
   }
 
   #processARecords(records, questionName, response) {
-    for (const record of records ?? []) {
-      if (record.name !== questionName) continue
-      response.answer.push(
-        dns.A({
-          name: record.name,
-          address: record.value ?? this.ip,
-          ttl: record.ttl ?? 3600
-        })
-      )
+    try {
+      for (const record of records ?? []) {
+        if (record.name !== questionName) continue
+        response.answer.push(
+          dns.A({
+            name: record.name,
+            address: record.value ?? this.ip,
+            ttl: record.ttl ?? 3600
+          })
+        )
+      }
+    } catch (err) {
+      error('Error processing A records:', err.message)
     }
   }
 
   #processAAAARecords(records, questionName, response) {
-    for (const record of records ?? []) {
-      if (record.name !== questionName) continue
-      response.answer.push(
-        dns.AAAA({
-          name: record.name,
-          address: record.value,
-          ttl: record.ttl ?? 3600
-        })
-      )
+    try {
+      for (const record of records ?? []) {
+        if (record.name !== questionName) continue
+        response.answer.push(
+          dns.AAAA({
+            name: record.name,
+            address: record.value,
+            ttl: record.ttl ?? 3600
+          })
+        )
+      }
+    } catch (err) {
+      error('Error processing AAAA records:', err.message)
     }
   }
 
   #processCNAMERecords(records, questionName, response) {
-    for (const record of records ?? []) {
-      if (record.name !== questionName) continue
-      response.answer.push(
-        dns.CNAME({
-          name: record.name,
-          data: record.value ?? questionName,
-          ttl: record.ttl ?? 3600
-        })
-      )
+    try {
+      for (const record of records ?? []) {
+        if (record.name !== questionName) continue
+        response.answer.push(
+          dns.CNAME({
+            name: record.name,
+            data: record.value ?? questionName,
+            ttl: record.ttl ?? 3600
+          })
+        )
+      }
+    } catch (err) {
+      error('Error processing CNAME records:', err.message)
     }
   }
 
   #processMXRecords(records, questionName, response) {
-    for (const record of records ?? []) {
-      if (record.name !== questionName) continue
-      response.answer.push(
-        dns.MX({
-          name: record.name,
-          exchange: record.value ?? questionName,
-          priority: record.priority ?? 10,
-          ttl: record.ttl ?? 3600
-        })
-      )
+    try {
+      for (const record of records ?? []) {
+        if (record.name !== questionName) continue
+        response.answer.push(
+          dns.MX({
+            name: record.name,
+            exchange: record.value ?? questionName,
+            priority: record.priority ?? 10,
+            ttl: record.ttl ?? 3600
+          })
+        )
+      }
+    } catch (err) {
+      error('Error processing MX records:', err.message)
     }
   }
 
   #processNSRecords(records, questionName, response, domain) {
-    for (const record of records ?? []) {
-      if (record.name !== questionName) continue
-      response.header.aa = 1
-      response.authority.push(
-        dns.NS({
-          name: record.name,
-          data: record.value ?? domain,
-          ttl: record.ttl ?? 3600
-        })
-      )
+    try {
+      for (const record of records ?? []) {
+        if (record.name !== questionName) continue
+        response.header.aa = 1
+        response.authority.push(
+          dns.NS({
+            name: record.name,
+            data: record.value ?? domain,
+            ttl: record.ttl ?? 3600
+          })
+        )
+      }
+    } catch (err) {
+      error('Error processing NS records:', err.message)
     }
   }
 
   #processTXTRecords(records, questionName, response) {
-    for (const record of records ?? []) {
-      if (!record || record.name !== questionName) continue
-      response.answer.push(
-        dns.TXT({
-          name: record.name,
-          data: [record.value],
-          ttl: record.ttl ?? 3600
-        })
-      )
+    try {
+      for (const record of records ?? []) {
+        if (!record || record.name !== questionName) continue
+        response.answer.push(
+          dns.TXT({
+            name: record.name,
+            data: [record.value],
+            ttl: record.ttl ?? 3600
+          })
+        )
+      }
+    } catch (err) {
+      error('Error processing TXT records:', err.message)
     }
   }
 
   #processSOARecords(records, questionName, response) {
-    for (const record of records ?? []) {
-      if (!record || !record.value) continue
-      const soaParts = record.value.split(' ')
-      if (soaParts.length < 7) continue
-      response.header.aa = 1
-      response.authority.push(
-        dns.SOA({
-          name: record.name,
-          primary: soaParts[0],
-          admin: soaParts[1],
-          serial: parseInt(soaParts[2]) || 1,
-          refresh: parseInt(soaParts[3]) || 3600,
-          retry: parseInt(soaParts[4]) || 600,
-          expiration: parseInt(soaParts[5]) || 604800,
-          minimum: parseInt(soaParts[6]) || 3600,
-          ttl: record.ttl ?? 3600
-        })
-      )
+    try {
+      for (const record of records ?? []) {
+        if (!record || !record.value) continue
+        const soaParts = record.value.split(' ')
+        if (soaParts.length < 7) continue
+        response.header.aa = 1
+        response.authority.push(
+          dns.SOA({
+            name: record.name,
+            primary: soaParts[0],
+            admin: soaParts[1],
+            serial: parseInt(soaParts[2]) || 1,
+            refresh: parseInt(soaParts[3]) || 3600,
+            retry: parseInt(soaParts[4]) || 600,
+            expiration: parseInt(soaParts[5]) || 604800,
+            minimum: parseInt(soaParts[6]) || 3600,
+            ttl: record.ttl ?? 3600
+          })
+        )
+      }
+    } catch (err) {
+      error('Error processing SOA records:', err.message)
     }
   }
 
