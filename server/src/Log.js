@@ -13,12 +13,13 @@ class Log {
 
   log(...arg) {
     if (!arg.length) return this
-    if (arg[0].includes('%s')) {
-      let split = arg[0].split('%s')
-      for (let i = 0; i < split.length - 1; i++) {
-        split[i] += arg[1] || ''
-        arg.splice(1, 1)
+    if (typeof arg[0] === 'string' && arg[0].includes('%s')) {
+      let message = arg.shift()
+      while (message.includes('%s') && arg.length > 0) {
+        message = message.replace('%s', arg.shift())
       }
+      message = message.replace(/%s/g, '')
+      arg.unshift(message)
     }
     console.log(this.module, ...arg)
   }
