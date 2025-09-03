@@ -122,6 +122,16 @@ module.exports = {
           })
         }
       },
+      delete: {
+        description: 'Delete a website',
+        action: async () => {
+          let domain = await Candy.cli('Cli').question('Enter the domain name: ')
+          await Candy.cli('Connector').call({
+            action: 'web.delete',
+            data: [domain]
+          })
+        }
+      },
       list: {
         description: 'List all websites',
         action: async () => await Candy.cli('Connector').call({action: 'web.list'})
