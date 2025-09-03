@@ -95,6 +95,37 @@ class Web {
     return Candy.server('Api').result(true, __('Website %s created.', domain))
   }
 
+  async delete(domain) {
+    for (const iterator of ['http://', 'https://', 'ftp://', 'www.']) {
+      if (domain.startsWith(iterator)) domain = domain.replace(iterator, '')
+    }
+    if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Website %s not found.', domain))
+
+    const website = Candy.core('Config').config.websites[domain]
+
+    if (website.pid) {
+      Candy.core('Process').stop(website.pid)
+    }
+
+    if (website.path && fs.existsSync(website.path)) {
+      fs.rmSync(website.path, {recursive: true, force: true})
+    }
+
+    if (domain !== 'localhost') {
+      Candy.server('DNS').delete(
+        {name: domain, type: 'A'},
+        {name: 'www.' + domain, type: 'CNAME'},
+        {name: domain, type: 'MX'},
+        {name: domain, type: 'TXT'},
+        {name: '_dmarc.' + domain, type: 'TXT'}
+      )
+    }
+
+    delete Candy.core('Config').config.websites[domain]
+
+    return Candy.server('Api').result(true, __('Website %s deleted.', domain))
+  }
+
   index(req, res) {
     res.write('CandyPack Server')
     res.end()
