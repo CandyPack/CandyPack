@@ -5,11 +5,11 @@
       "title": "Installation",
       "children": [
         {
-          "file": "01--quick-install.md",
+          "file": "01-quick-install.md",
           "title": "\u26a1 Quick Install"
         },
         {
-          "file": "02--manual-installation-via-npm.md",
+          "file": "02-manual-installation-via-npm.md",
           "title": "\ud83d\udce6 Manual Installation (via NPM)"
         }
       ]
@@ -19,11 +19,11 @@
       "title": "Getting Started",
       "children": [
         {
-          "file": "01--core-concepts.md",
+          "file": "01-core-concepts.md",
           "title": "\ud83e\udde0 Core Concepts"
         },
         {
-          "file": "02--basic-commands.md",
+          "file": "02-basic-commands.md",
           "title": "\ud83d\udcbb Basic Commands"
         }
       ]
@@ -33,7 +33,7 @@
       "title": "Running a Service",
       "children": [
         {
-          "file": "01--start-a-new-service.md",
+          "file": "01-start-a-new-service.md",
           "title": "\u2699\ufe0f Start a New Service"
         }
       ]
@@ -43,11 +43,11 @@
       "title": "Managing Websites",
       "children": [
         {
-          "file": "01--create-a-website.md",
+          "file": "01-create-a-website.md",
           "title": "\ud83c\udf10 Create a Website"
         },
         {
-          "file": "02--list-websites.md",
+          "file": "02-list-websites.md",
           "title": "\ud83d\udccb List Websites"
         }
       ]
@@ -57,11 +57,11 @@
       "title": "Managing Subdomains",
       "children": [
         {
-          "file": "01--create-a-subdomain.md",
+          "file": "01-create-a-subdomain.md",
           "title": "\ud83d\udd17 Create a Subdomain"
         },
         {
-          "file": "02--list-subdomains.md",
+          "file": "02-list-subdomains.md",
           "title": "\ud83d\udccb List Subdomains"
         }
       ]
@@ -71,7 +71,7 @@
       "title": "Managing SSL",
       "children": [
         {
-          "file": "01--renew-an-ssl-certificate.md",
+          "file": "01-renew-an-ssl-certificate.md",
           "title": "\ud83d\udd12 Renew an SSL Certificate"
         }
       ]
@@ -81,19 +81,19 @@
       "title": "Managing Mail",
       "children": [
         {
-          "file": "01--create-a-mail-account.md",
+          "file": "01-create-a-mail-account.md",
           "title": "\u2709\ufe0f Create a Mail Account"
         },
         {
-          "file": "02--delete-a-mail-account.md",
+          "file": "02-delete-a-mail-account.md",
           "title": "\ud83d\uddd1\ufe0f Delete a Mail Account"
         },
         {
-          "file": "03--list-mail-accounts.md",
+          "file": "03-list-mail-accounts.md",
           "title": "\ud83d\udccb List Mail Accounts"
         },
         {
-          "file": "04--change-account-password.md",
+          "file": "04-change-account-password.md",
           "title": "\ud83d\udd11 Change Account Password"
         }
       ]
@@ -105,11 +105,11 @@
       "title": "Welcome to the CandyPack Framework!",
       "children": [
         {
-          "file": "01--whats-in-the-candy-box.md",
+          "file": "01-whats-in-the-candy-box.md",
           "title": "\ud83e\uddf0 What's in the `Candy` box?"
         },
         {
-          "file": "02--super-handy-helper-functions.md",
+          "file": "02-super-handy-helper-functions.md",
           "title": "\u2728 Super-Handy Helper Functions"
         }
       ]
@@ -119,7 +119,7 @@
       "title": "Where Do I Put My Files?",
       "children": [
         {
-          "file": "01--typical-project-layout.md",
+          "file": "01-typical-project-layout.md",
           "title": "\ud83d\udcc2 Typical Project Layout"
         }
       ]
@@ -129,15 +129,15 @@
       "title": "Configuring Your Application",
       "children": [
         {
-          "file": "01--database-connection.md",
+          "file": "01-database-connection.md",
           "title": "\ud83d\udd0c Database Connection"
         },
         {
-          "file": "02--static-route-mapping-optional.md",
+          "file": "02-static-route-mapping-optional.md",
           "title": "\ud83d\uddfa\ufe0f Static Route Mapping (Optional)"
         },
         {
-          "file": "03--request-timeout.md",
+          "file": "03-request-timeout.md",
           "title": "\u23f1\ufe0f Request Timeout"
         }
       ]
@@ -147,23 +147,23 @@
       "title": "Routing: Directing Your Web Traffic",
       "children": [
         {
-          "file": "01--basic-page-routes.md",
+          "file": "01-basic-page-routes.md",
           "title": "\ud83d\udcc4 Basic Page Routes"
         },
         {
-          "file": "02--controller-less-view-routes.md",
+          "file": "02-controller-less-view-routes.md",
           "title": "\u26a1 Controller-less View Routes"
         },
         {
-          "file": "03--api-and-data-routes.md",
+          "file": "03-api-and-data-routes.md",
           "title": "\ud83d\udce6 API and Data Routes"
         },
         {
-          "file": "04--authentication-aware-routes.md",
+          "file": "04-authentication-aware-routes.md",
           "title": "\ud83d\udd10 Authentication-Aware Routes"
         },
         {
-          "file": "05--advanced-routing.md",
+          "file": "05-advanced-routing.md",
           "title": "\ud83d\udee0\ufe0f Advanced Routing"
         }
       ]
@@ -173,11 +173,11 @@
       "title": "Controllers: The Brains of Your App",
       "children": [
         {
-          "file": "01--how-to-build-a-controller.md",
+          "file": "01-how-to-build-a-controller.md",
           "title": "\ud83c\udfd7\ufe0f How to Build a Controller"
         },
         {
-          "file": "02--your-trusty-candy-assistant.md",
+          "file": "02-your-trusty-candy-assistant.md",
           "title": "\ud83e\udd1d Your trusty `Candy` Assistant"
         }
       ]
@@ -187,11 +187,11 @@
       "title": "Handling Requests and Sending Responses",
       "children": [
         {
-          "file": "01--the-request-object-what-is-the-user-asking-for.md",
+          "file": "01-the-request-object-what-is-the-user-asking-for.md",
           "title": "\ud83d\udce5 The Request Object: What is the User Asking For?"
         },
         {
-          "file": "02--sending-a-response-replying-to-the-user.md",
+          "file": "02-sending-a-response-replying-to-the-user.md",
           "title": "\ud83d\udce4 Sending a Response: Replying to the User"
         }
       ]
@@ -201,11 +201,11 @@
       "title": "Views: Making Things Pretty",
       "children": [
         {
-          "file": "01--the-view-directory.md",
+          "file": "01-the-view-directory.md",
           "title": "\ud83d\udcc1 The `view/` Directory"
         },
         {
-          "file": "02--rendering-a-view.md",
+          "file": "02-rendering-a-view.md",
           "title": "\ud83c\udfa8 Rendering a View"
         }
       ]
@@ -215,11 +215,11 @@
       "title": "Authentication & Security",
       "children": [
         {
-          "file": "01--user-logins-with-authjs.md",
+          "file": "01-user-logins-with-authjs.md",
           "title": "\ud83d\udd10 User Logins with `Auth.js`"
         },
         {
-          "file": "02--foiling-villains-with-csrf-protection.md",
+          "file": "02-foiling-villains-with-csrf-protection.md",
           "title": "\ud83d\udee1\ufe0f Foiling Villains with CSRF Protection"
         }
       ]
@@ -229,11 +229,11 @@
       "title": "Talking to Your Database",
       "children": [
         {
-          "file": "01--automatic-connection.md",
+          "file": "01-automatic-connection.md",
           "title": "\ud83d\udd0c Automatic Connection"
         },
         {
-          "file": "02--running-a-query.md",
+          "file": "02-running-a-query.md",
           "title": "\ud83c\udfc3 Running a Query"
         }
       ]
@@ -243,7 +243,7 @@
       "title": "Sending Emails",
       "children": [
         {
-          "file": "01--the-mail-service.md",
+          "file": "01-the-mail-service.md",
           "title": "\u2709\ufe0f The `Mail` Service"
         }
       ]
@@ -253,7 +253,7 @@
       "title": "Validating User Input",
       "children": [
         {
-          "file": "01--the-validator-service.md",
+          "file": "01-the-validator-service.md",
           "title": "\u2705 The `Validator` Service"
         }
       ]
