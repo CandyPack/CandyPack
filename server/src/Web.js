@@ -279,6 +279,7 @@ class Web {
       Candy.core('Config').config.websites[domain].status = 'errored'
     })
     child.on('exit', () => {
+      if (!Candy.core('Config').config.websites[domain]) return
       Candy.core('Config').config.websites[domain].pid = null
       Candy.core('Config').config.websites[domain].updated = Date.now()
       if (Candy.core('Config').config.websites[domain].status == 'errored') {
