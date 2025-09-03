@@ -1,78 +1,334 @@
 {
   "server": [
     {
-      "file": "01-installation.md",
-      "title": "Installation"
+      "file": "01-installation",
+      "title": "Installation",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Installation"
+        },
+        {
+          "file": "01--quick-install.md",
+          "title": "\u26a1 Quick Install"
+        },
+        {
+          "file": "02--manual-installation-via-npm.md",
+          "title": "\ud83d\udce6 Manual Installation (via NPM)"
+        }
+      ]
     },
     {
-      "file": "02-get-started.md",
-      "title": "Getting Started"
+      "file": "02-get-started",
+      "title": "Getting Started",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Getting Started"
+        },
+        {
+          "file": "01--core-concepts.md",
+          "title": "\ud83e\udde0 Core Concepts"
+        },
+        {
+          "file": "02--basic-commands.md",
+          "title": "\ud83d\udcbb Basic Commands"
+        }
+      ]
     },
     {
-      "file": "03-service.md",
-      "title": "Running a Service"
+      "file": "03-service",
+      "title": "Running a Service",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Running a Service"
+        },
+        {
+          "file": "01--start-a-new-service.md",
+          "title": "\u2699\ufe0f Start a New Service"
+        }
+      ]
     },
     {
-      "file": "04-web.md",
-      "title": "Managing Websites"
+      "file": "04-web",
+      "title": "Managing Websites",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Managing Websites"
+        },
+        {
+          "file": "01--create-a-website.md",
+          "title": "\ud83c\udf10 Create a Website"
+        },
+        {
+          "file": "02--list-websites.md",
+          "title": "\ud83d\udccb List Websites"
+        }
+      ]
     },
     {
-      "file": "05-subdomain.md",
-      "title": "Managing Subdomains"
+      "file": "05-subdomain",
+      "title": "Managing Subdomains",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Managing Subdomains"
+        },
+        {
+          "file": "01--create-a-subdomain.md",
+          "title": "\ud83d\udd17 Create a Subdomain"
+        },
+        {
+          "file": "02--list-subdomains.md",
+          "title": "\ud83d\udccb List Subdomains"
+        }
+      ]
     },
     {
-      "file": "06-ssl.md",
-      "title": "Managing SSL"
+      "file": "06-ssl",
+      "title": "Managing SSL",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Managing SSL"
+        },
+        {
+          "file": "01--renew-an-ssl-certificate.md",
+          "title": "\ud83d\udd12 Renew an SSL Certificate"
+        }
+      ]
     },
     {
-      "file": "07-mail.md",
-      "title": "Managing Mail"
+      "file": "07-mail",
+      "title": "Managing Mail",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Managing Mail"
+        },
+        {
+          "file": "01--create-a-mail-account.md",
+          "title": "\u2709\ufe0f Create a Mail Account"
+        },
+        {
+          "file": "02--delete-a-mail-account.md",
+          "title": "\ud83d\uddd1\ufe0f Delete a Mail Account"
+        },
+        {
+          "file": "03--list-mail-accounts.md",
+          "title": "\ud83d\udccb List Mail Accounts"
+        },
+        {
+          "file": "04--change-account-password.md",
+          "title": "\ud83d\udd11 Change Account Password"
+        }
+      ]
     }
   ],
   "framework": [
     {
-      "file": "01-overview.md",
-      "title": "Welcome to the CandyPack Framework!"
+      "file": "01-overview",
+      "title": "Welcome to the CandyPack Framework!",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Welcome to the CandyPack Framework!"
+        },
+        {
+          "file": "01--whats-in-the-candy-box.md",
+          "title": "\ud83e\uddf0 What's in the `Candy` box?"
+        },
+        {
+          "file": "02--super-handy-helper-functions.md",
+          "title": "\u2728 Super-Handy Helper Functions"
+        }
+      ]
     },
     {
-      "file": "02-structure.md",
-      "title": "Where Do I Put My Files?"
+      "file": "02-structure",
+      "title": "Where Do I Put My Files?",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Where Do I Put My Files?"
+        },
+        {
+          "file": "01--typical-project-layout.md",
+          "title": "\ud83d\udcc2 Typical Project Layout"
+        }
+      ]
     },
     {
-      "file": "03-config.md",
-      "title": "Configuring Your Application"
+      "file": "03-config",
+      "title": "Configuring Your Application",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Configuring Your Application"
+        },
+        {
+          "file": "01--database-connection.md",
+          "title": "\ud83d\udd0c Database Connection"
+        },
+        {
+          "file": "02--static-route-mapping-optional.md",
+          "title": "\ud83d\uddfa\ufe0f Static Route Mapping (Optional)"
+        },
+        {
+          "file": "03--request-timeout.md",
+          "title": "\u23f1\ufe0f Request Timeout"
+        }
+      ]
     },
     {
-      "file": "04-routing.md",
-      "title": "Routing: Directing Your Web Traffic"
+      "file": "04-routing",
+      "title": "Routing: Directing Your Web Traffic",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Routing: Directing Your Web Traffic"
+        },
+        {
+          "file": "01--basic-page-routes.md",
+          "title": "\ud83d\udcc4 Basic Page Routes"
+        },
+        {
+          "file": "02--controller-less-view-routes.md",
+          "title": "\u26a1 Controller-less View Routes"
+        },
+        {
+          "file": "03--api-and-data-routes.md",
+          "title": "\ud83d\udce6 API and Data Routes"
+        },
+        {
+          "file": "04--authentication-aware-routes.md",
+          "title": "\ud83d\udd10 Authentication-Aware Routes"
+        },
+        {
+          "file": "05--advanced-routing.md",
+          "title": "\ud83d\udee0\ufe0f Advanced Routing"
+        }
+      ]
     },
     {
-      "file": "05-controllers.md",
-      "title": "Controllers: The Brains of Your App"
+      "file": "05-controllers",
+      "title": "Controllers: The Brains of Your App",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Controllers: The Brains of Your App"
+        },
+        {
+          "file": "01--how-to-build-a-controller.md",
+          "title": "\ud83c\udfd7\ufe0f How to Build a Controller"
+        },
+        {
+          "file": "02--your-trusty-candy-assistant.md",
+          "title": "\ud83e\udd1d Your trusty `Candy` Assistant"
+        }
+      ]
     },
     {
-      "file": "06-request-and-response.md",
-      "title": "Handling Requests and Sending Responses"
+      "file": "06-request-and-response",
+      "title": "Handling Requests and Sending Responses",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Handling Requests and Sending Responses"
+        },
+        {
+          "file": "01--the-request-object-what-is-the-user-asking-for.md",
+          "title": "\ud83d\udce5 The Request Object: What is the User Asking For?"
+        },
+        {
+          "file": "02--sending-a-response-replying-to-the-user.md",
+          "title": "\ud83d\udce4 Sending a Response: Replying to the User"
+        }
+      ]
     },
     {
-      "file": "07-views.md",
-      "title": "Views: Making Things Pretty"
+      "file": "07-views",
+      "title": "Views: Making Things Pretty",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Views: Making Things Pretty"
+        },
+        {
+          "file": "01--the-view-directory.md",
+          "title": "\ud83d\udcc1 The `view/` Directory"
+        },
+        {
+          "file": "02--rendering-a-view.md",
+          "title": "\ud83c\udfa8 Rendering a View"
+        }
+      ]
     },
     {
-      "file": "08-authentication.md",
-      "title": "Authentication & Security"
+      "file": "08-authentication",
+      "title": "Authentication & Security",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Authentication & Security"
+        },
+        {
+          "file": "01--user-logins-with-authjs.md",
+          "title": "\ud83d\udd10 User Logins with `Auth.js`"
+        },
+        {
+          "file": "02--foiling-villains-with-csrf-protection.md",
+          "title": "\ud83d\udee1\ufe0f Foiling Villains with CSRF Protection"
+        }
+      ]
     },
     {
-      "file": "09-database.md",
-      "title": "Talking to Your Database"
+      "file": "09-database",
+      "title": "Talking to Your Database",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Talking to Your Database"
+        },
+        {
+          "file": "01--automatic-connection.md",
+          "title": "\ud83d\udd0c Automatic Connection"
+        },
+        {
+          "file": "02--running-a-query.md",
+          "title": "\ud83c\udfc3 Running a Query"
+        }
+      ]
     },
     {
-      "file": "10-mail.md",
-      "title": "Sending Emails"
+      "file": "10-mail",
+      "title": "Sending Emails",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Sending Emails"
+        },
+        {
+          "file": "01--the-mail-service.md",
+          "title": "\u2709\ufe0f The `Mail` Service"
+        }
+      ]
     },
     {
-      "file": "11-validation.md",
-      "title": "Validating User Input"
+      "file": "11-validation",
+      "title": "Validating User Input",
+      "children": [
+        {
+          "file": "00-introduction.md",
+          "title": "Validating User Input"
+        },
+        {
+          "file": "01--the-validator-service.md",
+          "title": "\u2705 The `Validator` Service"
+        }
+      ]
     }
   ]
 }
