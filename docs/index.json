@@ -34,7 +34,7 @@
       "children": [
         {
           "file": "01-start-a-new-service.md",
-          "title": "Start a New Service"
+          "title": "run"
         }
       ]
     },
@@ -82,23 +82,23 @@
     },
     {
       "file": "07-mail",
-      "title": "Mail",
+      "title": "mail",
       "children": [
         {
           "file": "01-create-a-mail-account.md",
-          "title": "candy mail create"
+          "title": "create"
         },
         {
           "file": "02-delete-a-mail-account.md",
-          "title": "candy mail delete"
+          "title": "delete"
         },
         {
           "file": "03-list-mail-accounts.md",
-          "title": "candy mail list"
+          "title": "list"
         },
         {
           "file": "04-change-account-password.md",
-          "title": "candy mail password"
+          "title": "password"
         }
       ]
     }
@@ -130,29 +130,29 @@
     },
     {
       "file": "03-config",
-      "title": "Configuring",
+      "title": "config.json",
       "children": [
         {
           "file": "01-database-connection.md",
-          "title": "Database Connection"
+          "title": "database"
         },
         {
           "file": "02-static-route-mapping-optional.md",
-          "title": "Static Route Mapping"
+          "title": "route"
         },
         {
           "file": "03-request-timeout.md",
-          "title": "Request Timeout"
+          "title": "request timeout"
         }
       ]
     },
     {
       "file": "04-routing",
-      "title": "Routing",
+      "title": "Route",
       "children": [
         {
           "file": "01-basic-page-routes.md",
-          "title": "Basic Page Routes"
+          "title": "page"
         },
         {
           "file": "02-controller-less-view-routes.md",
@@ -168,7 +168,7 @@
         },
         {
           "file": "05-advanced-routing.md",
-          "title": "Advanced Routing"
+          "title": "set"
         }
       ]
     },
