@@ -1,9 +1,14 @@
 ## 🗑️ Delete a Website
 
-You can delete a website using the `web:delete` command. This command will remove the website from the server configuration, but it will not delete the website's source code files.
+You can delete a website using the `web delete` command. This command will prompt you for the domain name of the website you want to delete.
 
 ```bash
-candypack web:delete my-website.com
+candy web delete
+```
+
+The command will then ask for the domain name:
+```
+Enter the domain name: my-website.com
 ```
 
 ### Important Note
