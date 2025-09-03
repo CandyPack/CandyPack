@@ -96,19 +96,11 @@ class Web {
   }
 
   async delete(domain) {
-    for (const iterator of ['http://', 'https://', 'ftp://', 'www.']) {
-      if (domain.startsWith(iterator)) domain = domain.replace(iterator, '')
-    }
+    for (const iterator of ['http://', 'https://', 'ftp://', 'www.']) if (domain.startsWith(iterator)) domain = domain.replace(iterator, '')
     if (!Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Website %s not found.', domain))
-
     const website = Candy.core('Config').config.websites[domain]
-
-    if (website.pid) {
-      Candy.core('Process').stop(website.pid)
-    }
-
     delete Candy.core('Config').config.websites[domain]
-
+    if (website.pid) Candy.core('Process').stop(website.pid)
     return Candy.server('Api').result(true, __('Website %s deleted.', domain))
   }
 
@@ -259,7 +251,8 @@ class Web {
         '\n'
       if (this.#logs.log[domain].length > 1000000)
         this.#logs.log[domain] = this.#logs.log[domain].substr(this.#logs.log[domain].length - 1000000)
-      if (Candy.core('Config').config.websites[domain].status == 'errored') Candy.core('Config').config.websites[domain].status = 'running'
+      if (Candy.core('Config').config.websites[domain] && Candy.core('Config').config.websites[domain].status == 'errored')
+        Candy.core('Config').config.websites[domain].status = 'running'
     })
     child.stderr.on('data', data => {
       if (!this.#logs.err[domain]) this.#logs.err[domain] = ''
@@ -276,7 +269,7 @@ class Web {
       this.#logs.err[domain] += data.toString()
       if (this.#logs.err[domain].length > 1000000)
         this.#logs.err[domain] = this.#logs.err[domain].substr(this.#logs.err[domain].length - 1000000)
-      Candy.core('Config').config.websites[domain].status = 'errored'
+      if (Candy.core('Config').config.websites[domain]) Candy.core('Config').config.websites[domain].status = 'errored'
     })
     child.on('exit', () => {
       if (!Candy.core('Config').config.websites[domain]) return
