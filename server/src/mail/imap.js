@@ -284,8 +284,7 @@ class Connection {
     if (!this.#options.onLsub || typeof this.#options.onLsub != 'function')
       return this.#write(`${this.#request.id} NO LSUB failed\r\n`)
     this.#options.onLsub({ address: this.#auth }, (err, boxes) => {
-      if (err) return this.#write(`${this.#request.id} NO LSUB failed\r
-`)
+      if (err) return this.#write(`${this.#request.id} NO LSUB failed\r\n`)
       for (let box of boxes) this.#write(`* LSUB (\\HasNoChildren) "/" "${box}"\r\n`)
       this.#write(`${this.#request.id} OK LSUB completed\r\n`)
     })
