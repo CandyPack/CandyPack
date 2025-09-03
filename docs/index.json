@@ -49,6 +49,10 @@
         {
           "file": "02-list-websites.md",
           "title": "\ud83d\udccb List Websites"
+        },
+        {
+          "file": "03-delete-a-website.md",
+          "title": "🗑️ Delete a Website"
         }
       ]
     },
