@@ -31,5 +31,21 @@
     "WEBSITE MANAGEMENT": "WEBSITE MANAGEMENT",
     "HELP": "HELP",
     "Debug CandyPack Server": "Debug CandyPack Server",
-    "Add a new Service": "Add a new Service"
+    "Add a new Service": "Add a new Service",
+    "Domains": "Domains",
+    "Service %s added.": "Service %s added.",
+    "Name": "Name",
+    "Active": "Active",
+    "Errored": "Errored",
+    "Create a new mail account": "Create a new mail account",
+    "Delete a mail account": "Delete a mail account",
+    "List all domain mail accounts": "List all domain mail accounts",
+    "Change mail account password": "Change mail account password",
+    "Renew SSL certificate for a domain": "Renew SSL certificate for a domain",
+    "List all domain subdomains": "List all domain subdomains",
+    "'%s' is not a valid command.": "'%s' is not a valid command.",
+    "List all websites": "List all websites",
+    "No websites found.": "No websites found.",
+    "Service %s is not running.": "Service %s is not running.",
+    "Service %s not found.": "Service %s not found."
 }
