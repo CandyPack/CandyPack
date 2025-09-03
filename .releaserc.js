@@ -30,7 +30,7 @@ module.exports = {
 
             commit.type = map[commit.type] || commit.type
 
-            const hide = ['🎨 Style', '🔧 Maintenance & Cleanup', '🏗️ Build', '🤖 CI']
+            const hide = ['🎨 Style', '🔧 Maintenance & Cleanup', '🏗️ Build', '🤖 CI', '✅ Tests']
             if (!commit.type || hide.includes(commit.type)) return false
 
             if (commit.scope === '*' || commit.scope === 'root') commit.scope = ''
