@@ -115,10 +115,10 @@ module.exports = {
         description: 'Create a new website',
         action: async () => {
           let domain = await Candy.cli('Cli').question('Enter the domain name: ')
-          let path = path.resolve().replace(/\\/g, '/') + '/' + domain + '/'
+          let dir = path.resolve().replace(/\\/g, '/') + '/' + domain + '/'
           await Candy.cli('Connector').call({
             action: 'web.create',
-            data: [domain, (await Candy.cli('Cli').question(__('Enter the path to the website (%s): ', path))) ?? path]
+            data: [domain, (await Candy.cli('Cli').question(__('Enter the path to the website (%s): ', dir))) ?? dir]
           })
         }
       },

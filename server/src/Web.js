@@ -64,7 +64,7 @@ class Web {
     }
     if (domain.length < 3 || (!domain.includes('.') && domain != 'localhost'))
       return Candy.server('Api').result(false, __('Invalid domain.'))
-    if (Candy.core('Config').config.websites[domain]) return Candy.server('Api').result(false, __('Website %s already exists.', domain))
+    if (Candy.core('Config').config.websites?.[domain]) return Candy.server('Api').result(false, __('Website %s already exists.', domain))
     web.domain = domain
     if (websitePath && websitePath.length > 0) {
       web.path = path.resolve(websitePath).replace(/\\/g, '/') + '/'
@@ -75,6 +75,7 @@ class Web {
     if (!fs.existsSync(web.path)) fs.mkdirSync(web.path, {recursive: true})
     web.subdomain = ['www']
     if (web.domain.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) || web.domain == 'localhost') web.cert = false
+    if (!Candy.core('Config').config.websites) Candy.core('Config').config.websites = {}
     Candy.core('Config').config.websites[web.domain] = web
     if (web.domain !== 'localhost') {
       Candy.server('DNS').record(

@@ -48,5 +48,7 @@
     "List all websites": "Tüm web sitelerini listele",
     "No websites found.": "Web sitesi bulunamadı.",
     "Service %s is not running.": "%s hizmeti çalışmıyor.",
-    "Service %s not found.": "%s hizmeti bulunamadı."
+    "Service %s not found.": "%s hizmeti bulunamadı.",
+    "Enter the path to the website (%s): ": "Enter the path to the website (%s): ",
+    "Website %s created.": "Website %s created."
 }
