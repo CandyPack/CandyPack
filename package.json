@@ -1,6 +1,6 @@
 {
   "name": "candypack",
-  "description": "",
+  "description": "🍭 Next-Gen Server & Framework: Web, DNS, Mail, SSL & Monitoring in one CLI.",
   "homepage": "https://candypack.dev",
   "author": {
     "name": "emre.red",
@@ -19,10 +19,15 @@
   },
   "directories": {
     "bin": "./bin",
+    "cli": "./cli",
+    "core": "./core",
+    "docs": "./docs",
     "framework": "./framework",
     "locale": "./locale",
     "server": "./server",
-    "watchdog": "./watchdog"
+    "test": "./test",
+    "watchdog": "./watchdog",
+    "web": "./web"
   },
   "bin": {
     "candy": "bin/candy",
