@@ -10,7 +10,7 @@
         },
         {
           "file": "02-manual-installation-via-npm.md",
-          "title": "Manual Installation"
+          "title": "Manual Installation (via NPM)"
         }
       ]
     },
@@ -30,75 +30,75 @@
     },
     {
       "file": "03-service",
-      "title": "Service",
+      "title": "Running a Service",
       "children": [
         {
           "file": "01-start-a-new-service.md",
-          "title": "run"
+          "title": "Start a New Service"
         }
       ]
     },
     {
       "file": "04-web",
-      "title": "web",
+      "title": "Managing Websites",
       "children": [
         {
           "file": "01-create-a-website.md",
-          "title": "create"
+          "title": "Create a Website"
         },
         {
           "file": "02-list-websites.md",
-          "title": "list"
+          "title": "List Websites"
         },
         {
           "file": "03-delete-a-website.md",
-          "title": "delete"
+          "title": "Delete a Website"
         }
       ]
     },
     {
       "file": "05-subdomain",
-      "title": "subdomain",
+      "title": "Managing Subdomains",
       "children": [
         {
           "file": "01-create-a-subdomain.md",
-          "title": "create"
+          "title": "Create a Subdomain"
         },
         {
           "file": "02-list-subdomains.md",
-          "title": "list"
+          "title": "List Subdomains"
         }
       ]
     },
     {
       "file": "06-ssl",
-      "title": "SSL",
+      "title": "Managing SSL",
       "children": [
         {
           "file": "01-renew-an-ssl-certificate.md",
-          "title": "renew"
+          "title": "Renew an SSL Certificate"
         }
       ]
     },
     {
       "file": "07-mail",
-      "title": "mail",
+      "title": "Managing Mail",
       "children": [
         {
           "file": "01-create-a-mail-account.md",
-          "title": "create"
+          "title": "Create a Mail Account"
         },
         {
           "file": "02-delete-a-mail-account.md",
-          "title": "delete"
+          "title": "Delete a Mail Account"
         },
         {
           "file": "03-list-mail-accounts.md",
-          "title": "list"
+          "title": "List Mail Accounts"
         },
         {
           "file": "04-change-account-password.md",
-          "title": "password"
+          "title": "Change Account Password"
         }
       ]
     }
@@ -106,7 +106,7 @@
   "framework": [
     {
       "file": "01-overview",
-      "title": "Overview",
+      "title": "Welcome to the CandyPack Framework!",
       "children": [
         {
           "file": "01-whats-in-the-candy-box.md",
@@ -120,7 +120,7 @@
     },
     {
       "file": "02-structure",
-      "title": "Project Structure",
+      "title": "Where Do I Put My Files?",
       "children": [
         {
           "file": "01-typical-project-layout.md",
@@ -130,29 +130,29 @@
     },
     {
       "file": "03-config",
-      "title": "config.json",
+      "title": "Configuring Your Application",
       "children": [
         {
           "file": "01-database-connection.md",
-          "title": "database"
+          "title": "Database Connection"
         },
         {
           "file": "02-static-route-mapping-optional.md",
-          "title": "route"
+          "title": "Static Route Mapping (Optional)"
         },
         {
           "file": "03-request-timeout.md",
-          "title": "request timeout"
+          "title": "Request Timeout"
         }
       ]
     },
     {
       "file": "04-routing",
-      "title": "Route",
+      "title": "Routing: Directing Your Web Traffic",
       "children": [
         {
           "file": "01-basic-page-routes.md",
-          "title": "page"
+          "title": "Basic Page Routes"
         },
         {
           "file": "02-controller-less-view-routes.md",
@@ -168,13 +168,13 @@
         },
         {
           "file": "05-advanced-routing.md",
-          "title": "set"
+          "title": "Advanced Routing"
         }
       ]
     },
     {
       "file": "05-controllers",
-      "title": "Controller",
+      "title": "Controllers: The Brains of Your App",
       "children": [
         {
           "file": "01-how-to-build-a-controller.md",
@@ -188,7 +188,7 @@
     },
     {
       "file": "06-request-and-response",
-      "title": "Request and Response",
+      "title": "Handling Requests and Sending Responses",
       "children": [
         {
           "file": "01-the-request-object-what-is-the-user-asking-for.md",
@@ -202,7 +202,7 @@
     },
     {
       "file": "07-views",
-      "title": "Views",
+      "title": "Views: Making Things Pretty",
       "children": [
         {
           "file": "01-the-view-directory.md",
@@ -216,7 +216,7 @@
     },
     {
       "file": "08-authentication",
-      "title": "Authentication",
+      "title": "Authentication & Security",
       "children": [
         {
           "file": "01-user-logins-with-authjs.md",
@@ -230,7 +230,7 @@
     },
     {
       "file": "09-database",
-      "title": "Database",
+      "title": "Talking to Your Database",
       "children": [
         {
           "file": "01-automatic-connection.md",
@@ -244,7 +244,7 @@
     },
     {
       "file": "10-mail",
-      "title": "Mail",
+      "title": "Sending Emails",
       "children": [
         {
           "file": "01-the-mail-service.md",
@@ -254,11 +254,21 @@
     },
     {
       "file": "11-validation",
-      "title": "Form Validation",
+      "title": "Validating User Input",
       "children": [
         {
           "file": "01-the-validator-service.md",
           "title": "The `Validator` Service"
+        }
+      ]
+    },
+    {
+      "file": "Frontend",
+      "title": "Frontend",
+      "children": [
+        {
+          "file": "01-candy-js.md",
+          "title": "Frontend Javascript Framework: candy.js"
         }
       ]
     }
