@@ -93,7 +93,7 @@ class Mail {
       private: os.homedir() + '/.candypack/cert/dkim/' + domain + '.key',
       public: os.homedir() + '/.candypack/cert/dkim/' + domain + '.pub'
     }
-    Candy.DNS.record({
+    Candy.server('DNS').record({
       type: 'TXT',
       name: `default._domainkey.${domain}`,
       value: `v=DKIM1; k=rsa; p=${publicKeyPem}`
