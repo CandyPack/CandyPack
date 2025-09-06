@@ -5,7 +5,15 @@ const config = {
   testMatch: ['**/test/**/*.test.js', '**/?(*.)+(spec|test).js'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  collectCoverageFrom: ['core/**/*.js', 'server/**/*.js']
+  collectCoverageFrom: ['core/**/*.js', 'server/**/*.js'],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    }
+  }
 }
 
 module.exports = config
