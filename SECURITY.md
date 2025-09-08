@@ -6,7 +6,7 @@ We are committed to ensuring the security of CandyPack. Below is a table of our 
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.4.x   | :white_check_mark: |
+| 0.6.x   | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
