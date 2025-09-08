@@ -14,6 +14,7 @@ class Api {
     'subdomain.create': (...args) => Candy.server('Subdomain').create(...args),
     'subdomain.list': (...args) => Candy.server('Subdomain').list(...args),
     'web.create': (...args) => Candy.server('Web').create(...args),
+    'web.delete': (...args) => Candy.server('Web').delete(...args),
     'web.list': (...args) => Candy.server('Web').list(...args)
   }
 

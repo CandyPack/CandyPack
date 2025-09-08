@@ -93,7 +93,7 @@ class Mail {
       private: os.homedir() + '/.candypack/cert/dkim/' + domain + '.key',
       public: os.homedir() + '/.candypack/cert/dkim/' + domain + '.pub'
     }
-    Candy.DNS.record({
+    Candy.server('DNS').record({
       type: 'TXT',
       name: `default._domainkey.${domain}`,
       value: `v=DKIM1; k=rsa; p=${publicKeyPem}`
@@ -184,6 +184,40 @@ class Mail {
           return callback(new Error('Invalid username or password'))
         })
       },
+      onAppend(data, callback) {
+        parser(data.message, {}, async (err, parsed) => {
+          if (err) {
+            error(err)
+            return callback(err)
+          }
+          await self.#store(data.address, parsed, data.mailbox, data.flags)
+          callback()
+        })
+      },
+      onExpunge(data, callback) {
+        self.#db.all(
+          "SELECT uid FROM mail_received WHERE email = ? AND mailbox = ? AND flags LIKE '%deleted%'",
+          [data.address, data.mailbox],
+          (err, rows) => {
+            if (err) {
+              error(err)
+              return callback(err)
+            }
+            let uids = rows.map(row => row.uid)
+            self.#db.run(
+              "DELETE FROM mail_received WHERE email = ? AND mailbox = ? AND flags LIKE '%deleted%'",
+              [data.address, data.mailbox],
+              err => {
+                if (err) {
+                  error(err)
+                  return callback(err)
+                }
+                callback(null, uids)
+              }
+            )
+          }
+        )
+      },
       onData(stream, session, callback) {
         parser(stream, {}, async (err, parsed) => {
           if (err) return error(err)
@@ -214,6 +248,37 @@ class Mail {
           callback()
         })
       },
+      onCreate(data, callback) {
+        self.#db.run('INSERT INTO mail_box (email, title) VALUES (?, ?)', [data.address, data.mailbox], err => {
+          if (err) {
+            error(err)
+            return callback(err)
+          }
+          callback()
+        })
+      },
+      onDelete(data, callback) {
+        self.#db.run('DELETE FROM mail_box WHERE email = ? AND title = ?', [data.address, data.mailbox], err => {
+          if (err) {
+            error(err)
+            return callback(err)
+          }
+          callback()
+        })
+      },
+      onRename(data, callback) {
+        self.#db.run(
+          'UPDATE mail_box SET title = ? WHERE email = ? AND title = ?',
+          [data.newMailbox, data.address, data.oldMailbox],
+          err => {
+            if (err) {
+              error(err)
+              return callback(err)
+            }
+            callback()
+          }
+        )
+      },
       onFetch(data, session, callback) {
         let limit = ``
         if (data.limit) {
@@ -233,6 +298,28 @@ class Mail {
             callback(rows)
           }
         )
+      },
+      onList(data, callback) {
+        self.#db.all('SELECT title FROM mail_box WHERE email = ?', [data.address], (err, rows) => {
+          if (err) {
+            error(err)
+            return callback(err)
+          }
+          let boxes = rows.map(row => row.title)
+          if (!boxes.includes('INBOX')) boxes.unshift('INBOX')
+          callback(null, boxes)
+        })
+      },
+      onLsub(data, callback) {
+        self.#db.all('SELECT title FROM mail_box WHERE email = ?', [data.address], (err, rows) => {
+          if (err) {
+            error(err)
+            return callback(err)
+          }
+          let boxes = rows.map(row => row.title)
+          if (!boxes.includes('INBOX')) boxes.unshift('INBOX')
+          callback(null, boxes)
+        })
       },
       onMailFrom(address, session, callback) {
         if (!address.address.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) return callback(new Error('Invalid email address'))
@@ -257,23 +344,56 @@ class Mail {
       },
       onStore(data, session, callback) {
         let uids = data.uids
-        for (let flag of data.flags)
+        for (let flag of data.flags) {
           for (let uid of uids) {
             uid = [uid, uid]
             if (uid.includes(':')) uid = uid.split(':')
-            self.#db.run(
-              `UPDATE mail_received
-                                SET flags = JSON_INSERT(flags, '$[#]', ?)
-                                WHERE email = ? AND uid BETWEEN ? AND ? AND flags NOT LIKE ?`,
-              [flag, data.address, uid[0], uid[1], `%${flag}%`],
-              err => {
-                if (err) {
-                  error(err)
-                  return callback(err)
-                }
-              }
-            )
+            switch (data.action) {
+              case 'add':
+                self.#db.run(
+                  `UPDATE mail_received
+                                    SET flags = JSON_INSERT(flags, '$[#]', ?)
+                                    WHERE email = ? AND uid BETWEEN ? AND ? AND flags NOT LIKE ?`,
+                  [flag, data.address, uid[0], uid[1], `%${flag}%`],
+                  err => {
+                    if (err) {
+                      error(err)
+                      return callback(err)
+                    }
+                  }
+                )
+                break
+              case 'remove':
+                self.#db.run(
+                  `UPDATE mail_received
+                                    SET flags = JSON_REMOVE(flags, (SELECT value FROM JSON_EACH(flags) WHERE value = ?))
+                                    WHERE email = ? AND uid BETWEEN ? AND ? AND flags LIKE ?`,
+                  [flag, data.address, uid[0], uid[1], `%${flag}%`],
+                  err => {
+                    if (err) {
+                      error(err)
+                      return callback(err)
+                    }
+                  }
+                )
+                break
+              case 'set':
+                self.#db.run(
+                  `UPDATE mail_received
+                                    SET flags = JSON_SET(flags, '$', ?)
+                                    WHERE email = ? AND uid BETWEEN ? AND ?`,
+                  [JSON.stringify(data.flags), data.address, uid[0], uid[1]],
+                  err => {
+                    if (err) {
+                      error(err)
+                      return callback(err)
+                    }
+                  }
+                )
+                break
+            }
           }
+        }
         callback()
       },
       onError(err) {
@@ -385,10 +505,8 @@ class Mail {
     return Candy.server('Api').result(true, await __('Mail sent successfully.'))
   }
 
-  #store(email, data) {
+  #store(email, data, mailbox = 'INBOX', flags = '[]') {
     return new Promise(resolve => {
-      let mailbox = 'INBOX'
-      let flags = '[]'
       if (email === data.from.value[0].address) {
         flags = JSON.stringify(['seen'])
         mailbox = 'Sent'

@@ -8,11 +8,11 @@ class Connector {
       axios
         .post('http://127.0.0.1:1453', command, {headers: {Authorization: Candy.core('Config').config.api.auth}})
         .then(response => {
-          if (response.data.message) log(response.data.message)
+          if (response.data.message) console.log(response.data.message)
           resolve(response.data)
         })
         .catch(error => {
-          log(error)
+          console.error(error)
           reject(error)
         })
     })

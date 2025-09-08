@@ -7,6 +7,13 @@ class Config {
   #loaded = false
   #saving = false
   #changed = false
+  config = {
+    server: {
+      pid: null,
+      started: null,
+      watchdog: null
+    }
+  }
 
   force() {
     this.#save()
@@ -15,12 +22,22 @@ class Config {
   init() {
     this.#dir = os.homedir() + '/.candypack'
     this.#file = this.#dir + '/config.json'
-    this.config = {}
     if (!fs.existsSync(this.#dir)) fs.mkdirSync(this.#dir)
     if (!fs.existsSync(this.#file)) this.#save()
     else this.#load()
-    setInterval(() => this.#save(), 500).unref()
-    this.config = this.#proxy(this.config)
+    if (!process.mainModule.path.includes('node_modules/candypack/bin')) {
+      setInterval(() => this.#save(), 500).unref()
+      this.config = this.#proxy(this.config)
+    }
+    if (
+      !this.config.server.os ||
+      this.config.server.os != os.platform() ||
+      !this.config.server.arch ||
+      this.config.server.arch != os.arch()
+    ) {
+      this.config.server.os = os.platform()
+      this.config.server.arch = os.arch()
+    }
   }
 
   #load() {

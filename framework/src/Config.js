@@ -15,9 +15,18 @@ module.exports = {
   },
 
   init: function () {
-    this.system = JSON.parse(fs.readFileSync(os.homedir() + '/.candypack/config.json'))
+    try {
+      this.system = JSON.parse(fs.readFileSync(os.homedir() + '/.candypack/config.json'))
+    } catch {
+      this.system = {}
+    }
     if (fs.existsSync(__dir + '/config.json')) {
-      let config = JSON.parse(fs.readFileSync(__dir + '/config.json'))
+      let config = {}
+      try {
+        config = JSON.parse(fs.readFileSync(__dir + '/config.json'))
+      } catch {
+        console.error('Error reading config file:', __dir + '/config.json')
+      }
       for (const iterator of Object.keys(config)) {
         if (typeof config[iterator] === 'object') {
           for (const iterator2 of Object.keys(config[iterator])) {

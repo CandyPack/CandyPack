@@ -1,4 +1,4 @@
-const {log} = Candy.server('Log', false).init('SSL')
+const {log, error} = Candy.server('Log', false).init('SSL')
 
 const acme = require('acme-client')
 const fs = require('fs')
@@ -25,6 +25,8 @@ class SSL {
   }
 
   renew(domain) {
+    if (domain.match(/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/))
+      return Candy.server('Api').result(false, __('SSL renewal is not available for IP addresses.'))
     if (!Candy.core('Config').config.websites[domain]) {
       for (const key of Object.keys(Candy.core('Config').config.websites)) {
         for (const subdomain of Candy.core('Config').config.websites[key].subdomain)
@@ -42,6 +44,7 @@ class SSL {
   #self() {
     let ssl = Candy.core('Config').config.ssl ?? {}
     if (ssl && ssl.expiry > Date.now() && ssl.key && ssl.cert && fs.existsSync(ssl.key) && fs.existsSync(ssl.cert)) return
+    log('Generating self-signed SSL certificate...')
     const attrs = [{name: 'commonName', value: 'CandyPack'}]
     const pems = selfsigned.generate(attrs, {days: 365, keySize: 2048})
     if (!fs.existsSync(os.homedir() + '/.candypack/cert/ssl')) fs.mkdirSync(os.homedir() + '/.candypack/cert/ssl', {recursive: true})
@@ -70,6 +73,7 @@ class SSL {
     })
     let cert
     try {
+      log('Requesting SSL certificate for domain %s...', domain)
       cert = await client.auto({
         csr,
         termsOfServiceAgreed: true,
@@ -114,7 +118,7 @@ class SSL {
       if (!this.#checked[domain]) this.#checked[domain] = {error: 0}
       if (this.#checked[domain].error < 5) this.#checked[domain].error = this.#checked[domain] ? this.#checked[domain].error + 1 : 1
       this.#checked[domain].interval = this.#checked[domain].error * 1000 * 60 * 5 + Date.now()
-      log(e)
+      error(e)
       return
     }
     if (!cert) return
