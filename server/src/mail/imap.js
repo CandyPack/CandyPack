@@ -467,7 +467,7 @@ class Connection {
       this.#write('+ idling\r\n')
       this.#wait = true
 
-      // IDLE state için event listener
+      // Event listener for IDLE state
       this.#idleInterval = setInterval(() => {
         if (this.#options.onIdle && typeof this.#options.onIdle === 'function') {
           this.#options.onIdle(
