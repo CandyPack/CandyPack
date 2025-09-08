@@ -1,3 +1,27 @@
+### ✨ What's New
+
+- Added 'candy web delete' command.
+- Added German, Spanish, French, Portuguese, Russian, and Chinese language support for CLI
+
+### 🛠️ Fixes & Improvements
+
+- DNS Server Improvements
+- Fixed website creation problem
+- **Framework:** Add error handling for config file parsing
+- IMAP Server Improvements
+- Refactor website creation and config handling
+- **Server:** Logs fixed
+- SMTP Server Improvements
+- Web Server Improvements
+
+
+
+---
+
+Powered by [🍭 CandyPack](https://candypack.dev)
+
+**v**
+
 ## [0.5.0](https://github.com/CandyPack/CandyPack/compare/v0.4.1...v0.5.0) (2025-09-02)
 
 * add view helper to page and authPage methods [#20](https://https://github.com/CandyPack/CandyPack/pull/20) ([](https://github.com/CandyPack/CandyPack/commit/863eaf35950831dd1166b6b2d0a50f48c19af508)), closes [#20](https://github.com/CandyPack/CandyPack/issues/20)
