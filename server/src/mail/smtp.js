@@ -473,7 +473,7 @@ class smtp {
 
   #dkim(obj) {
     try {
-      var options = {
+      const options = {
         domainName: obj.domain,
         keySelector: obj.selector,
         privateKey: obj.private,
