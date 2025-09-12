@@ -42,7 +42,6 @@ class Connection {
     STORE: () => this.#store()
   }
   #box = 'INBOX'
-  #boxes = CONSTANTS.DEFAULT_BOXES
   #commands
   #end = false
   #idleInterval
@@ -102,14 +101,36 @@ class Connection {
 
   #authenticate() {
     try {
-      this.#write('+ Ready for authentication\r\n')
-      log('Authenticate request from: ' + this.#getClientIP())
+      const authMechanism = this.#commands[2]?.toUpperCase()
+      log('Authenticate request from: ' + this.#getClientIP() + ' using mechanism: ' + authMechanism)
+
+      // Send appropriate challenge based on auth mechanism
+      if (authMechanism === 'PLAIN') {
+        this.#write('+ \r\n') // Empty challenge for PLAIN
+      } else if (authMechanism === 'LOGIN') {
+        this.#write('+ VXNlcm5hbWU6\r\n') // Base64 encoded "Username:"
+      } else {
+        this.#write('+ Ready for authentication\r\n')
+      }
+
       this.#wait = true
 
+      // Set a timeout for authentication data
+      const authTimeout = setTimeout(() => {
+        if (this.#wait) {
+          this.#wait = false
+          this.#write(`${this.#request.id} NO Authentication timeout\r\n`)
+          log('Authentication timeout from: ' + this.#getClientIP())
+        }
+      }, 10000) // 10 second timeout
+
       this.#socket.once('data', data => {
+        clearTimeout(authTimeout)
         this.#wait = false
+
         try {
           const dataStr = data.toString().trim()
+          log('Authentication data received from ' + this.#getClientIP() + ': ' + dataStr.substring(0, 50) + '...')
 
           if (!dataStr || dataStr.length > CONSTANTS.MAX_AUTH_DATA_SIZE) {
             this.#write(`${this.#request.id} NO Authentication data too large\r\n`)
@@ -117,13 +138,33 @@ class Connection {
             return
           }
 
-          if (this.#commands[2] === 'PLAIN') {
-            const auth = Buffer.from(dataStr, 'base64').toString('utf8').split('\0')
+          // Handle AUTHENTICATE CANCEL
+          if (dataStr === '*') {
+            this.#write(`${this.#request.id} BAD Authentication cancelled\r\n`)
+            log('Authentication cancelled by client: ' + this.#getClientIP())
+            return
+          }
+
+          if (authMechanism === 'PLAIN') {
+            let auth
+            try {
+              auth = Buffer.from(dataStr, 'base64').toString('utf8').split('\0')
+            } catch {
+              this.#write(`${this.#request.id} NO Authentication data invalid\r\n`)
+              log('Base64 decode failed from: ' + this.#getClientIP())
+              return
+            }
 
             if (auth.length !== 3 || !auth[1] || !auth[2]) {
               this.#write(`${this.#request.id} NO Authentication failed\r\n`)
               this.#auth = false
-              log('Authentication failed for: ' + auth[1])
+              log('Authentication failed - invalid format from: ' + this.#getClientIP())
+              return
+            }
+
+            if (!this.#options.onAuth || typeof this.#options.onAuth !== 'function') {
+              this.#write(`${this.#request.id} NO Authentication not available\r\n`)
+              log('onAuth handler not available')
               return
             }
 
@@ -147,8 +188,43 @@ class Connection {
                 }
               }
             )
+          } else if (authMechanism === 'LOGIN') {
+            // LOGIN mechanism expects username first, then password in separate responses
+            const username = Buffer.from(dataStr, 'base64').toString('utf8')
+            this.#write('+ UGFzc3dvcmQ6\r\n') // Base64 encoded "Password:"
+
+            this.#socket.once('data', passwordData => {
+              const password = Buffer.from(passwordData.toString().trim(), 'base64').toString('utf8')
+
+              if (!this.#options.onAuth || typeof this.#options.onAuth !== 'function') {
+                this.#write(`${this.#request.id} NO Authentication not available\r\n`)
+                return
+              }
+
+              this.#options.onAuth(
+                {
+                  username: username,
+                  password: password
+                },
+                {
+                  remoteAddress: this.#getClientIP()
+                },
+                err => {
+                  if (err) {
+                    this.#write(`${this.#request.id} NO Authentication failed\r\n`)
+                    log('Authentication failed for: ' + username)
+                    this.#auth = false
+                  } else {
+                    this.#write(`${this.#request.id} OK Authentication successful\r\n`)
+                    log('Authentication successful for: ' + username)
+                    this.#auth = username
+                  }
+                }
+              )
+            })
           } else {
-            this.#bad()
+            this.#write(`${this.#request.id} NO Unsupported authentication mechanism\r\n`)
+            log('Unsupported auth mechanism: ' + authMechanism)
             this.#auth = false
           }
         } catch (authError) {
@@ -156,6 +232,22 @@ class Connection {
           this.#write(`${this.#request.id} NO Authentication failed\r\n`)
           this.#auth = false
         }
+      })
+
+      // Also listen for socket errors during authentication
+      const errorHandler = err => {
+        clearTimeout(authTimeout)
+        this.#wait = false
+        error('Socket error during authentication:', err.message)
+        this.#write(`${this.#request.id} NO Authentication failed\r\n`)
+        this.#auth = false
+      }
+
+      this.#socket.once('error', errorHandler)
+      this.#socket.once('close', () => {
+        clearTimeout(authTimeout)
+        this.#wait = false
+        log('Socket closed during authentication from: ' + this.#getClientIP())
       })
     } catch (err) {
       error('Authenticate method error:', err.message)
@@ -232,6 +324,7 @@ class Connection {
 
   #data(data) {
     try {
+      log('Data received from: ' + this.#getClientIP(), data.toString().trim())
       if (this.#wait || !data || data.toString().trim().length === 0) {
         return
       }
@@ -884,12 +977,16 @@ class Connection {
       }
 
       let box = this.#commands[2]
-      if (box.startsWith('"') && box.endsWith('"')) {
+      if (box && box.startsWith('"') && box.endsWith('"')) {
         box = box.substr(1, box.length - 2)
       }
 
-      if (!this.#boxes.includes(box)) {
-        return this.#write(`${this.#request.id} NO Mailbox not found\r\n`)
+      if (!box) {
+        return this.#write(`${this.#request.id} NO Mailbox name required\r\n`)
+      }
+
+      if (!CONSTANTS.DEFAULT_BOXES.includes(box.toUpperCase())) {
+        box = 'INBOX'
       }
 
       this.#box = box
@@ -900,7 +997,7 @@ class Connection {
         this.#write('* ' + ((data.uidnext ?? 1) - 1) + ' EXISTS\r\n')
         this.#write('* ' + (data.recent ?? data.unseen ?? 0) + ' RECENT\r\n')
         this.#write('* OK [UNSEEN ' + (data.unseen ?? 0) + '] Message ' + (data.unseen ?? 0) + ' is first unseen\r\n')
-        this.#write('* OK [UIDVALIDITY ' + CONSTANTS.UIDVALIDITY + '] UIDs valid\r\n')
+        this.#write('* OK [UIDVALIDITY ' + (data.uidvalidity ?? CONSTANTS.UIDVALIDITY) + '] UIDs valid\r\n')
         this.#write('* OK [UIDNEXT ' + (data.uidnext ?? 1) + '] Predicted next UID\r\n')
         this.#write(`${this.#request.id} OK [READ-WRITE] SELECT completed\r\n`)
       })
