@@ -178,15 +178,26 @@ class Web {
   }
 
   server() {
-    if (!this.#loaded) return setTimeout(this.server, 1000)
+    if (!this.#loaded) return setTimeout(() => this.server(), 1000)
     if (Object.keys(Candy.core('Config').config.websites ?? {}).length == 0) return
-    if (!this.#server_http) this.#server_http = http.createServer((req, res) => this.request(req, res, false)).listen(80)
+
+    if (!this.#server_http) {
+      this.#server_http = http.createServer((req, res) => this.request(req, res, false))
+      this.#server_http.on('error', err => {
+        log(`HTTP server error: ${err.message}`)
+        if (err.code === 'EADDRINUSE') {
+          log('Port 80 is already in use')
+        }
+      })
+      this.#server_http.listen(80)
+    }
+
     let ssl = Candy.core('Config').config.ssl ?? {}
     if (!this.#server_https && ssl && ssl.key && ssl.cert && fs.existsSync(ssl.key) && fs.existsSync(ssl.cert)) {
-      this.#server_https = https
-        .createServer(
-          {
-            SNICallback: (hostname, callback) => {
+      this.#server_https = https.createServer(
+        {
+          SNICallback: (hostname, callback) => {
+            try {
               let sslOptions
               while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.'))
                 hostname = hostname.split('.').slice(1).join('.')
@@ -212,15 +223,27 @@ class Web {
               }
               const ctx = tls.createSecureContext(sslOptions)
               callback(null, ctx)
-            },
-            key: fs.readFileSync(ssl.key),
-            cert: fs.readFileSync(ssl.cert)
+            } catch (err) {
+              log(`SSL certificate error for ${hostname}: ${err.message}`)
+              callback(err)
+            }
           },
-          (req, res) => {
-            this.request(req, res, true)
-          }
-        )
-        .listen(443)
+          key: fs.readFileSync(ssl.key),
+          cert: fs.readFileSync(ssl.cert)
+        },
+        (req, res) => {
+          this.request(req, res, true)
+        }
+      )
+
+      this.#server_https.on('error', err => {
+        log(`HTTPS server error: ${err.message}`)
+        if (err.code === 'EADDRINUSE') {
+          log('Port 443 is already in use')
+        }
+      })
+
+      this.#server_https.listen(443)
     }
   }
 
