@@ -178,14 +178,14 @@ class Monitor {
       .replace(/\r\n/g, '\n')
       .split('\n')
       .map(line => {
-        if ('[LOG]' == line.substr(0, 5)) {
-          line = line.substr(5)
-          let date = parseInt(line.substr(1, 13))
-          line = Candy.cli('Cli').color('[' + Candy.cli('Cli').formatDate(new Date(date)) + ']', 'green', 'bold') + line.substr(15)
-        } else if ('[ERR]' == line.substr(0, 5)) {
-          line = line.substr(5)
-          let date = parseInt(line.substr(1, 13))
-          line = Candy.cli('Cli').color('[' + Candy.cli('Cli').formatDate(new Date(date)) + ']', 'red', 'bold') + line.substr(15)
+        if ('[LOG]' == line.substring(0, 5)) {
+          line = line.substring(5)
+          let date = parseInt(line.substring(1, 14))
+          line = Candy.cli('Cli').color('[' + Candy.cli('Cli').formatDate(new Date(date)) + ']', 'green', 'bold') + line.substring(15)
+        } else if ('[ERR]' == line.substring(0, 5)) {
+          line = line.substring(5)
+          let date = parseInt(line.substring(1, 14))
+          line = Candy.cli('Cli').color('[' + Candy.cli('Cli').formatDate(new Date(date)) + ']', 'red', 'bold') + line.substring(15)
         }
         return line
       })
