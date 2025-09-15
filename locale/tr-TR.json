@@ -55,5 +55,10 @@
     "Website %s deleted.": "Website %s silindi.",
     "Invalid domain.": "Geçersiz alan adı.",
     "Website %s created at %s.": "Website %s, %s adresinde oluşturuldu.",
-    "Enter the domain name: ": "Alan adını girin: "
+    "Enter the domain name: ": "Alan adını girin: ",
+    "Modules": "Modüller",
+    "Logs": "Loglar",
+    "Navigate": "Gezin",
+    "Select": "Seç",
+    "Exit": "Çık"
 }

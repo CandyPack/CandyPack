@@ -2,7 +2,6 @@ require('../../core/Candy.js')
 
 const fs = require('fs')
 const os = require('os')
-const readline = require('readline')
 
 class Monitor {
   #current = ''
@@ -10,7 +9,7 @@ class Monitor {
   #height
   #logs = {content: [], mtime: null, selected: null, watched: []}
   #logging = false
-  #modules = ['api', 'candy', 'cli', 'client', 'config', 'dns', 'lang', 'mail', 'server', 'service', 'ssl', 'storage', 'subdomain', 'web']
+  #modules = ['api', 'client', 'dns', 'mail', 'server', 'service', 'ssl', 'subdomain', 'web']
   #printing = false
   #selected = 0
   #services = []
@@ -20,36 +19,76 @@ class Monitor {
 
   constructor() {
     process.stdout.write(process.platform === 'win32' ? `title CandyPack Debug\n` : `\x1b]2;CandyPack Debug\x1b\x5c`)
-    this.rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
-    this.rl.on('close', () => {
-      process.stdout.write('\x1Bc')
-      process.exit(0)
-    })
-    process.stdout.clearLine(0)
-    process.stdout.cursorTo(0)
   }
 
   async debug() {
     await this.#debug()
     setInterval(() => this.#debug(), 250)
-    this.rl.input.on('keypress', (key, data) => {
-      if (data.ctrl && data.name == 'c') {
+
+    process.stdout.write('\x1b[?25l')
+    process.stdout.write('\x1b[?1000h')
+    process.stdin.setRawMode(true)
+    process.stdin.setEncoding('utf8')
+    process.stdin.on('data', chunk => {
+      const buffer = Buffer.from(chunk)
+      if (buffer.length >= 6 && buffer[0] === 0x1b && buffer[1] === 0x5b && buffer[2] === 0x4d) {
+        // Mouse wheel up
+        if (buffer[3] === 96) {
+          if (this.#selected > 0) {
+            this.#selected--
+            this.#debug()
+          }
+        }
+        // Mouse wheel down
+        if (buffer[3] === 97) {
+          if (this.#selected + 1 < this.#modules.length) {
+            this.#selected++
+            this.#debug()
+          }
+        }
+
+        // Mouse click
+        if (buffer[3] === 32) {
+          const btn = buffer[3] - 32
+          if (btn === 0 || btn === 1) {
+            const x = buffer[4] - 32
+            const y = buffer[5] - 32
+            let c1 = (this.#width / 12) * 3
+            if (c1 % 1 != 0) c1 = Math.floor(c1)
+            if (c1 > 50) c1 = 50
+            if (x > 1 && x < c1 && y < this.#height - 4) {
+              if (this.#modules[y - 2]) this.#selected = y - 2
+              let index = this.#watch.indexOf(this.#selected)
+              if (index > -1) this.#watch.splice(index, 1)
+              else this.#watch.push(this.#selected)
+              this.#debug()
+            }
+          }
+        }
+      }
+
+      // Ctrl+C
+      if (buffer.length === 1 && buffer[0] === 3) {
+        process.stdout.write('\x1b[?25h')
+        process.stdout.write('\x1b[?1000l')
         process.stdout.write('\x1Bc')
         process.exit(0)
       }
-      if (data.name == 'up') if (this.#selected > 0) this.#selected--
-      if (data.name == 'down') if (this.#selected + 1 < this.#modules.length) this.#selected++
-      if (data.name == 'return') {
+      // Enter
+      if (buffer.length === 1 && buffer[0] === 13) {
         let index = this.#watch.indexOf(this.#selected)
         if (index > -1) this.#watch.splice(index, 1)
         else this.#watch.push(this.#selected)
+        this.#debug()
       }
-      process.stdout.clearLine(0)
-      process.stdout.cursorTo(0)
-      this.#debug()
+      // Yukarı/Aşağı ok tuşları
+      if (buffer.length === 3 && buffer[0] === 27 && buffer[1] === 91) {
+        if (buffer[2] === 65 && this.#selected > 0) this.#selected-- // up
+        if (buffer[2] === 66 && this.#selected + 1 < this.#modules.length) this.#selected++ // down
+        this.#debug()
+      }
+      process.stdout.write('\x1b[?25l')
+      process.stdout.write('\x1b[?1000h')
     })
   }
 
@@ -74,7 +113,7 @@ class Monitor {
     result += ' ' + Candy.cli('Cli').color(title) + ' '
     result += Candy.cli('Cli').color('─'.repeat(this.#width - c1 - title.length - 7), 'gray')
     result += Candy.cli('Cli').color('┐\n', 'gray')
-    for (let i = 0; i < this.#height - 5; i++) {
+    for (let i = 0; i < this.#height - 3; i++) {
       if (this.#modules[i]) {
         result += Candy.cli('Cli').color('│', 'gray')
         result += Candy.cli('Cli').color(
@@ -105,10 +144,9 @@ class Monitor {
     result += Candy.cli('Cli').color('┘\n', 'gray')
     let shortcuts = '↑/↓ ' + __('Navigate') + ' | ↵ ' + __('Select') + ' | Ctrl+C ' + __('Exit')
     result += Candy.cli('Cli').color(' CANDYPACK', 'magenta', 'bold')
-    result += Candy.cli('Cli').color(Candy.cli('Cli').spacing(shortcuts, this.#width + 1 - 'CANDYPACK'.length, 'right') + '\n', 'gray')
+    result += Candy.cli('Cli').color(Candy.cli('Cli').spacing(shortcuts, this.#width + 1 - 'CANDYPACK'.length, 'right'), 'gray')
     if (result !== this.#current) {
       this.#current = result
-      process.stdout.clearLine(0)
       process.stdout.write('\x1Bc')
       process.stdout.write(result)
     }
@@ -217,16 +255,74 @@ class Monitor {
   monit() {
     this.#monitor()
     setInterval(() => this.#monitor(), 250)
-    this.rl.input.on('keypress', (key, data) => {
-      if (data.ctrl && data.name == 'c') {
+
+    // Mouse event handler
+    process.stdout.write('\x1b[?25l')
+    process.stdout.write('\x1b[?1000h')
+    process.stdin.setRawMode(true)
+    process.stdin.setEncoding('utf8')
+    process.stdin.on('data', chunk => {
+      const buffer = Buffer.from(chunk)
+      if (buffer.length >= 6 && buffer[0] === 0x1b && buffer[1] === 0x5b && buffer[2] === 0x4d) {
+        // Mouse wheel up
+        if (buffer[3] === 96) {
+          if (this.#selected > 0) {
+            this.#selected--
+            this.#monitor()
+          }
+        }
+        // Mouse wheel down
+        if (buffer[3] === 97) {
+          if (this.#selected + 1 < this.#domains.length + this.#services.length) {
+            this.#selected++
+            this.#monitor()
+          }
+        }
+
+        // Mouse click
+        if (buffer[3] === 32) {
+          const btn = buffer[3] - 32
+          if (btn === 0 || btn === 1) {
+            const x = buffer[4] - 32
+            const y = buffer[5] - 32
+            let c1 = (this.#width / 12) * 3
+            if (c1 % 1 != 0) c1 = Math.floor(c1)
+            if (c1 > 50) c1 = 50
+            if (x > 1 && x < c1 && y < this.#height - 4) {
+              if (this.#domains[y - 2]) this.#selected = y - 2
+              else if (this.#services[y - 2 - (this.#domains.length ? 1 : 0) - this.#domains.length])
+                this.#selected = y - 2 - (this.#domains.length ? 1 : 0)
+              let index = this.#watch.indexOf(this.#selected)
+              if (index > -1) this.#watch.splice(index, 1)
+              else this.#watch.push(this.#selected)
+              this.#monitor()
+            }
+          }
+        }
+      }
+
+      // Ctrl+C
+      if (buffer.length === 1 && buffer[0] === 3) {
+        process.stdout.write('\x1b[?25h')
+        process.stdout.write('\x1b[?1000l')
         process.stdout.write('\x1Bc')
         process.exit(0)
       }
-      if (data.name == 'up') if (this.#selected > 0) this.#selected--
-      if (data.name == 'down') if (this.#selected + 1 < this.#domains.length + this.#services.length) this.#selected++
-      process.stdout.clearLine(0)
-      process.stdout.cursorTo(0)
-      this.#monitor()
+      // Enter
+      if (buffer.length === 1 && buffer[0] === 13) {
+        let index = this.#watch.indexOf(this.#selected)
+        if (index > -1) this.#watch.splice(index, 1)
+        else this.#watch.push(this.#selected)
+        this.#monitor()
+      }
+      // Yukarı/Aşağı ok tuşları
+      if (buffer.length === 3 && buffer[0] === 27 && buffer[1] === 91) {
+        if (buffer[2] === 65 && this.#selected > 0) this.#selected-- // up
+        if (buffer[2] === 66 && this.#selected + 1 < this.#domains.length + this.#services.length) this.#selected++ // down
+        this.#monitor()
+      }
+      process.stdout.write('\x1b[?25l')
+      process.stdout.write('\x1b[?1000h')
     })
   }
 
@@ -236,15 +332,14 @@ class Monitor {
     this.#websites = Candy.core('Config').config.websites ?? []
     this.#services = Candy.core('Config').config.services ?? []
     this.#domains = Object.keys(this.#websites)
-    this.#width = process.stdout.columns - 5
-    this.#height = process.stdout.rows - 2
+    this.#width = process.stdout.columns - 3
+    this.#height = process.stdout.rows
     this.#load()
     let c1 = (this.#width / 12) * 3
     if (c1 % 1 != 0) c1 = Math.floor(c1)
     if (c1 > 50) c1 = 50
     let result = ''
-    result = Candy.cli('Cli').color('\n' + Candy.cli('Cli').spacing('CANDYPACK', this.#width, 'center') + '\n\n', 'magenta', 'bold')
-    result += Candy.cli('Cli').color(' ┌', 'gray')
+    result += Candy.cli('Cli').color('┌', 'gray')
     let service = -1
     if (this.#domains.length) {
       result += Candy.cli('Cli').color('─'.repeat(5), 'gray')
@@ -262,10 +357,10 @@ class Monitor {
     }
     result += Candy.cli('Cli').color('┬', 'gray')
     result += Candy.cli('Cli').color('─'.repeat(this.#width - c1), 'gray')
-    result += Candy.cli('Cli').color('┐ \n', 'gray')
-    for (let i = 0; i < this.#height - 5; i++) {
+    result += Candy.cli('Cli').color('┐\n', 'gray')
+    for (let i = 0; i < this.#height - 3; i++) {
       if (this.#domains[i]) {
-        result += Candy.cli('Cli').color(' │', 'gray')
+        result += Candy.cli('Cli').color('│', 'gray')
         result += Candy.cli('Cli').icon(this.#websites[this.#domains[i]].status ?? null, i == this.#selected)
         result += Candy.cli('Cli').color(
           Candy.cli('Cli').spacing(this.#domains[i] ? this.#domains[i] : '', c1 - 3),
@@ -275,7 +370,7 @@ class Monitor {
         )
         result += Candy.cli('Cli').color('│', 'gray')
       } else if (this.#services.length && service == -1) {
-        result += Candy.cli('Cli').color(' ├', 'gray')
+        result += Candy.cli('Cli').color('├', 'gray')
         result += Candy.cli('Cli').color('─'.repeat(5), 'gray')
         let title = Candy.cli('Cli').color(__('Services'), null)
         result += ' ' + Candy.cli('Cli').color(title) + ' '
@@ -283,7 +378,7 @@ class Monitor {
         result += Candy.cli('Cli').color('┤', 'gray')
         service++
       } else if (service >= 0 && service < this.#services.length) {
-        result += Candy.cli('Cli').color(' │', 'gray')
+        result += Candy.cli('Cli').color('│', 'gray')
         result += Candy.cli('Cli').icon(this.#services[service].status ?? null, i - 1 == this.#selected)
         result += Candy.cli('Cli').color(
           Candy.cli('Cli').spacing(this.#services[service].name, c1 - 3),
@@ -294,7 +389,7 @@ class Monitor {
         result += Candy.cli('Cli').color('│', 'gray')
         service++
       } else {
-        result += Candy.cli('Cli').color(' │', 'gray')
+        result += Candy.cli('Cli').color('│', 'gray')
         result += ' '.repeat(c1)
         result += Candy.cli('Cli').color('│', 'gray')
       }
@@ -305,13 +400,14 @@ class Monitor {
       }
       result += Candy.cli('Cli').color('│\n', 'gray')
     }
-    result += Candy.cli('Cli').color(' └', 'gray')
+    result += Candy.cli('Cli').color('└', 'gray')
     result += Candy.cli('Cli').color('─'.repeat(c1), 'gray')
     result += Candy.cli('Cli').color('┴', 'gray')
     result += Candy.cli('Cli').color('─'.repeat(this.#width - c1), 'gray')
-    result += Candy.cli('Cli').color('┘ \n', 'gray')
-    let shortcuts = '↑/↓ Navigate | Ctrl+C Exit'
-    result += Candy.cli('Cli').color('\n' + Candy.cli('Cli').spacing(shortcuts, this.#width, 'center') + '\n', 'gray')
+    result += Candy.cli('Cli').color('┘\n', 'gray')
+    let shortcuts = '↑/↓ ' + __('Navigate') + ' | Ctrl+C ' + __('Exit')
+    result += Candy.cli('Cli').color(' CANDYPACK', 'magenta', 'bold')
+    result += Candy.cli('Cli').color(Candy.cli('Cli').spacing(shortcuts, this.#width + 1 - 'CANDYPACK'.length, 'right'), 'gray')
     if (result !== this.#current) {
       this.#current = result
       process.stdout.clearLine(0)
