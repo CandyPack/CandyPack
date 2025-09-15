@@ -9,7 +9,7 @@ module.exports = {
   },
   debug: {
     description: 'Debug CandyPack Server',
-    action: async () => Candy.cli('Cli').debug()
+    action: async () => Candy.cli('Monitor').debug()
   },
   help: {
     description: 'List all available commands',
@@ -17,7 +17,7 @@ module.exports = {
   },
   monit: {
     description: 'Monitor Website or Service',
-    action: async () => Candy.cli('Cli').monitor()
+    action: async () => Candy.cli('Monitor').monit()
   },
   restart: {
     description: 'Restart CandyPack Server',

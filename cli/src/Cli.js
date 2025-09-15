@@ -1,28 +1,12 @@
 require('../../core/Candy.js')
 
 const childProcess = require('child_process')
-const fs = require('fs')
-const os = require('os')
 const readline = require('readline')
 
 class Cli {
   #backgrounds = {red: 41, green: 42, yellow: 43, blue: 44, magenta: 45, white: 47, gray: 100}
-  #colors = {red: 31, green: 32, yellow: 33, blue: 34, magenta: 35, white: 37, gray: 90}
-
-  current = ''
-  #modules = ['api', 'candy', 'cli', 'client', 'config', 'dns', 'lang', 'mail', 'server', 'service', 'ssl', 'storage', 'subdomain', 'web']
+  colors = {red: 31, green: 32, yellow: 33, blue: 34, magenta: 35, white: 37, gray: 90}
   rl
-  selected = 0
-  websites = {}
-  services = []
-  domains = []
-  logs = {content: [], mtime: null, selected: null, watched: []}
-  printing = false
-  logging = false
-  width
-  height
-  #watch = []
-
   boot() {
     if (!this.booting) this.booting = true
     else return
@@ -45,108 +29,14 @@ class Cli {
     this.rl = null
   }
 
-  #color(text, color, ...args) {
+  color(text, color, ...args) {
     let output = text
-    if (this.#colors[color]) output = '\x1b[' + this.#colors[color] + 'm' + output + '\x1b[0m'
+    if (this.colors[color]) output = '\x1b[' + this.colors[color] + 'm' + output + '\x1b[0m'
     for (const arg of args) {
       if (this.#backgrounds[arg]) output = '\x1b[' + this.#backgrounds[arg] + 'm' + output + '\x1b[0m'
       if (arg == 'bold') output = '\x1b[1m' + output + '\x1b[0m'
     }
     return output
-  }
-
-  async debug() {
-    process.stdout.write(process.platform === 'win32' ? `title CandyPack Debug\n` : `\x1b]2;CandyPack Debug\x1b\x5c`)
-    await this.#debug()
-    setInterval(() => this.#debug(), 250)
-    this.rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
-    this.rl.input.on('keypress', (key, data) => {
-      if (data.ctrl && data.name == 'c') {
-        process.stdout.write('\x1Bc')
-        process.exit(0)
-      }
-      if (data.name == 'up') if (this.selected > 0) this.selected--
-      if (data.name == 'down') if (this.selected + 1 < this.#modules.length) this.selected++
-      if (data.name == 'return') {
-        let index = this.#watch.indexOf(this.selected)
-        if (index > -1) this.#watch.splice(index, 1)
-        else this.#watch.push(this.selected)
-      }
-      process.stdout.clearLine(0)
-      process.stdout.cursorTo(0)
-      this.#debug()
-    })
-    this.rl.on('close', () => {
-      process.stdout.write('\x1Bc')
-      process.exit(0)
-    })
-    process.stdout.clearLine(0)
-    process.stdout.cursorTo(0)
-  }
-
-  #debug() {
-    if (this.printing) return
-    this.printing = true
-    this.width = process.stdout.columns - 5
-    this.height = process.stdout.rows - 2
-    this.#loadModuleLogs()
-    let c1 = (this.width / 12) * 3
-    if (c1 % 1 != 0) c1 = Math.floor(c1)
-    if (c1 > 50) c1 = 50
-    let result = ''
-    result = this.#color('\n' + this.#spacing('CANDYPACK', this.width, 'center') + '\n\n', 'magenta', 'bold')
-    result += this.#color(' ┌', 'gray')
-    result += this.#color('─'.repeat(5), 'gray')
-    let title = this.#color(__('Modules'), null)
-    result += ' ' + this.#color(title) + ' '
-    result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
-    result += this.#color('┬', 'gray')
-    result += this.#color('─'.repeat(5), 'gray')
-    title = this.#color(__('Logs'), null)
-    result += ' ' + this.#color(title) + ' '
-    result += this.#color('─'.repeat(this.width - c1 - title.length - 7), 'gray')
-    result += this.#color('┐ \n', 'gray')
-    for (let i = 0; i < this.height - 7; i++) {
-      if (this.#modules[i]) {
-        result += this.#color(' │', 'gray')
-        result += this.#color(
-          '[' + (this.#watch.includes(i) ? 'X' : ' ') + '] ',
-          i == this.selected ? 'blue' : 'white',
-          i == this.selected ? 'white' : null,
-          i == this.selected ? 'bold' : null
-        )
-        result += this.#color(
-          this.#spacing(this.#modules[i] ? this.#modules[i] : '', c1 - 4),
-          i == this.selected ? 'blue' : 'white',
-          i == this.selected ? 'white' : null,
-          i == this.selected ? 'bold' : null
-        )
-        result += this.#color('│', 'gray')
-      } else {
-        result += this.#color(' │', 'gray')
-        result += ' '.repeat(c1)
-        result += this.#color('│', 'gray')
-      }
-      result += this.#spacing(this.logs.content[i] ? this.logs.content[i] : ' ', this.width - c1)
-      result += this.#color('│\n', 'gray')
-    }
-    result += this.#color(' └', 'gray')
-    result += this.#color('─'.repeat(c1), 'gray')
-    result += this.#color('┴', 'gray')
-    result += this.#color('─'.repeat(this.width - c1), 'gray')
-    result += this.#color('┘ \n', 'gray')
-    let shortcuts = '↑/↓ Navigate | ↵ Select | Ctrl+C Exit'
-    result += this.#color('\n' + this.#spacing(shortcuts, this.width, 'center') + '\n', 'gray')
-    if (result !== this.current) {
-      this.current = result
-      process.stdout.clearLine(0)
-      process.stdout.write('\x1Bc')
-      process.stdout.write(result)
-    }
-    this.printing = false
   }
 
   #format(text, raw) {
@@ -170,10 +60,10 @@ class Cli {
       output = begin + output + end
     }
     if (!raw) {
-      if (text == 'CandyPack') output = this.#color(output, 'magenta')
-      if (text == __('Running')) output = this.#color(output, 'green')
-      if (text == '\u2713') output = this.#color(output, 'green')
-      if (text == '\u2717') output = this.#color(output, 'red')
+      if (text == 'CandyPack') output = this.color(output, 'magenta')
+      if (text == __('Running')) output = this.color(output, 'green')
+      if (text == '\u2713') output = this.color(output, 'green')
+      if (text == '\u2717') output = this.color(output, 'red')
     }
     return output
   }
@@ -208,11 +98,11 @@ class Cli {
     if (typeof commands == 'string') {
       let obj = Candy.core('Commands')
       let command = commands.shift()
-      if (!obj[command]) return console.log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
+      if (!obj[command]) return console.log(__(`'%s' is not a valid command.`, this.color(`candy ${commands.join(' ')}`, 'yellow')))
       obj = obj[command]
       while (commands.length > 0 && commands.length && obj.sub[commands[0]]) {
         command = commands.shift()
-        if (!obj.sub[command]) return console.log(__(`'%s' is not a valid command.`, this.#color(`candy ${commands.join(' ')}`, 'yellow')))
+        if (!obj.sub[command]) return console.log(__(`'%s' is not a valid command.`, this.color(`candy ${commands.join(' ')}`, 'yellow')))
         obj = obj.sub[command]
       }
       let detail = await this.#detail(command, obj)
@@ -242,10 +132,10 @@ class Cli {
     for (let line of result) console.log(line)
   }
 
-  #icon(status, selected) {
-    if (status == 'running') return this.#color(' \u25B6 ', 'green', selected ? 'white' : null)
-    if (status == 'stopped') return this.#color(' \u23F8 ', 'yellow', selected ? 'white' : null)
-    if (status == 'errored') return this.#color(' ! ', 'red', selected ? 'white' : null)
+  icon(status, selected) {
+    if (status == 'running') return this.color(' \u25B6 ', 'green', selected ? 'white' : null)
+    if (status == 'stopped') return this.color(' \u23F8 ', 'yellow', selected ? 'white' : null)
+    if (status == 'errored') return this.color(' ! ', 'red', selected ? 'white' : null)
     return '   '
   }
 
@@ -257,7 +147,7 @@ class Cli {
     if (args.length == 0) return this.#status()
     let command = args.shift()
     if (!Candy.core('Commands')[command])
-      return console.log(__(`'%s' is not a valid command.`, this.#color(`candy ${cmds.join(' ')}`, 'yellow')))
+      return console.log(__(`'%s' is not a valid command.`, this.color(`candy ${cmds.join(' ')}`, 'yellow')))
     let action = Candy.core('Commands')[command]
     while (args.length > 0 && !action.args) {
       command = args.shift()
@@ -277,7 +167,7 @@ class Cli {
     )
   }
 
-  #formatDate(date) {
+  formatDate(date) {
     const YYYY = date.getFullYear()
     const MM = String(date.getMonth() + 1).padStart(2, '0')
     const DD = String(date.getDate()).padStart(2, '0')
@@ -285,105 +175,6 @@ class Cli {
     const mm = String(date.getMinutes()).padStart(2, '0')
     const ss = String(date.getSeconds()).padStart(2, '0')
     return `${YYYY}-${MM}-${DD} ${HH}:${mm}:${ss}`
-  }
-
-  async #load() {
-    if (this.logging) return
-    this.logging = true
-    this.logs.selected = this.selected
-    let file = null
-    if (this.selected < this.domains.length) {
-      file = os.homedir() + '/.candypack/logs/' + this.domains[this.selected] + '.log'
-    } else if (this.selected - this.domains.length < this.services.length) {
-      file = os.homedir() + '/.candypack/logs/' + this.services[this.selected - this.domains.length].name + '.log'
-    } else {
-      this.logging = false
-      return
-    }
-    let log = ''
-    let mtime = null
-    if (fs.existsSync(file)) {
-      mtime = fs.statSync(file).mtime
-      if (this.selected == this.logs.selected && mtime == this.logs.mtime) return
-      log = fs.readFileSync(file, 'utf8')
-    }
-    this.logs.content = log
-      .trim()
-      .replace(/\r\n/g, '\n')
-      .split('\n')
-      .map(line => {
-        if ('[LOG]' == line.substr(0, 5)) {
-          line = line.substr(5)
-          let date = parseInt(line.substr(1, 13))
-          line = this.#color('[' + this.#formatDate(new Date(date)) + ']', 'green', 'bold') + line.substr(15)
-        } else if ('[ERR]' == line.substr(0, 5)) {
-          line = line.substr(5)
-          let date = parseInt(line.substr(1, 13))
-          line = this.#color('[' + this.#formatDate(new Date(date)) + ']', 'red', 'bold') + line.substr(15)
-        }
-        return line
-      })
-      .slice(-this.height + 4)
-    this.logs.mtime = mtime
-    this.logging = false
-  }
-
-  async #loadModuleLogs() {
-    if (this.logging) return
-    this.logging = true
-
-    if (this.#watch.length === 0) {
-      this.logs.content = []
-      this.logging = false
-      return
-    }
-
-    const file = os.homedir() + '/.candypack/logs/.candypack.log'
-    let log = ''
-    let mtime = null
-
-    if (fs.existsSync(file)) {
-      mtime = fs.statSync(file).mtime
-      if (JSON.stringify(this.#watch) === JSON.stringify(this.logs.watched) && mtime == this.logs.mtime) {
-        this.logging = false
-        return
-      }
-      log = fs.readFileSync(file, 'utf8')
-    }
-
-    const selectedModules = this.#watch.map(index => this.#modules[index])
-    this.logs.content = log
-      .trim()
-      .replace(/\r\n/g, '\n')
-      .split('\n')
-      .map(line => {
-        const lowerCaseLine = line.toLowerCase()
-        const moduleName = selectedModules.find(name => lowerCaseLine.includes(`[${name}]`.toLowerCase()))
-        return {line, moduleName}
-      })
-      .filter(item => item.moduleName)
-      .map(item => {
-        let {line, moduleName} = item
-        if ('[LOG]' == line.substr(0, 5) || '[ERR]' == line.substr(0, 5)) {
-          const isError = '[ERR]' == line.substr(0, 5)
-          const date = line.substr(6, 24)
-          const originalMessage = line.substr(34 + moduleName.length)
-          const cleanedMessage = originalMessage.trim()
-          const dateColor = isError ? 'red' : 'green'
-
-          line =
-            this.#color('[' + this.#formatDate(new Date(date)) + ']', dateColor, 'bold') +
-            this.#color(`[${moduleName}]`, 'white', 'bold') +
-            ' ' +
-            cleanedMessage
-        }
-        return line
-      })
-      .slice(-this.height + 4)
-
-    this.logs.mtime = mtime
-    this.logs.watched = [...this.#watch]
-    this.logging = false
   }
 
   async log(...args) {
@@ -395,125 +186,7 @@ class Cli {
     console.log(...output)
   }
 
-  async monitor() {
-    process.stdout.write(process.platform === 'win32' ? `title CandyPack Monitor\n` : `\x1b]2;CandyPack Monitor\x1b\x5c`)
-    await this.#monitor()
-    setInterval(() => this.#monitor(), 250)
-    this.rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
-    this.rl.input.on('keypress', (key, data) => {
-      if (data.ctrl && data.name == 'c') {
-        process.stdout.write('\x1Bc')
-        process.exit(0)
-      }
-      if (data.name == 'up') if (this.selected > 0) this.selected--
-      if (data.name == 'down') if (this.selected + 1 < this.domains.length + this.services.length) this.selected++
-      process.stdout.clearLine(0)
-      process.stdout.cursorTo(0)
-      this.#monitor()
-    })
-    this.rl.on('close', () => {
-      process.stdout.write('\x1Bc')
-      process.exit(0)
-    })
-    process.stdout.clearLine(0)
-    process.stdout.cursorTo(0)
-  }
-
-  #monitor() {
-    if (this.printing) return
-    this.printing = true
-    this.websites = Candy.core('Config').config.websites ?? []
-    this.services = Candy.core('Config').config.services ?? []
-    this.domains = Object.keys(this.websites)
-    this.width = process.stdout.columns - 5
-    this.height = process.stdout.rows - 2
-    this.#load()
-    let c1 = (this.width / 12) * 3
-    if (c1 % 1 != 0) c1 = Math.floor(c1)
-    if (c1 > 50) c1 = 50
-    let result = ''
-    result = this.#color('\n' + this.#spacing('CANDYPACK', this.width, 'center') + '\n\n', 'magenta', 'bold')
-    result += this.#color(' ┌', 'gray')
-    let service = -1
-    if (this.domains.length) {
-      result += this.#color('─'.repeat(5), 'gray')
-      let title = this.#color(__('Websites'), null)
-      result += ' ' + this.#color(title) + ' '
-      result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
-    } else if (this.services.length) {
-      result += this.#color('─'.repeat(5), 'gray')
-      let title = this.#color(__('Services'), null)
-      result += ' ' + this.#color(title) + ' '
-      result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
-      service++
-    } else {
-      result += this.#color('─'.repeat(c1), 'gray')
-    }
-    result += this.#color('┬', 'gray')
-    result += this.#color('─'.repeat(this.width - c1), 'gray')
-    result += this.#color('┐ \n', 'gray')
-    for (let i = 0; i < this.height - 5; i++) {
-      if (this.domains[i]) {
-        result += this.#color(' │', 'gray')
-        result += this.#icon(this.websites[this.domains[i]].status ?? null, i == this.selected)
-        result += this.#color(
-          this.#spacing(this.domains[i] ? this.domains[i] : '', c1 - 3),
-          i == this.selected ? 'blue' : 'white',
-          i == this.selected ? 'white' : null,
-          i == this.selected ? 'bold' : null
-        )
-        result += this.#color('│', 'gray')
-      } else if (this.services.length && service == -1) {
-        result += this.#color(' ├', 'gray')
-        result += this.#color('─'.repeat(5), 'gray')
-        let title = this.#color(__('Services'), null)
-        result += ' ' + this.#color(title) + ' '
-        result += this.#color('─'.repeat(c1 - title.length - 7), 'gray')
-        result += this.#color('┤', 'gray')
-        service++
-      } else if (service >= 0 && service < this.services.length) {
-        result += this.#color(' │', 'gray')
-        result += this.#icon(this.services[service].status ?? null, i - 1 == this.selected)
-        result += this.#color(
-          this.#spacing(this.services[service].name, c1 - 3),
-          i - 1 == this.selected ? 'blue' : 'white',
-          i - 1 == this.selected ? 'white' : null,
-          i - 1 == this.selected ? 'bold' : null
-        )
-        result += this.#color('│', 'gray')
-        service++
-      } else {
-        result += this.#color(' │', 'gray')
-        result += ' '.repeat(c1)
-        result += this.#color('│', 'gray')
-      }
-      if (this.logs.selected == this.selected) {
-        result += this.#spacing(this.logs.content[i] ? this.logs.content[i] : ' ', this.width - c1)
-      } else {
-        result += ' '.repeat(this.width - c1)
-      }
-      result += this.#color('│\n', 'gray')
-    }
-    result += this.#color(' └', 'gray')
-    result += this.#color('─'.repeat(c1), 'gray')
-    result += this.#color('┴', 'gray')
-    result += this.#color('─'.repeat(this.width - c1), 'gray')
-    result += this.#color('┘ \n', 'gray')
-    let shortcuts = '↑/↓ Navigate | Ctrl+C Exit'
-    result += this.#color('\n' + this.#spacing(shortcuts, this.width, 'center') + '\n', 'gray')
-    if (result !== this.current) {
-      this.current = result
-      process.stdout.clearLine(0)
-      process.stdout.write('\x1Bc')
-      process.stdout.write(result)
-    }
-    this.printing = false
-  }
-
-  #spacing(text, len, direction) {
+  spacing(text, len, direction) {
     if (direction == 'right') return ' '.repeat(len - this.#length(text)) + text
     if (direction == 'center')
       return ' '.repeat(Math.floor((len - this.#length(text)) / 2)) + text + ' '.repeat(Math.ceil((len - this.#length(text)) / 2))
@@ -600,10 +273,10 @@ class Cli {
       if (input.indexOf(row) == 0) {
         result += '┌─'
         for (const key of Object.keys(row)) result += '─'.repeat(width[key]) + '─┬─'
-        result = this.#color(result.substr(0, result.length - 3) + '─┐\n', 'gray')
-        result += this.#color('│ ', 'gray')
+        result = this.color(result.substr(0, result.length - 3) + '─┐\n', 'gray')
+        result += this.color('│ ', 'gray')
         for (const key of Object.keys(row)) {
-          result += this.#color(this.#value(key), 'blue') + ' '.repeat(width[key] - this.#length(key)) + this.#color(' │ ', 'gray')
+          result += this.color(this.#value(key), 'blue') + ' '.repeat(width[key] - this.#length(key)) + this.color(' │ ', 'gray')
         }
         result += '\n'
       }
@@ -611,16 +284,16 @@ class Cli {
       for (const key of Object.keys(row)) insert += '─'.repeat(width[key]) + '─┼─'
       insert = insert.substr(0, insert.length - 3) + '─┤\n'
       insert += '│ '
-      result += this.#color(insert, 'gray')
+      result += this.color(insert, 'gray')
       for (const key of Object.keys(row)) {
-        result += this.#value(row[key]) + ' '.repeat(width[key] - this.#length(row[key])) + this.#color(' │ ', 'gray')
+        result += this.#value(row[key]) + ' '.repeat(width[key] - this.#length(row[key])) + this.color(' │ ', 'gray')
       }
       result += '\n'
     }
     let insert = '└─'
     for (const key of Object.keys(input[0])) insert += '─'.repeat(width[key]) + '─┴─'
     insert = insert.substr(0, insert.length - 3) + '─┘'
-    result += this.#color(insert, 'gray')
+    result += this.color(insert, 'gray')
     console.log(result)
   }
 
