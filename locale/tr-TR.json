@@ -60,5 +60,8 @@
     "Logs": "Loglar",
     "Navigate": "Gezin",
     "Select": "Seç",
-    "Exit": "Çık"
+    "Exit": "Çık",
+    "Website %s already exists.": "Website %s zaten var.",
+    "Website %s not found.": "Website %s bulunamadı.",
+    "Create a new website": "Create a new website"
 }

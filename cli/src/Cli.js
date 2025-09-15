@@ -140,7 +140,7 @@ class Cli {
   }
 
   async init() {
-    console.log('\n', 'CandyPack')
+    console.log('\n', this.#format('CandyPack'), '\n')
     if (!(await Candy.cli('Connector').check())) await this.boot()
     let args = process.argv.slice(2)
     let cmds = process.argv.slice(2)
