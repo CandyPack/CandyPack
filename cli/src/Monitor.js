@@ -233,7 +233,7 @@ class Monitor {
         if ('[LOG]' == line.substr(0, 5) || '[ERR]' == line.substr(0, 5)) {
           const isError = '[ERR]' == line.substr(0, 5)
           const date = line.substr(6, 24)
-          const originalMessage = line.substr(34 + moduleName.length)
+          const originalMessage = line.slice(34 + moduleName.length)
           const cleanedMessage = originalMessage.trim()
           const dateColor = isError ? 'red' : 'green'
 
