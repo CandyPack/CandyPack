@@ -315,7 +315,7 @@ class Monitor {
         else this.#watch.push(this.#selected)
         this.#monitor()
       }
-      // Yukarı/Aşağı ok tuşları
+      // Up/Down arrow keys
       if (buffer.length === 3 && buffer[0] === 27 && buffer[1] === 91) {
         if (buffer[2] === 65 && this.#selected > 0) this.#selected-- // up
         if (buffer[2] === 66 && this.#selected + 1 < this.#domains.length + this.#services.length) this.#selected++ // down
