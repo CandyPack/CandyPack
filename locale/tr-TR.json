@@ -54,7 +54,7 @@
   "Websites:": "Web Siteleri:",
   "Website %s deleted.": "Website %s silindi.",
   "Invalid domain.": "Geçersiz alan adı.",
-  "Website %s created at %s.": "Website %s, %s adresinde oluşturuldu.",
+  "Website %s1 created at %s2.": "Website %s1, %s2 adresinde oluşturuldu.",
   "Enter the domain name: ": "Alan adını girin: ",
   "Modules": "Modüller",
   "Logs": "Loglar",
@@ -70,5 +70,9 @@
   "Website files for %s set.": "Website dosyaları %s için ayarlandı.",
   "Setting up DNS records for %s...": "DNS kayıtları %s için ayarlanıyor...",
   "DNS records for %s set.": "DNS kayıtları %s için ayarlandı.",
-  "Setting up SSL certificate for %s...": "SSL sertifikası %s için ayarlanıyor..."
+  "Setting up SSL certificate for %s...": "SSL sertifikası %s için ayarlanıyor...",
+  "SSL certificate for domain %s renewed successfully.": "%s domaini için SSL sertifikası başarıyla yenilendi.",
+  "Subdomain %s1 created successfully for domain %s2.": "%s1 alt alan adı %s2 domaini için başarıyla oluşturuldu.",
+  "Invalid subdomain name.": "Geçersiz alt alan adı.",
+  "Subdomain %s1 deleted successfully from domain %s2.": "%s1 alt alan adı %s2 domaininden başarıyla silindi."
 }
