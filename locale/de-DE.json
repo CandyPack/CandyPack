@@ -74,5 +74,7 @@
   "SSL certificate for domain %s renewed successfully.": "SSL-Zertifikat für Domain %s wurde erfolgreich erneuert.",
   "Subdomain %s1 created successfully for domain %s2.": "Subdomain %s1 wurde erfolgreich für Domain %s2 erstellt.",
   "Invalid subdomain name.": "Ungültiger Subdomain-Name.",
-  "Subdomain %s1 deleted successfully from domain %s2.": "Subdomain %s1 wurde erfolgreich von Domain %s2 gelöscht."
+  "Subdomain %s1 deleted successfully from domain %s2.": "Subdomain %s1 wurde erfolgreich von Domain %s2 gelöscht.",
+  "%s is a domain.": "%s ist eine Domain.",
+  "Enter the subdomain name (subdomain.example.com): ": "Geben Sie den Subdomain-Namen ein (subdomain.example.com): "
 }

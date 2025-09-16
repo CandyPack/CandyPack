@@ -32,7 +32,7 @@ class Subdomain {
     subdomain = subdomain.trim().split('.')
     if (subdomain.length < 3) return Candy.server('Api').result(false, await __('Invalid subdomain name.'))
     if (Candy.core('Config').config.websites[domain.join('.')])
-      return Candy.server('Api').result(false, await __('Domain %s already exists.', domain.join('.')))
+      return Candy.server('Api').result(false, await __('%s is a domain.', domain.join('.')))
     while (domain.length > 2) {
       domain.shift()
       if (Candy.core('Config').config.websites[domain.join('.')]) {
