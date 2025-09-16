@@ -57,11 +57,13 @@ class Monitor {
             if (c1 % 1 != 0) c1 = Math.floor(c1)
             if (c1 > 50) c1 = 50
             if (x > 1 && x < c1 && y < this.#height - 4) {
-              if (this.#modules[y - 2]) this.#selected = y - 2
-              let index = this.#watch.indexOf(this.#selected)
-              if (index > -1) this.#watch.splice(index, 1)
-              else this.#watch.push(this.#selected)
-              this.#debug()
+              if (this.#modules[y - 2]) {
+                this.#selected = y - 2
+                let index = this.#watch.indexOf(this.#selected)
+                if (index > -1) this.#watch.splice(index, 1)
+                else this.#watch.push(this.#selected)
+                this.#debug()
+              }
             }
           }
         }
@@ -307,13 +309,6 @@ class Monitor {
         process.stdout.write('\x1b[?1000l')
         process.stdout.write('\x1Bc')
         process.exit(0)
-      }
-      // Enter
-      if (buffer.length === 1 && buffer[0] === 13) {
-        let index = this.#watch.indexOf(this.#selected)
-        if (index > -1) this.#watch.splice(index, 1)
-        else this.#watch.push(this.#selected)
-        this.#monitor()
       }
       // Up/Down arrow keys
       if (buffer.length === 3 && buffer[0] === 27 && buffer[1] === 91) {

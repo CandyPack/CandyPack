@@ -133,14 +133,16 @@ class Cli {
   }
 
   icon(status, selected) {
+    if (status == 'errored') return this.color(' ! ', 'red', selected ? 'white' : null)
+    if (status == 'progress') return this.color(' - ', 'gray', selected ? 'white' : null)
     if (status == 'running') return this.color(' \u25B6 ', 'green', selected ? 'white' : null)
     if (status == 'stopped') return this.color(' \u23F8 ', 'yellow', selected ? 'white' : null)
-    if (status == 'errored') return this.color(' ! ', 'red', selected ? 'white' : null)
+    if (status == 'success') return this.color(' \u2713 ', 'green', selected ? 'white' : null)
     return '   '
   }
 
   async init() {
-    console.log('\n', 'CandyPack')
+    console.log('\n', this.#format('CandyPack'), '\n')
     if (!(await Candy.cli('Connector').check())) await this.boot()
     let args = process.argv.slice(2)
     let cmds = process.argv.slice(2)
