@@ -1,12 +1,9 @@
-const {WebSocket: NodeWebSocket} = require('ws')
-const axios = require('axios')
 const findProcess = require('find-process').default
-const nodeCrypto = require('crypto')
+const net = require('net')
 
 class Connector {
   constructor() {
-    this.ws = null
-    this.queue = new Map() // id -> {resolve, reject}
+    this.socket = null
     this.connected = false
     this.connecting = false
     this.manualClose = false
@@ -15,57 +12,44 @@ class Connector {
   #connect() {
     if (this.connected || this.connecting) return
     this.connecting = true
-    this.ws = new NodeWebSocket('ws://127.0.0.1:1453')
-
-    this.ws.on('open', () => {
+    this.socket = net.createConnection({port: 1453, host: '127.0.0.1'}, () => {
       this.connected = true
       this.connecting = false
     })
 
-    this.ws.on('message', raw => {
+    this.socket.on('data', raw => {
       let payload
+      // console.log(raw.toString())
       try {
         payload = JSON.parse(raw.toString())
       } catch {
         return
       }
-      const {id, result, message, ...rest} = payload
-      if (id && this.queue.has(id)) {
-        const {resolve} = this.queue.get(id)
-        this.queue.delete(id)
-        resolve({result, message, ...rest})
-        if (message) {
-          if (result) console.log(message)
-          else console.error(message)
-        }
-        if (this.queue.size === 0) {
-          this.manualClose = true
-          try {
-            this.ws.close()
-          } catch {
-            // ignore
+      if (payload.message) {
+        if (payload.status) {
+          if (this.lastProcess == payload.process) {
+            process.stdout.clearLine(0)
+            process.stdout.cursorTo(0)
+          } else {
+            this.lastProcess = payload.process
+            process.stdout.write('\n')
           }
-        }
+          if (payload.status === 'progress') {
+            process.stdout.write('- ' + payload.message + '\r')
+          } else if (payload.status === 'success') {
+            process.stdout.write('✔ ' + payload.message + '\r')
+          } else {
+            process.stdout.write('✖ ' + payload.message + '\r')
+          }
+        } else if (payload.result) {
+          if (this.lastProcess) process.stdout.write('\n')
+          console.log(payload.message)
+        } else console.error(payload.message)
       }
     })
 
-    this.ws.on('close', () => {
-      this.connected = false
-      this.connecting = false
-      // Reject all pending
-      for (const [, {reject}] of this.queue.entries()) {
-        reject(new Error('connection_closed'))
-      }
-      this.queue.clear()
-      if (this.manualClose) {
-        this.manualClose = false
-        return
-      }
-      setTimeout(() => this.#connect(), 500)
-    })
-
-    this.ws.on('error', err => {
-      console.error('WebSocket error:', err.message)
+    this.socket.on('error', err => {
+      console.error('Socket error:', err.message)
     })
   }
 
@@ -73,69 +57,13 @@ class Connector {
     if (!command) return
     this.manualClose = false
     this.#connect()
-    return new Promise((resolve, reject) => {
-      const sendPayload = () => {
-        if (!this.connected) {
-          // After 1s fallback to HTTP once
-          const fallbackAfter = 1000
-          const start = Date.now()
-          const wait = () => {
-            if (this.connected) return sendPayload()
-            if (Date.now() - start >= fallbackAfter) {
-              // HTTP fallback
-              return axios
-                .post('http://127.0.0.1:1453', command, {headers: {Authorization: Candy.core('Config').config.api.auth}})
-                .then(r => {
-                  if (r.data && r.data.message) console.log(r.data.message)
-                  resolve(r.data)
-                })
-                .catch(err => reject(err))
-            }
-            setTimeout(wait, 50)
-          }
-          return wait()
-        }
-        const queueLimit = (Candy.core('Config').config.api && Candy.core('Config').config.api.queueLimit) || 100
-        if (this.queue.size >= queueLimit) {
-          return reject(new Error('queue_limit'))
-        }
-        const id = nodeCrypto.randomBytes(8).toString('hex')
-        this.queue.set(id, {resolve, reject})
-        const timeoutMs = (Candy.core('Config').config.api && Candy.core('Config').config.api.timeout) || 10000
-        const timer = setTimeout(() => {
-          if (this.queue.has(id)) {
-            this.queue.delete(id)
-            reject(new Error('timeout'))
-          }
-        }, timeoutMs)
-        // Wrap original resolve to clear timer
-        const original = this.queue.get(id)
-        this.queue.set(id, {
-          resolve: data => {
-            clearTimeout(timer)
-            original.resolve(data)
-          },
-          reject: err => {
-            clearTimeout(timer)
-            original.reject(err)
-          }
-        })
-        try {
-          this.ws.send(
-            JSON.stringify({
-              id,
-              auth: Candy.core('Config').config.api.auth,
-              action: command.action,
-              data: command.data
-            })
-          )
-        } catch (err) {
-          this.queue.delete(id)
-          reject(err)
-        }
-      }
-      sendPayload()
-    })
+    this.socket.write(
+      JSON.stringify({
+        auth: Candy.core('Config').config.api.auth,
+        action: command.action,
+        data: command.data
+      })
+    )
   }
 
   check() {

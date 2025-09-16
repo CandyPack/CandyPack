@@ -57,7 +57,7 @@ class Web {
     })
   }
 
-  async create(domain) {
+  create(domain, progress) {
     let web = {}
     for (const iterator of ['http://', 'https://', 'ftp://', 'www.']) {
       if (domain.startsWith(iterator)) domain = domain.replace(iterator, '')
@@ -65,14 +65,16 @@ class Web {
     if (domain.length < 3 || (!domain.includes('.') && domain != 'localhost'))
       return Candy.server('Api').result(false, __('Invalid domain.'))
     if (Candy.core('Config').config.websites?.[domain]) return Candy.server('Api').result(false, __('Website %s already exists.', domain))
+    progress('domain', 'progress', __('Setting up domain %s...', domain))
     web.domain = domain
     web.path = path.join(Candy.core('Config').config.web.path, domain)
     if (!fs.existsSync(web.path)) fs.mkdirSync(web.path, {recursive: true})
     if (!Candy.core('Config').config.websites) Candy.core('Config').config.websites = {}
     web.cert = false
     Candy.core('Config').config.websites[web.domain] = web
+    progress('domain', 'success', __('Domain %s set.', domain))
     if (web.domain != 'localhost' && !web.domain.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-      Candy.core('Config').config.websites[web.domain].cert = {}
+      progress('dns', 'progress', __('Setting up DNS records for %s...', domain))
       Candy.core('Config').config.websites[web.domain].subdomain = ['www']
       Candy.server('DNS').record(
         {name: web.domain, type: 'A', value: Candy.server('DNS').ip},
@@ -85,11 +87,16 @@ class Web {
           value: 'v=DMARC1; p=reject; rua=mailto:postmaster@' + web.domain
         }
       )
+      progress('dns', 'success', __('DNS records for %s set.', domain))
+      Candy.core('Config').config.websites[web.domain].cert = {}
+      progress('ssl', 'done', __('Setting up SSL certificate for %s...', domain))
     }
+    progress('directory', 'progress', __('Setting up website files for %s...', domain))
     childProcess.execSync('npm link candypack', {cwd: web.path})
     if (fs.existsSync(web.path + 'node_modules/.bin')) fs.rmSync(web.path + 'node_modules/.bin', {recursive: true})
     if (!fs.existsSync(web.path + '/node_modules')) fs.mkdirSync(web.path + '/node_modules')
     fs.cpSync(__dirname + '/../../web/', web.path, {recursive: true})
+    progress('directory', 'success', __('Website files for %s set.', domain))
     return Candy.server('Api').result(true, __('Website %s created at %s.', web.domain, web.path))
   }
 
@@ -137,9 +144,9 @@ class Web {
   }
 
   async list() {
-    let domains = Object.keys(Candy.core('Config').config.websites ?? {})
-    if (domains.length == 0) return Candy.server('Api').result(false, __('No websites found.'))
-    return Candy.server('Api').result(true, __('Websites:') + '\n  ' + domains.join('\n  '))
+    let websites = Object.keys(Candy.core('Config').config.websites ?? {})
+    if (websites.length == 0) return Candy.server('Api').result(false, __('No websites found.'))
+    return Candy.server('Api').result(true, __('Websites:') + '\n  ' + websites.join('\n  '))
   }
 
   request(req, res, secure) {
