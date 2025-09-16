@@ -19,7 +19,6 @@ class Connector {
 
     this.socket.on('data', raw => {
       let payload
-      // console.log(raw.toString())
       try {
         payload = JSON.parse(raw.toString())
       } catch {
