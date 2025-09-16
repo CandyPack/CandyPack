@@ -74,5 +74,7 @@
   "SSL certificate for domain %s renewed successfully.": "域名 %s 的 SSL 证书已成功续订。",
   "Subdomain %s1 created successfully for domain %s2.": "子域名 %s1 已成功创建，属于域名 %s2。",
   "Invalid subdomain name.": "无效的子域名。",
-  "Subdomain %s1 deleted successfully from domain %s2.": "子域名 %s1 已成功从域名 %s2 中删除。"
+  "Subdomain %s1 deleted successfully from domain %s2.": "子域名 %s1 已成功从域名 %s2 中删除。",
+  "%s is a domain.": "%s 是一个域名。",
+  "Enter the subdomain name (subdomain.example.com): ": "输入子域名 (subdomain.example.com): "
 }

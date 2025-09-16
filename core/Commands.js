@@ -98,6 +98,14 @@ module.exports = {
             data: [await Candy.cli('Cli').question(__('Enter the subdomain name (subdomain.example.com): '))]
           })
       },
+      delete: {
+        description: 'Delete a subdomain',
+        action: async () =>
+          await Candy.cli('Connector').call({
+            action: 'subdomain.delete',
+            data: [await Candy.cli('Cli').question(__('Enter the subdomain name (subdomain.example.com): '))]
+          })
+      },
       list: {
         description: 'List all domain subdomains',
         action: async () =>

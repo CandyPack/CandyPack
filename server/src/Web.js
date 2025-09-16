@@ -97,7 +97,7 @@ class Web {
     if (!fs.existsSync(web.path + '/node_modules')) fs.mkdirSync(web.path + '/node_modules')
     fs.cpSync(__dirname + '/../../web/', web.path, {recursive: true})
     progress('directory', 'success', __('Website files for %s set.', domain))
-    return Candy.server('Api').result(true, __('Website %s created at %s.', web.domain, web.path))
+    return Candy.server('Api').result(true, __('Website %s1 created at %s2.', web.domain, web.path))
   }
 
   async delete(domain) {

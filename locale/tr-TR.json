@@ -74,5 +74,7 @@
   "SSL certificate for domain %s renewed successfully.": "%s domaini için SSL sertifikası başarıyla yenilendi.",
   "Subdomain %s1 created successfully for domain %s2.": "%s1 alt alan adı %s2 domaini için başarıyla oluşturuldu.",
   "Invalid subdomain name.": "Geçersiz alt alan adı.",
-  "Subdomain %s1 deleted successfully from domain %s2.": "%s1 alt alan adı %s2 domaininden başarıyla silindi."
+  "Subdomain %s1 deleted successfully from domain %s2.": "%s1 alt alan adı %s2 domaininden başarıyla silindi.",
+  "%s is a domain.": "%s bir alan adıdır.",
+  "Enter the subdomain name (subdomain.example.com): ": "Alt alan adı girin (altalanadi.ornek.com): "
 }
