@@ -18,32 +18,41 @@ class Connector {
     })
 
     this.socket.on('data', raw => {
-      let payload
-      try {
-        payload = JSON.parse(raw.toString())
-      } catch {
-        return
+      raw = raw.toString()
+      if (raw.includes('\r\n')) {
+        raw = raw.split('\r\n')
+      } else {
+        raw = [raw]
       }
-      if (payload.message) {
-        if (payload.status) {
-          if (this.lastProcess == payload.process) {
-            process.stdout.clearLine(0)
-            process.stdout.cursorTo(0)
+      for (let payload of raw) {
+        try {
+          payload = JSON.parse(payload)
+        } catch {
+          continue
+        }
+        if (payload.message) {
+          if (payload.status) {
+            if (this.lastProcess == payload.process) {
+              process.stdout.clearLine(0)
+              process.stdout.cursorTo(0)
+            } else {
+              this.lastProcess = payload.process
+              process.stdout.write('\n')
+            }
+            process.stdout.write(Candy.cli('Cli').icon(payload.status) + payload.message + '\r')
           } else {
-            this.lastProcess = payload.process
-            process.stdout.write('\n')
+            if (this.lastProcess) process.stdout.write('\n')
+            if (payload.result) {
+              console.log(payload.message)
+            } else {
+              console.error(payload.message)
+            }
+            if (!this.manualClose) this.socket.end()
+            this.connected = false
+            this.connecting = false
+            this.lastProcess = null
           }
-          if (payload.status === 'progress') {
-            process.stdout.write('- ' + payload.message + '\r')
-          } else if (payload.status === 'success') {
-            process.stdout.write('✔ ' + payload.message + '\r')
-          } else {
-            process.stdout.write('✖ ' + payload.message + '\r')
-          }
-        } else if (payload.result) {
-          if (this.lastProcess) process.stdout.write('\n')
-          console.log(payload.message)
-        } else console.error(payload.message)
+        }
       }
     })
 

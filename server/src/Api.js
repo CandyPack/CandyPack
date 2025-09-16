@@ -60,6 +60,7 @@ class Api {
           socket.destroy()
         } catch (err) {
           socket.write(JSON.stringify({id, ...this.result(false, err.message || 'error')}))
+          socket.destroy()
         }
       })
 
@@ -73,8 +74,7 @@ class Api {
 
   send(id, process, status, message) {
     if (!this.#connections[id]) return
-    console.log('Sending to', id, process, status, message)
-    this.#connections[id].write(JSON.stringify({process, status, message}))
+    return this.#connections[id].write(JSON.stringify({process, status, message}) + '\r\n')
   }
 
   result(result, message) {

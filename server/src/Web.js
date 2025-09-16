@@ -89,7 +89,7 @@ class Web {
       )
       progress('dns', 'success', __('DNS records for %s set.', domain))
       Candy.core('Config').config.websites[web.domain].cert = {}
-      progress('ssl', 'done', __('Setting up SSL certificate for %s...', domain))
+      progress('ssl', 'progress', __('Setting up SSL certificate for %s...', domain))
     }
     progress('directory', 'progress', __('Setting up website files for %s...', domain))
     childProcess.execSync('npm link candypack', {cwd: web.path})
