@@ -12,6 +12,7 @@ class Api {
     'server.stop': () => Candy.server('Server').stop(),
     'ssl.renew': (...args) => Candy.server('SSL').renew(...args),
     'subdomain.create': (...args) => Candy.server('Subdomain').create(...args),
+    'subdomain.delete': (...args) => Candy.server('Subdomain').delete(...args),
     'subdomain.list': (...args) => Candy.server('Subdomain').list(...args),
     'web.create': (...args) => Candy.server('Web').create(...args),
     'web.delete': (...args) => Candy.server('Web').delete(...args),
