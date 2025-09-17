@@ -4,8 +4,18 @@ const path = require('path')
 
 module.exports = {
   auth: {
-    args: ['key'],
-    description: 'Define your server to your CandyPack account'
+    args: ['key', '-k', '--key'],
+    description: 'Define your server to your CandyPack account',
+    action: async args => {
+      const cli = Candy.cli('Cli')
+      let key = cli.parseArg(args, ['-k', '--key']) || args[0]
+      if (!key) key = await cli.question(__('Enter your authentication key: '))
+
+      await Candy.cli('Connector').call({
+        action: 'auth',
+        data: [key]
+      })
+    }
   },
   debug: {
     description: 'Debug CandyPack Server',
@@ -40,40 +50,72 @@ module.exports = {
     sub: {
       create: {
         description: 'Create a new mail account',
-        action: async () =>
+        args: ['-e', '--email', '-p', '--password'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let email = cli.parseArg(args, ['-e', '--email'])
+          let password = cli.parseArg(args, ['-p', '--password'])
+
+          if (!email) email = await cli.question(__('Enter the e-mail address: '))
+          if (!password) password = await cli.question(__('Enter the password: '))
+
+          let confirmPassword = password
+          if (!cli.parseArg(args, ['-p', '--password'])) {
+            confirmPassword = await cli.question(__('Re-enter the password: '))
+          }
+
           await Candy.cli('Connector').call({
             action: 'mail.create',
-            data: [
-              await Candy.cli('Cli').question(__('Enter the e-mail address: ')),
-              await Candy.cli('Cli').question(__('Enter the password: ')),
-              await Candy.cli('Cli').question(__('Re-enter the password: '))
-            ]
+            data: [email, password, confirmPassword]
           })
+        }
       },
       delete: {
         description: 'Delete a mail account',
-        action: async () =>
+        args: ['-e', '--email'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let email = cli.parseArg(args, ['-e', '--email'])
+          if (!email) email = await cli.question(__('Enter the e-mail address: '))
+
           await Candy.cli('Connector').call({
             action: 'mail.delete',
-            data: [await Candy.cli('Cli').question(__('Enter the e-mail address: '))]
+            data: [email]
           })
+        }
       },
       list: {
         description: 'List all domain mail accounts',
-        action: async () =>
-          await Candy.cli('Connector').call({action: 'mail.list', data: [await Candy.cli('Cli').question(__('Enter the domain name: '))]})
+        args: ['-d', '--domain'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let domain = cli.parseArg(args, ['-d', '--domain'])
+          if (!domain) domain = await cli.question(__('Enter the domain name: '))
+
+          await Candy.cli('Connector').call({action: 'mail.list', data: [domain]})
+        }
       },
       password: {
         description: 'Change mail account password',
-        action: async () =>
+        args: ['-e', '--email', '-p', '--password'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let email = cli.parseArg(args, ['-e', '--email'])
+          let password = cli.parseArg(args, ['-p', '--password'])
+
+          if (!email) email = await cli.question(__('Enter the e-mail address: '))
+          if (!password) password = await cli.question(__('Enter the new password: '))
+
+          let confirmPassword = password
+          if (!cli.parseArg(args, ['-p', '--password'])) {
+            confirmPassword = await cli.question(__('Re-enter the new password: '))
+          }
+
           await Candy.cli('Connector').call({
             action: 'mail.password',
-            data: [
-              await Candy.cli('Cli').question(__('Enter the e-mail address: ')),
-              await Candy.cli('Cli').question(__('Enter the new password: ')),
-              await Candy.cli('Cli').question(__('Re-enter the new password: '))
-            ]
+            data: [email, password, confirmPassword]
           })
+        }
       }
     }
   },
@@ -82,8 +124,14 @@ module.exports = {
     sub: {
       renew: {
         description: 'Renew SSL certificate for a domain',
-        action: async () =>
-          await Candy.cli('Connector').call({action: 'ssl.renew', data: [await Candy.cli('Cli').question(__('Enter the domain name: '))]})
+        args: ['-d', '--domain'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let domain = cli.parseArg(args, ['-d', '--domain'])
+          if (!domain) domain = await cli.question(__('Enter the domain name: '))
+
+          await Candy.cli('Connector').call({action: 'ssl.renew', data: [domain]})
+        }
       }
     }
   },
@@ -92,11 +140,31 @@ module.exports = {
     sub: {
       create: {
         description: 'Create a new subdomain',
-        action: async () =>
+        args: ['-s', '--subdomain'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let subdomain = cli.parseArg(args, ['-s', '--subdomain'])
+          if (!subdomain) subdomain = await cli.question(__('Enter the subdomain name (subdomain.example.com): '))
+
           await Candy.cli('Connector').call({
             action: 'subdomain.create',
-            data: [await Candy.cli('Cli').question(__('Enter the subdomain name (subdomain.example.com): '))]
+            data: [subdomain]
           })
+        }
+      },
+      delete: {
+        description: 'Delete a subdomain',
+        args: ['-s', '--subdomain'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let subdomain = cli.parseArg(args, ['-s', '--subdomain'])
+          if (!subdomain) subdomain = await cli.question(__('Enter the subdomain name (subdomain.example.com): '))
+
+          await Candy.cli('Connector').call({
+            action: 'subdomain.delete',
+            data: [subdomain]
+          })
+        }
       },
       delete: {
         description: 'Delete a subdomain',
@@ -108,11 +176,17 @@ module.exports = {
       },
       list: {
         description: 'List all domain subdomains',
-        action: async () =>
+        args: ['-d', '--domain'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let domain = cli.parseArg(args, ['-d', '--domain'])
+          if (!domain) domain = await cli.question(__('Enter the domain name: '))
+
           await Candy.cli('Connector').call({
             action: 'subdomain.list',
-            data: [await Candy.cli('Cli').question(__('Enter the domain name: '))]
+            data: [domain]
           })
+        }
       }
     }
   },
@@ -121,8 +195,13 @@ module.exports = {
     sub: {
       create: {
         description: 'Create a new website',
-        action: async () => {
-          let domain = await Candy.cli('Cli').question(__('Enter the domain name: '))
+        args: ['-d', '--domain'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let domain = cli.parseArg(args, ['-d', '--domain'])
+          if (!domain) {
+            domain = await cli.question(__('Enter the domain name: '))
+          }
           await Candy.cli('Connector').call({
             action: 'web.create',
             data: [domain]
@@ -131,8 +210,13 @@ module.exports = {
       },
       delete: {
         description: 'Delete a website',
-        action: async () => {
-          let domain = await Candy.cli('Cli').question(__('Enter the domain name: '))
+        args: ['-d', '--domain'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let domain = cli.parseArg(args, ['-d', '--domain'])
+          if (!domain) {
+            domain = await cli.question(__('Enter the domain name: '))
+          }
           await Candy.cli('Connector').call({
             action: 'web.delete',
             data: [domain]

@@ -73,7 +73,15 @@ class Cli {
     let space = 0
     if (obj.title) result += '\n\x1b[90m' + (await obj.title) + '\x1b\n'
     if (obj.description) {
-      let args = obj.args ? ' <' + obj.args.join('> <') + '>' : ''
+      let args = ''
+      if (obj.args) {
+        // Only show positional arguments (not prefix arguments starting with -)
+        let positionalArgs = obj.args.filter(arg => !arg.startsWith('-'))
+
+        if (positionalArgs.length > 0) {
+          args += ' <' + positionalArgs.join('> <') + '>'
+        }
+      }
       let line = '\x1b[91mcandy ' + command + '\x1b[0m\x1b[90m' + args + '\x1b[0m : ' + __(obj.description)
       result += line
       line = line.split(':')[0]
@@ -305,6 +313,17 @@ class Cli {
     if (typeof text == 'object') result = this.#format(text.content)
     else result = this.#format(text, raw)
     return result
+  }
+
+  parseArg(args, prefixes) {
+    if (!args || !prefixes) return null
+
+    for (let i = 0; i < args.length; i++) {
+      if (prefixes.includes(args[i]) && i + 1 < args.length) {
+        return args[i + 1]
+      }
+    }
+    return null
   }
 
   question(question) {
