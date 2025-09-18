@@ -1,4 +1,4 @@
-const Process = require('../core/Process')
+const Process = require('../../core/Process')
 const findProcess = require('find-process')
 
 // Note: jest.mock is automatically hoisted.
