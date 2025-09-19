@@ -27,9 +27,10 @@ class CandyPack {
     const key = `core:${name}`
     if (!this._registry.has(key)) {
       const modPath = `../core/${name}`
-      const Mod = require(modPath)
-      if (Mod.init) Mod.init()
-      this.#register(key, Mod, singleton)
+      let Mod = require(modPath)
+      const classInstance = typeof Mod === 'function' ? new Mod() : Mod
+      if (classInstance.init) classInstance.init()
+      this.#register(key, classInstance, singleton)
     }
     return this.#resolve(key, singleton)
   }

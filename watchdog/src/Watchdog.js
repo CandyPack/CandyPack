@@ -69,7 +69,7 @@ class Watchdog {
         if (Candy.core('Config').config.websites[domain].pid)
           await Candy.core('Process').stop(Candy.core('Config').config.websites[domain].pid)
 
-      for (const service of Candy.core('Config').config.services) if (service.pid) await Candy.core('Process').stop(service.pid)
+      for (const service of Candy.core('Config').config.services ?? []) if (service.pid) await Candy.core('Process').stop(service.pid)
 
       // Update config with current watchdog's info
       Candy.core('Config').config.server.watchdog = process.pid
