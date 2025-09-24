@@ -309,7 +309,7 @@ class Web {
           .split('\n')
           .join('\n[LOG][' + Date.now() + '] ') +
         '\n'
-      if (this.#logs.log[domain].length > 1000000)
+      if (this.#logs.log[domain].length > 100000)
         this.#logs.log[domain] = this.#logs.log[domain].substr(this.#logs.log[domain].length - 1000000)
       if (Candy.core('Config').config.websites[domain] && Candy.core('Config').config.websites[domain].status == 'errored')
         Candy.core('Config').config.websites[domain].status = 'running'
@@ -327,7 +327,7 @@ class Web {
           .join('\n[ERR][' + Date.now() + '] ') +
         '\n'
       this.#logs.err[domain] += data.toString()
-      if (this.#logs.err[domain].length > 1000000)
+      if (this.#logs.err[domain].length > 100000)
         this.#logs.err[domain] = this.#logs.err[domain].substr(this.#logs.err[domain].length - 1000000)
       if (Candy.core('Config').config.websites[domain]) Candy.core('Config').config.websites[domain].status = 'errored'
     })
