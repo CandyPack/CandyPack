@@ -9,6 +9,7 @@ class Api {
     'mail.password': (...args) => Candy.server('Mail').password(...args),
     'mail.send': (...args) => Candy.server('Mail').send(...args),
     'service.start': (...args) => Candy.server('Service').start(...args),
+    'service.delete': (...args) => Candy.server('Service').delete(...args),
     'server.stop': () => Candy.server('Server').stop(),
     'ssl.renew': (...args) => Candy.server('SSL').renew(...args),
     'subdomain.create': (...args) => Candy.server('Subdomain').create(...args),

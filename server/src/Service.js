@@ -82,6 +82,20 @@ class Service {
     }
   }
 
+  async delete(id) {
+    return new Promise(resolve => {
+      let service = this.#get(id)
+      if (service) {
+        this.stop(service.id)
+        this.#services = this.#services.filter(s => s.id != service.id)
+        Candy.core('Config').config.services = this.#services
+        return resolve(Candy.server('Api').result(true, __('Service %s deleted successfully.', service.name)))
+      } else {
+        return resolve(Candy.server('Api').result(false, __('Service %s not found.', id)))
+      }
+    })
+  }
+
   async #run(id) {
     if (this.#active[id]) return
     this.#active[id] = true
@@ -176,8 +190,12 @@ class Service {
       if (file && file.length > 0) {
         file = path.resolve(file)
         if (fs.existsSync(file)) {
-          if (!this.#get(file)) this.#add(file)
-          else return resolve(Candy.server('Api').result(true, __('Service %s already exists.', file)))
+          if (!this.#get(file)) {
+            this.#add(file)
+            return resolve(Candy.server('Api').result(true, __('Service %s added successfully.', file)))
+          } else {
+            return resolve(Candy.server('Api').result(false, __('Service %s already exists.', file)))
+          }
         } else {
           return resolve(Candy.server('Api').result(false, __('Service file %s not found.', file)))
         }

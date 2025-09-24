@@ -135,6 +135,21 @@ module.exports = {
       }
     }
   },
+  service: {
+    title: 'SERVICE',
+    sub: {
+      delete: {
+        description: 'Delete a Service',
+        args: ['-i', '--id'],
+        action: async args => {
+          const cli = Candy.cli('Cli')
+          let service = cli.parseArg(args, ['-i', '--id'])
+          if (!service) service = await cli.question(__('Enter the Service ID or Name: '))
+          await Candy.cli('Connector').call({action: 'service.delete', data: [service]})
+        }
+      }
+    }
+  },
   subdomain: {
     title: 'SUBDOMAIN',
     sub: {
@@ -165,14 +180,6 @@ module.exports = {
             data: [subdomain]
           })
         }
-      },
-      delete: {
-        description: 'Delete a subdomain',
-        action: async () =>
-          await Candy.cli('Connector').call({
-            action: 'subdomain.delete',
-            data: [await Candy.cli('Cli').question(__('Enter the subdomain name (subdomain.example.com): '))]
-          })
       },
       list: {
         description: 'List all domain subdomains',
