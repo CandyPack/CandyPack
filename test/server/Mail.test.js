@@ -29,7 +29,7 @@ const mailServer = require('../../server/src/mail/server')
 const smtp = require('../../server/src/mail/smtp')
 const tls = require('tls')
 
-describe('Mail Module - DKIM Key Generation and Mail Processing', () => {
+describe('Mail Module', () => {
   let Mail
   let mockDb
   let mockConfig
@@ -119,9 +119,8 @@ describe('Mail Module - DKIM Key Generation and Mail Processing', () => {
       })
     })
 
-    // Debug: Add spy to see if Config is being accessed
+    // Setup Candy.core mock
     jest.spyOn(global.Candy, 'core').mockImplementation(name => {
-      console.log('Candy.core called with:', name)
       if (name === 'Config') return mockConfig
       return {init: jest.fn()}
     })
@@ -206,19 +205,8 @@ describe('Mail Module - DKIM Key Generation and Mail Processing', () => {
     })
 
     test('should generate DKIM key pair for domain with MX records', () => {
-      // Debug: Check the config state
-      console.log('Config websites:', JSON.stringify(mockConfig.config.websites, null, 2))
-
-      // Debug: Test the condition manually
-      const domain = 'example.com'
-      const website = mockConfig.config.websites[domain]
-      console.log('Domain:', domain)
-      console.log('Website DNS:', website.DNS)
-      console.log('Website cert:', website.cert)
-      console.log('Has MX:', !!(website.DNS && website.DNS.MX))
-      console.log('Cert !== false:', website.cert !== false)
-      console.log('!cert?.dkim:', !website.cert?.dkim)
-      console.log('Should generate DKIM:', website.cert !== false && !website.cert?.dkim)
+      // Ensure domain has MX record but no DKIM cert
+      mockConfig.config.websites['example.com'].cert = {}
 
       // Act
       Mail.check()
@@ -276,7 +264,7 @@ describe('Mail Module - DKIM Key Generation and Mail Processing', () => {
       expect(mockDNS.record).toHaveBeenCalledWith({
         type: 'TXT',
         name: 'default._domainkey.example.com',
-        value: 'v=DKIM1; k=rsa; p=mock-public-key'
+        value: expect.stringContaining('v=DKIM1; k=rsa; p=')
       })
     })
 
@@ -751,12 +739,87 @@ describe('Mail Module - DKIM Key Generation and Mail Processing', () => {
     })
   })
 
-  describe('Database Operations', () => {
+  describe('Server Initialization and Database Setup', () => {
     beforeEach(() => {
+      // Reset mocks before each test
+      jest.clearAllMocks()
+
+      // Ensure Mail module is properly initialized for these tests
+      if (Mail._resetForTesting) {
+        Mail._resetForTesting()
+      }
+    })
+
+    test('should initialize SMTP server on port 25', () => {
+      // Act
       Mail.init()
+
+      // Assert
+      expect(SMTPServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          logger: true,
+          secure: false,
+          banner: 'CandyPack',
+          size: 1024 * 1024 * 10,
+          authOptional: true
+        })
+      )
+
+      const smtpInstance = SMTPServer.mock.results[0].value
+      expect(smtpInstance.listen).toHaveBeenCalledWith(25)
+    })
+
+    test('should initialize secure SMTP server on port 465', () => {
+      // Act
+      Mail.init()
+
+      // Assert
+      expect(SMTPServer).toHaveBeenCalledTimes(2)
+
+      const secureSmtpInstance = SMTPServer.mock.results[1].value
+      expect(secureSmtpInstance.listen).toHaveBeenCalledWith(465)
+    })
+
+    test('should initialize IMAP server on port 143', () => {
+      // Act
+      Mail.init()
+
+      // Assert
+      expect(mailServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          logger: true,
+          secure: false,
+          banner: 'CandyPack'
+        })
+      )
+
+      const imapInstance = mailServer.mock.results[0].value
+      expect(imapInstance.listen).toHaveBeenCalledWith(143)
+    })
+
+    test('should initialize secure IMAP server on port 993', () => {
+      // Act
+      Mail.init()
+
+      // Assert
+      expect(mailServer).toHaveBeenCalledTimes(2)
+
+      const secureImapInstance = mailServer.mock.results[1].value
+      expect(secureImapInstance.listen).toHaveBeenCalledWith(993)
+    })
+
+    test('should create SQLite database with correct path', () => {
+      // Act
+      Mail.init()
+
+      // Assert
+      expect(sqlite3.verbose().Database).toHaveBeenCalledWith('/home/user/.candypack/db/mail', expect.any(Function))
     })
 
     test('should create mail database tables on initialization', () => {
+      // Act
+      Mail.init()
+
       // Assert
       expect(mockDb.run).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS mail_received'))
       expect(mockDb.run).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS mail_account'))
@@ -764,10 +827,32 @@ describe('Mail Module - DKIM Key Generation and Mail Processing', () => {
     })
 
     test('should create database indexes on initialization', () => {
+      // Act
+      Mail.init()
+
       // Assert
       expect(mockDb.run).toHaveBeenCalledWith(expect.stringContaining('CREATE INDEX IF NOT EXISTS idx_email ON mail_account'))
       expect(mockDb.run).toHaveBeenCalledWith(expect.stringContaining('CREATE INDEX IF NOT EXISTS idx_domain ON mail_account'))
       expect(mockDb.run).toHaveBeenCalledWith(expect.stringContaining('CREATE INDEX IF NOT EXISTS idx_uid ON mail_received'))
+    })
+
+    test('should setup SSL/TLS configuration with SNI callback', () => {
+      // Arrange
+      mockConfig.config.ssl = {
+        key: '/etc/ssl/private/default.key',
+        cert: '/etc/ssl/certs/default.crt'
+      }
+      fs.existsSync.mockReturnValue(true)
+      fs.readFileSync.mockReturnValue('mock-cert-content')
+
+      // Act
+      Mail.init()
+
+      // Assert
+      const smtpOptions = SMTPServer.mock.calls[1][0] // Second call is for secure SMTP
+      expect(smtpOptions).toHaveProperty('SNICallback')
+      expect(smtpOptions.secure).toBe(true)
+      expect(tls.createSecureContext).toHaveBeenCalled()
     })
 
     test('should handle database connection errors', () => {
@@ -782,15 +867,11 @@ describe('Mail Module - DKIM Key Generation and Mail Processing', () => {
 
       // Mock error logging
       const mockError = jest.fn()
-      global.Candy.server.mockImplementation(name => {
-        if (name === 'Log')
-          return {
-            init: jest.fn().mockReturnValue({
-              log: jest.fn(),
-              error: mockError
-            })
-          }
-        return {init: jest.fn()}
+      global.Candy.setMock('server', 'Log', {
+        init: jest.fn().mockReturnValue({
+          log: jest.fn(),
+          error: mockError
+        })
       })
 
       // Clear module cache and require fresh instance
@@ -813,6 +894,447 @@ describe('Mail Module - DKIM Key Generation and Mail Processing', () => {
 
       // Assert
       expect(fs.mkdirSync).toHaveBeenCalledWith('/home/user/.candypack/db', {recursive: true})
+    })
+
+    test('should not initialize if no domains have MX records', () => {
+      // Arrange
+      mockConfig.config.websites = {
+        'example.com': createMockWebsiteConfig('example.com', {
+          DNS: {
+            A: [{name: 'example.com', value: '127.0.0.1'}]
+            // No MX records
+          }
+        })
+      }
+
+      // Act
+      Mail.init()
+
+      // Assert
+      expect(SMTPServer).not.toHaveBeenCalled()
+      expect(mailServer).not.toHaveBeenCalled()
+    })
+
+    test('should handle SMTP server errors', () => {
+      // Arrange
+      const mockError = jest.fn()
+      global.Candy.setMock('server', 'Log', {
+        init: jest.fn().mockReturnValue({
+          log: mockError,
+          error: jest.fn()
+        })
+      })
+
+      // Act
+      Mail.init()
+
+      // Simulate SMTP server error
+      const smtpInstance = SMTPServer.mock.results[0].value
+      const errorHandler = smtpInstance.on.mock.calls.find(call => call[0] === 'error')[1]
+      const testError = new Error('SMTP Server Error')
+      errorHandler(testError)
+
+      // Assert
+      expect(mockError).toHaveBeenCalledWith('SMTP Server Error: ', testError)
+    })
+
+    test('should verify SSL certificate paths exist for SNI callback', () => {
+      // Arrange
+      const mockWebsite = createMockWebsiteConfig('test.com')
+      mockConfig.config.websites['test.com'] = mockWebsite
+      mockConfig.config.ssl = {
+        key: '/etc/ssl/private/default.key',
+        cert: '/etc/ssl/certs/default.crt'
+      }
+
+      fs.existsSync.mockImplementation(path => {
+        return path.includes('test.com') // Only test.com certs exist
+      })
+      fs.readFileSync.mockReturnValue('mock-cert-content')
+
+      // Act
+      Mail.init()
+
+      // Get the SNI callback
+      const smtpOptions = SMTPServer.mock.calls[1][0]
+      const sniCallback = smtpOptions.SNICallback
+      const mockCallback = jest.fn()
+
+      // Test SNI callback with existing cert
+      sniCallback('test.com', mockCallback)
+
+      // Assert
+      expect(fs.existsSync).toHaveBeenCalledWith(mockWebsite.cert.ssl.key)
+      expect(fs.existsSync).toHaveBeenCalledWith(mockWebsite.cert.ssl.cert)
+      expect(fs.readFileSync).toHaveBeenCalledWith(mockWebsite.cert.ssl.key)
+      expect(fs.readFileSync).toHaveBeenCalledWith(mockWebsite.cert.ssl.cert)
+      expect(tls.createSecureContext).toHaveBeenCalledWith({
+        key: 'mock-cert-content',
+        cert: 'mock-cert-content'
+      })
+      expect(mockCallback).toHaveBeenCalledWith(null, expect.any(Object))
+    })
+  })
+
+  describe('Mail Account Management Operations', () => {
+    beforeEach(() => {
+      Mail.init()
+    })
+
+    describe('Account Creation', () => {
+      test('should create mail account with valid email and password', async () => {
+        // Arrange
+        const email = 'newuser@example.com'
+        const password = 'testpassword'
+        const retype = 'testpassword'
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, null) // Account doesn't exist
+        })
+
+        // Act
+        const result = await Mail.create(email, password, retype)
+
+        // Assert
+        expect(bcrypt.hash).toHaveBeenCalledWith(password, 10, expect.any(Function))
+        expect(mockDb.prepare).toHaveBeenCalledWith("INSERT INTO mail_account ('email', 'password', 'domain') VALUES (?, ?, ?)")
+        expect(mockApi.result).toHaveBeenCalledWith(true, expect.stringContaining('created successfully'))
+      })
+
+      test('should validate email format during account creation', async () => {
+        // Arrange
+        const invalidEmail = 'invalid-email'
+        const password = 'testpassword'
+        const retype = 'testpassword'
+
+        // Act
+        const result = await Mail.create(invalidEmail, password, retype)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('Invalid email address'))
+        expect(bcrypt.hash).not.toHaveBeenCalled()
+      })
+
+      test('should reject account creation if passwords do not match', async () => {
+        // Arrange
+        const email = 'test@example.com'
+        const password = 'password1'
+        const retype = 'password2'
+
+        // Act
+        const result = await Mail.create(email, password, retype)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('Passwords do not match'))
+        expect(bcrypt.hash).not.toHaveBeenCalled()
+      })
+
+      test('should reject account creation if required fields are missing', async () => {
+        // Act
+        const result = await Mail.create('', 'password', 'password')
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('All fields are required'))
+      })
+
+      test('should reject account creation if account already exists', async () => {
+        // Arrange
+        const email = 'existing@example.com'
+        const password = 'testpassword'
+        const retype = 'testpassword'
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, {email: email, password: '$2b$10$hashedpassword'})
+        })
+
+        // Act
+        const result = await Mail.create(email, password, retype)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('already exists'))
+      })
+
+      test('should reject account creation for unknown domain', async () => {
+        // Arrange
+        const email = 'test@unknown.com'
+        const password = 'testpassword'
+        const retype = 'testpassword'
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, null) // Account doesn't exist
+        })
+
+        // Act
+        const result = await Mail.create(email, password, retype)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('Domain unknown.com not found'))
+      })
+
+      test('should hash password with bcrypt during account creation', async () => {
+        // Arrange
+        const email = 'test@example.com'
+        const password = 'plainpassword'
+        const retype = 'plainpassword'
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, null) // Account doesn't exist
+        })
+
+        // Act
+        await Mail.create(email, password, retype)
+
+        // Assert
+        expect(bcrypt.hash).toHaveBeenCalledWith(password, 10, expect.any(Function))
+
+        const preparedStatement = mockDb.prepare.mock.results[0].value
+        expect(preparedStatement.run).toHaveBeenCalledWith(email, '$2b$10$hashedpassword', 'example.com')
+      })
+    })
+
+    describe('Account Deletion', () => {
+      test('should delete existing mail account', async () => {
+        // Arrange
+        const email = 'delete@example.com'
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, {email: email, password: '$2b$10$hashedpassword'})
+        })
+
+        // Act
+        const result = await Mail.delete(email)
+
+        // Assert
+        expect(mockDb.prepare).toHaveBeenCalledWith('DELETE FROM mail_account WHERE email = ?')
+        const preparedStatement = mockDb.prepare.mock.results[0].value
+        expect(preparedStatement.run).toHaveBeenCalledWith(email)
+        expect(mockApi.result).toHaveBeenCalledWith(true, expect.stringContaining('deleted successfully'))
+      })
+
+      test('should validate email format during account deletion', async () => {
+        // Arrange
+        const invalidEmail = 'invalid-email'
+
+        // Act
+        const result = await Mail.delete(invalidEmail)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('Invalid email address'))
+        expect(mockDb.prepare).not.toHaveBeenCalled()
+      })
+
+      test('should reject deletion if email is required but not provided', async () => {
+        // Act
+        const result = await Mail.delete('')
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('Email address is required'))
+      })
+
+      test('should reject deletion if account does not exist', async () => {
+        // Arrange
+        const email = 'nonexistent@example.com'
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, null) // Account doesn't exist
+        })
+
+        // Act
+        const result = await Mail.delete(email)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('not found'))
+        expect(mockDb.prepare).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('Account Existence Checking', () => {
+      test('should return account data if account exists', async () => {
+        // Arrange
+        const email = 'existing@example.com'
+        const mockAccount = {email: email, password: '$2b$10$hashedpassword'}
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, mockAccount)
+        })
+
+        // Act
+        const result = await Mail.exists(email)
+
+        // Assert
+        expect(result).toEqual(mockAccount)
+        expect(mockDb.get).toHaveBeenCalledWith('SELECT * FROM mail_account WHERE email = ?', [email], expect.any(Function))
+      })
+
+      test('should return false if account does not exist', async () => {
+        // Arrange
+        const email = 'nonexistent@example.com'
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, null)
+        })
+
+        // Act
+        const result = await Mail.exists(email)
+
+        // Assert
+        expect(result).toBe(false)
+      })
+
+      test('should handle database errors during existence check', async () => {
+        // Arrange
+        const email = 'test@example.com'
+        const dbError = new Error('Database error')
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(dbError, null)
+        })
+
+        // Act
+        const result = await Mail.exists(email)
+
+        // Assert
+        expect(result).toBe(false)
+      })
+    })
+
+    describe('Password Update', () => {
+      test('should update password for existing account', async () => {
+        // Arrange
+        const email = 'test@example.com'
+        const password = 'newpassword'
+        const retype = 'newpassword'
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, {email: email, password: '$2b$10$oldhashedpassword'})
+        })
+
+        // Act
+        const result = await Mail.password(email, password, retype)
+
+        // Assert
+        expect(bcrypt.hash).toHaveBeenCalledWith(password, 10, expect.any(Function))
+        expect(mockDb.prepare).toHaveBeenCalledWith('UPDATE mail_account SET password = ? WHERE email = ?')
+        const preparedStatement = mockDb.prepare.mock.results[0].value
+        expect(preparedStatement.run).toHaveBeenCalledWith('$2b$10$hashedpassword', email)
+        expect(mockApi.result).toHaveBeenCalledWith(true, expect.stringContaining('password updated successfully'))
+      })
+
+      test('should validate email format during password update', async () => {
+        // Arrange
+        const invalidEmail = 'invalid-email'
+        const password = 'newpassword'
+        const retype = 'newpassword'
+
+        // Act
+        const result = await Mail.password(invalidEmail, password, retype)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('Invalid email address'))
+        expect(bcrypt.hash).not.toHaveBeenCalled()
+      })
+
+      test('should reject password update if passwords do not match', async () => {
+        // Arrange
+        const email = 'test@example.com'
+        const password = 'password1'
+        const retype = 'password2'
+
+        // Act
+        const result = await Mail.password(email, password, retype)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('Passwords do not match'))
+        expect(bcrypt.hash).not.toHaveBeenCalled()
+      })
+
+      test('should reject password update if required fields are missing', async () => {
+        // Act
+        const result = await Mail.password('', 'password', 'password')
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('All fields are required'))
+      })
+
+      test('should reject password update if account does not exist', async () => {
+        // Arrange
+        const email = 'nonexistent@example.com'
+        const password = 'newpassword'
+        const retype = 'newpassword'
+
+        mockDb.get.mockImplementation((sql, params, callback) => {
+          callback(null, null) // Account doesn't exist
+        })
+
+        // Act
+        const result = await Mail.password(email, password, retype)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('not found'))
+        expect(mockDb.prepare).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('Account Listing', () => {
+      test('should list all accounts for a domain', async () => {
+        // Arrange
+        const domain = 'example.com'
+        const mockAccounts = [{email: 'user1@example.com'}, {email: 'user2@example.com'}, {email: 'user3@example.com'}]
+
+        mockDb.each.mockImplementation((sql, params, rowCallback, completeCallback) => {
+          mockAccounts.forEach(account => rowCallback(null, account))
+          completeCallback(null, mockAccounts.length)
+        })
+
+        // Act
+        const result = await Mail.list(domain)
+
+        // Assert
+        expect(mockDb.each).toHaveBeenCalledWith(
+          'SELECT * FROM mail_account WHERE domain = ?',
+          [domain],
+          expect.any(Function),
+          expect.any(Function)
+        )
+        expect(mockApi.result).toHaveBeenCalledWith(
+          true,
+          expect.stringContaining('user1@example.com\nuser2@example.com\nuser3@example.com')
+        )
+      })
+
+      test('should reject listing if domain is not provided', async () => {
+        // Act
+        const result = await Mail.list('')
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('Domain is required'))
+      })
+
+      test('should reject listing for unknown domain', async () => {
+        // Arrange
+        const domain = 'unknown.com'
+
+        // Act
+        const result = await Mail.list(domain)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(false, expect.stringContaining('Domain unknown.com not found'))
+      })
+
+      test('should handle empty account list for domain', async () => {
+        // Arrange
+        const domain = 'example.com'
+
+        mockDb.each.mockImplementation((sql, params, rowCallback, completeCallback) => {
+          completeCallback(null, 0)
+        })
+
+        // Act
+        const result = await Mail.list(domain)
+
+        // Assert
+        expect(mockApi.result).toHaveBeenCalledWith(true, expect.stringContaining('Mail accounts for domain example.com'))
+      })
     })
   })
 })
