@@ -435,7 +435,7 @@ describe('Web', () => {
       Web.create(domain, mockProgress)
 
       // Note: The actual Web.js code has a bug - missing '/' in path concatenation
-      expect(fs.rmSync).toHaveBeenCalledWith('/var/candypack/example.comnode_modules/.bin', {recursive: true})
+      expect(fs.rmSync).toHaveBeenCalledWith('/var/candypack/example.com/node_modules/.bin', {recursive: true})
     })
 
     test('should create node_modules directory if it does not exist', () => {
