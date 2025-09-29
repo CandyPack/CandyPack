@@ -1,3 +1,33 @@
+### Refactor
+
+- Improve IMAP and SMTP authentication and TLS handling
+
+### ⚙️ Engine Tuning
+
+- Improve error handling for HTTP/HTTPS server startup
+- Refactor documentation files
+
+### ✨ What's New
+
+- Added 'candy service delete' command.
+- Added 'candy subdomain delete' command.
+- Added CLI prefix arguments support
+- CLI Mouse Support
+- **cli:** Add Progress-Based Output
+
+### 🛠️ Fixes & Improvements
+
+- Fix module instantiation and nullish services handling
+- Limit log and error buffer sizes in Web and Watchdog
+
+
+
+---
+
+Powered by [🍭 CandyPack](https://candypack.dev)
+
+**v**
+
 ### ✨ What's New
 
 - Added 'candy web delete' command.
