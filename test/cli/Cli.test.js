@@ -1,4 +1,4 @@
-const Cli = require('../cli/src/Cli.js')
+const Cli = require('../../cli/src/Cli.js')
 
 describe('CLI Prefix Argument Parsing', () => {
   test('parseArg should extract value after prefix', () => {
