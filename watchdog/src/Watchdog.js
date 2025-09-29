@@ -30,6 +30,7 @@ class Watchdog {
   /**
    * Saves the buffered logs to their respective files.
    * This function is designed to be called periodically.
+   * Keeps only the last 1000 lines in each log file.
    */
   async #saveLogs() {
     if (this.#isSaving) return
@@ -40,6 +41,18 @@ class Watchdog {
       await fs.mkdir(LOG_DIR, {recursive: true})
       const logFile = path.join(LOG_DIR, '.candypack.log')
       const errFile = path.join(LOG_DIR, '.candypack_err.log')
+
+      // Limit log buffer to last 1000 lines
+      const logLines = this.#logBuffer.split('\n')
+      if (logLines.length > 1000) {
+        this.#logBuffer = logLines.slice(-1000).join('\n')
+      }
+
+      // Limit error buffer to last 1000 lines
+      const errLines = this.#errorBuffer.split('\n')
+      if (errLines.length > 1000) {
+        this.#errorBuffer = errLines.slice(-1000).join('\n')
+      }
 
       await fs.writeFile(logFile, this.#logBuffer, 'utf8')
       await fs.writeFile(errFile, this.#errorBuffer, 'utf8')
@@ -69,7 +82,7 @@ class Watchdog {
         if (Candy.core('Config').config.websites[domain].pid)
           await Candy.core('Process').stop(Candy.core('Config').config.websites[domain].pid)
 
-      for (const service of Candy.core('Config').config.services) if (service.pid) await Candy.core('Process').stop(service.pid)
+      for (const service of Candy.core('Config').config.services ?? []) if (service.pid) await Candy.core('Process').stop(service.pid)
 
       // Update config with current watchdog's info
       Candy.core('Config').config.server.watchdog = process.pid

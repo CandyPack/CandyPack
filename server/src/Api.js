@@ -1,4 +1,4 @@
-const http = require('http')
+const net = require('net')
 const nodeCrypto = require('crypto')
 
 class Api {
@@ -9,40 +9,78 @@ class Api {
     'mail.password': (...args) => Candy.server('Mail').password(...args),
     'mail.send': (...args) => Candy.server('Mail').send(...args),
     'service.start': (...args) => Candy.server('Service').start(...args),
+    'service.delete': (...args) => Candy.server('Service').delete(...args),
     'server.stop': () => Candy.server('Server').stop(),
     'ssl.renew': (...args) => Candy.server('SSL').renew(...args),
     'subdomain.create': (...args) => Candy.server('Subdomain').create(...args),
+    'subdomain.delete': (...args) => Candy.server('Subdomain').delete(...args),
     'subdomain.list': (...args) => Candy.server('Subdomain').list(...args),
     'web.create': (...args) => Candy.server('Web').create(...args),
     'web.delete': (...args) => Candy.server('Web').delete(...args),
     'web.list': (...args) => Candy.server('Web').list(...args)
   }
+  #connections = {}
 
   init() {
     if (!Candy.core('Config').config.api) Candy.core('Config').config.api = {}
+    // Regenerate auth token every start
     Candy.core('Config').config.api.auth = nodeCrypto.randomBytes(32).toString('hex')
-    http
-      .createServer((req, res) => {
-        if (req.socket.remoteAddress !== '::ffff:127.0.0.1') return res.end('1')
-        if (req.headers.authorization !== Candy.core('Config').config.api.auth) return res.end('2')
-        if (req.method !== 'POST') return res.end()
-        let data = ''
-        req.on('data', chunk => {
-          data += chunk
-        })
-        req.on('end', async () => {
-          data = JSON.parse(data)
-          if (!data || !data.action || !this.#commands[data.action]) return res.end('3')
-          res.writeHead(200, {'Content-Type': 'application/json'})
-          let result = await this.#commands[data.action](...(data.data ?? []))
-          res.end(JSON.stringify(result))
-        })
+
+    const server = net.createServer()
+
+    server.on('connection', socket => {
+      // Only allow localhost
+      if (socket.remoteAddress !== '::ffff:127.0.0.1' && socket.remoteAddress !== '127.0.0.1') {
+        socket.destroy()
+        return
+      }
+
+      let id = Math.random().toString(36).substring(7)
+
+      this.#connections[id] = socket
+
+      socket.on('data', async raw => {
+        let payload
+        try {
+          payload = JSON.parse(raw.toString())
+        } catch {
+          return socket.write(JSON.stringify(this.result(false, 'invalid_json')))
+        }
+
+        const {auth, action, data} = payload || {}
+        if (!auth || auth !== Candy.core('Config').config.api.auth) {
+          return socket.write(JSON.stringify({id, ...this.result(false, 'unauthorized')}))
+        }
+        if (!action || !this.#commands[action]) {
+          return socket.write(JSON.stringify({id, ...this.result(false, 'unknown_action')}))
+        }
+        try {
+          const result = await this.#commands[action](...(data ?? []), (process, status, message) => {
+            this.send(id, process, status, message)
+          })
+          socket.write(JSON.stringify({id, ...result}))
+          socket.destroy()
+        } catch (err) {
+          socket.write(JSON.stringify({id, ...this.result(false, err.message || 'error')}))
+          socket.destroy()
+        }
       })
-      .listen(1453)
+
+      socket.on('close', () => {
+        delete this.#connections[id]
+      })
+    })
+
+    server.listen(1453)
+  }
+
+  send(id, process, status, message) {
+    if (!this.#connections[id]) return
+    return this.#connections[id].write(JSON.stringify({process, status, message}) + '\r\n')
   }
 
   result(result, message) {
-    return {result: result, message: message}
+    return {result, message}
   }
 }
 

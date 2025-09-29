@@ -1,5 +1,6 @@
 const {log, error} = Candy.server('Log', false).init('Mail', 'SMTP')
 
+const nodeCrypto = require('crypto')
 const dns = require('dns')
 const net = require('net')
 const tls = require('tls')
@@ -24,7 +25,31 @@ class smtp {
       maxEmailSize: 25 * 1024 * 1024, // 25MB
       connectionPoolTimeout: 300000, // 5 minutes
       dnsTimeout: 10000, // 10 seconds
-      rateLimitPerHour: 1000
+      rateLimitPerHour: 1000,
+      tls: {
+        minVersion: 'TLSv1.1', // More flexible minimum
+        secureProtocol: 'TLS_method', // Auto-negotiation
+        ciphers: [
+          'ECDHE-RSA-AES256-GCM-SHA384',
+          'ECDHE-RSA-AES128-GCM-SHA256',
+          'ECDHE-RSA-AES256-SHA384',
+          'ECDHE-RSA-AES128-SHA256',
+          'AES256-GCM-SHA384',
+          'AES128-GCM-SHA256',
+          'AES256-SHA256',
+          'AES128-SHA256',
+          'HIGH',
+          '!aNULL',
+          '!eNULL',
+          '!EXPORT',
+          '!DES',
+          '!RC4',
+          '!MD5',
+          '!PSK',
+          '!SRP',
+          '!CAMELLIA'
+        ].join(':')
+      }
     }
 
     // Connection pool and caches
@@ -273,7 +298,8 @@ class smtp {
                 host: host,
                 port: port,
                 rejectUnauthorized: false,
-                timeout: this.config.timeout
+                timeout: this.config.timeout,
+                ...this.config.tls
               },
               async () => {
                 cleanup()
@@ -289,6 +315,41 @@ class smtp {
                 }
               }
             )
+
+            socket.on('error', err => {
+              if (err.code === 'ERR_SSL_NO_SHARED_CIPHER') {
+                error('TLS Cipher Error on port 465 - Trying fallback:', err.message)
+                // Try with minimal TLS configuration
+                const fallbackSocket = tls.connect({
+                  host: host,
+                  port: port,
+                  rejectUnauthorized: false,
+                  timeout: this.config.timeout,
+                  minVersion: 'TLSv1.1'
+                })
+                fallbackSocket.on('secureConnect', async () => {
+                  log('Fallback SSL connection successful on port 465')
+                  try {
+                    fallbackSocket.setEncoding('utf8')
+                    await new Promise(resolve => fallbackSocket.once('data', resolve))
+                    await this.#commandWithTimeout(fallbackSocket, `EHLO ${this.#sanitizeInput(sender)}\r\n`)
+                    this.#addToConnectionPool(host, port, fallbackSocket)
+                    resolve(fallbackSocket)
+                  } catch (fallbackErr) {
+                    fallbackSocket.destroy()
+                    reject(fallbackErr)
+                  }
+                })
+                fallbackSocket.on('error', fallbackErr => {
+                  error('Fallback SSL connection also failed:', fallbackErr)
+                  reject(err)
+                })
+              } else {
+                error('SSL Error on port 465:', err)
+                socket.destroy()
+                reject(err)
+              }
+            })
           } else {
             socket = net.createConnection(port, host, async () => {
               cleanup()
@@ -315,7 +376,7 @@ class smtp {
                     socket: socket,
                     servername: host,
                     rejectUnauthorized: false,
-                    minVersion: 'TLSv1.2'
+                    ...this.config.tls
                   },
                   async () => {
                     try {
@@ -332,9 +393,28 @@ class smtp {
                 )
 
                 socket.on('error', err => {
-                  error('Error connecting to the server (TLS):', err)
-                  socket.destroy()
-                  reject(err)
+                  if (err.code === 'ERR_SSL_NO_SHARED_CIPHER') {
+                    error('TLS Cipher Error - Trying fallback connection:', err.message)
+                    // Try without custom cipher configuration as fallback
+                    const fallbackSocket = tls.connect({
+                      socket: socket,
+                      servername: host,
+                      rejectUnauthorized: false,
+                      minVersion: 'TLSv1.1'
+                    })
+                    fallbackSocket.on('secureConnect', () => {
+                      log('Fallback TLS connection successful')
+                      resolve(fallbackSocket)
+                    })
+                    fallbackSocket.on('error', fallbackErr => {
+                      error('Fallback connection also failed:', fallbackErr)
+                      reject(err)
+                    })
+                  } else {
+                    error('Error connecting to the server (TLS):', err)
+                    socket.destroy()
+                    reject(err)
+                  }
                 })
               } catch (err) {
                 socket.destroy()
@@ -368,7 +448,6 @@ class smtp {
       if (obj.html.length || obj.attachments.length) {
         let boundary = headers.match(/boundary="(.*)"/)?.[1]
         if (!boundary) {
-          const nodeCrypto = require('crypto')
           boundary = 'boundary_' + nodeCrypto.randomBytes(16).toString('hex')
           headers = headers.replace(/Content-Type: multipart\/mixed/, `Content-Type: multipart/mixed; boundary="${boundary}"`)
         }

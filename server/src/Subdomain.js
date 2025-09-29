@@ -24,7 +24,32 @@ class Subdomain {
     websites[domain].subdomain.sort()
     Candy.core('Config').config.websites = websites
     Candy.server('SSL').renew(domain)
-    return Candy.server('Api').result(true, await __('Subdomain %s created successfully for domain %s.', fulldomain, domain))
+    return Candy.server('Api').result(true, await __('Subdomain %s1 created successfully for domain %s2.', fulldomain, domain))
+  }
+
+  async delete(subdomain) {
+    let domain = subdomain.split('.')
+    subdomain = subdomain.trim().split('.')
+    if (subdomain.length < 3) return Candy.server('Api').result(false, await __('Invalid subdomain name.'))
+    if (Candy.core('Config').config.websites[domain.join('.')])
+      return Candy.server('Api').result(false, await __('%s is a domain.', domain.join('.')))
+    while (domain.length > 2) {
+      domain.shift()
+      if (Candy.core('Config').config.websites[domain.join('.')]) {
+        domain = domain.join('.')
+        break
+      }
+    }
+    if (typeof domain == 'object') return Candy.server('Api').result(false, await __('Domain %s not found.', domain.join('.')))
+    subdomain = subdomain.join('.').substr(0, subdomain.join('.').length - domain.length - 1)
+    let fulldomain = [subdomain, domain].join('.')
+    if (!Candy.core('Config').config.websites[domain].subdomain.includes(subdomain))
+      return Candy.server('Api').result(false, await __('Subdomain %s not found.', fulldomain))
+    Candy.server('DNS').delete({name: fulldomain, type: 'A'}, {name: 'www.' + fulldomain, type: 'CNAME'}, {name: fulldomain, type: 'MX'})
+    let websites = Candy.core('Config').config.websites
+    websites[domain].subdomain = websites[domain].subdomain.filter(s => s != subdomain && s != 'www.' + subdomain)
+    Candy.core('Config').config.websites = websites
+    return Candy.server('Api').result(true, await __('Subdomain %s1 deleted successfully from domain %s2.', fulldomain, domain))
   }
 
   async list(domain) {

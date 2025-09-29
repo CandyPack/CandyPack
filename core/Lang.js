@@ -40,9 +40,10 @@ class Lang {
       this.#save()
     }
     if (args.length > 0) {
-      for (const arg of args) {
-        text = text.replace('%s', arg)
-      }
+      args.forEach((arg, i) => {
+        if (text.includes(`%s${i + 1}`)) text = text.replace(`%s${i + 1}`, arg)
+        else text = text.replace('%s', arg)
+      })
     }
     return text
   }

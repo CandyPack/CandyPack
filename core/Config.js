@@ -25,10 +25,26 @@ class Config {
     if (!fs.existsSync(this.#dir)) fs.mkdirSync(this.#dir)
     if (!fs.existsSync(this.#file)) this.#save()
     else this.#load()
-    if (!process.mainModule.path.includes('node_modules/candypack/bin')) {
+
+    // Ensure config structure exists after loading
+    if (!this.config || typeof this.config !== 'object') {
+      this.config = {}
+    }
+    if (!this.config.server || typeof this.config.server !== 'object') {
+      this.config.server = {
+        pid: null,
+        started: null,
+        watchdog: null
+      }
+    }
+
+    // Handle process.mainModule safely
+    if (process.mainModule && process.mainModule.path && !process.mainModule.path.includes('node_modules/candypack/bin')) {
       setInterval(() => this.#save(), 500).unref()
       this.config = this.#proxy(this.config)
     }
+
+    // Update OS and arch information
     if (
       !this.config.server.os ||
       this.config.server.os != os.platform() ||
@@ -79,8 +95,11 @@ class Config {
         } catch (e) {
           console.log(e)
           this.#save(true)
+          return
         }
-        this.config = data
+        if (data && typeof data === 'object') {
+          this.config = data
+        }
         return
       } else {
         this.config = {}
@@ -88,7 +107,9 @@ class Config {
         return
       }
     } else {
-      this.config = data
+      if (data && typeof data === 'object') {
+        this.config = data
+      }
       return
     }
   }
@@ -135,4 +156,4 @@ class Config {
   }
 }
 
-module.exports = new Config()
+module.exports = Config

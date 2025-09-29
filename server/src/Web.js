@@ -57,7 +57,7 @@ class Web {
     })
   }
 
-  async create(domain) {
+  create(domain, progress) {
     let web = {}
     for (const iterator of ['http://', 'https://', 'ftp://', 'www.']) {
       if (domain.startsWith(iterator)) domain = domain.replace(iterator, '')
@@ -65,14 +65,16 @@ class Web {
     if (domain.length < 3 || (!domain.includes('.') && domain != 'localhost'))
       return Candy.server('Api').result(false, __('Invalid domain.'))
     if (Candy.core('Config').config.websites?.[domain]) return Candy.server('Api').result(false, __('Website %s already exists.', domain))
+    progress('domain', 'progress', __('Setting up domain %s...', domain))
     web.domain = domain
     web.path = path.join(Candy.core('Config').config.web.path, domain)
     if (!fs.existsSync(web.path)) fs.mkdirSync(web.path, {recursive: true})
     if (!Candy.core('Config').config.websites) Candy.core('Config').config.websites = {}
     web.cert = false
     Candy.core('Config').config.websites[web.domain] = web
+    progress('domain', 'success', __('Domain %s set.', domain))
     if (web.domain != 'localhost' && !web.domain.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-      Candy.core('Config').config.websites[web.domain].cert = {}
+      progress('dns', 'progress', __('Setting up DNS records for %s...', domain))
       Candy.core('Config').config.websites[web.domain].subdomain = ['www']
       Candy.server('DNS').record(
         {name: web.domain, type: 'A', value: Candy.server('DNS').ip},
@@ -85,12 +87,17 @@ class Web {
           value: 'v=DMARC1; p=reject; rua=mailto:postmaster@' + web.domain
         }
       )
+      progress('dns', 'success', __('DNS records for %s set.', domain))
+      Candy.core('Config').config.websites[web.domain].cert = {}
+      progress('ssl', 'progress', __('Setting up SSL certificate for %s...', domain))
     }
+    progress('directory', 'progress', __('Setting up website files for %s...', domain))
     childProcess.execSync('npm link candypack', {cwd: web.path})
     if (fs.existsSync(web.path + 'node_modules/.bin')) fs.rmSync(web.path + 'node_modules/.bin', {recursive: true})
     if (!fs.existsSync(web.path + '/node_modules')) fs.mkdirSync(web.path + '/node_modules')
     fs.cpSync(__dirname + '/../../web/', web.path, {recursive: true})
-    return Candy.server('Api').result(true, __('Website %s created at %s.', web.domain, web.path))
+    progress('directory', 'success', __('Website files for %s set.', domain))
+    return Candy.server('Api').result(true, __('Website %s1 created at %s2.', web.domain, web.path))
   }
 
   async delete(domain) {
@@ -137,9 +144,9 @@ class Web {
   }
 
   async list() {
-    let domains = Object.keys(Candy.core('Config').config.websites ?? {})
-    if (domains.length == 0) return Candy.server('Api').result(false, __('No websites found.'))
-    return Candy.server('Api').result(true, __('Websites:') + '\n  ' + domains.join('\n  '))
+    let websites = Object.keys(Candy.core('Config').config.websites ?? {})
+    if (websites.length == 0) return Candy.server('Api').result(false, __('No websites found.'))
+    return Candy.server('Api').result(true, __('Websites:') + '\n  ' + websites.join('\n  '))
   }
 
   request(req, res, secure) {
@@ -178,15 +185,26 @@ class Web {
   }
 
   server() {
-    if (!this.#loaded) return setTimeout(this.server, 1000)
+    if (!this.#loaded) return setTimeout(() => this.server(), 1000)
     if (Object.keys(Candy.core('Config').config.websites ?? {}).length == 0) return
-    if (!this.#server_http) this.#server_http = http.createServer((req, res) => this.request(req, res, false)).listen(80)
+
+    if (!this.#server_http) {
+      this.#server_http = http.createServer((req, res) => this.request(req, res, false))
+      this.#server_http.on('error', err => {
+        log(`HTTP server error: ${err.message}`)
+        if (err.code === 'EADDRINUSE') {
+          log('Port 80 is already in use')
+        }
+      })
+      this.#server_http.listen(80)
+    }
+
     let ssl = Candy.core('Config').config.ssl ?? {}
     if (!this.#server_https && ssl && ssl.key && ssl.cert && fs.existsSync(ssl.key) && fs.existsSync(ssl.cert)) {
-      this.#server_https = https
-        .createServer(
-          {
-            SNICallback: (hostname, callback) => {
+      this.#server_https = https.createServer(
+        {
+          SNICallback: (hostname, callback) => {
+            try {
               let sslOptions
               while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.'))
                 hostname = hostname.split('.').slice(1).join('.')
@@ -212,15 +230,27 @@ class Web {
               }
               const ctx = tls.createSecureContext(sslOptions)
               callback(null, ctx)
-            },
-            key: fs.readFileSync(ssl.key),
-            cert: fs.readFileSync(ssl.cert)
+            } catch (err) {
+              log(`SSL certificate error for ${hostname}: ${err.message}`)
+              callback(err)
+            }
           },
-          (req, res) => {
-            this.request(req, res, true)
-          }
-        )
-        .listen(443)
+          key: fs.readFileSync(ssl.key),
+          cert: fs.readFileSync(ssl.cert)
+        },
+        (req, res) => {
+          this.request(req, res, true)
+        }
+      )
+
+      this.#server_https.on('error', err => {
+        log(`HTTPS server error: ${err.message}`)
+        if (err.code === 'EADDRINUSE') {
+          log('Port 443 is already in use')
+        }
+      })
+
+      this.#server_https.listen(443)
     }
   }
 
@@ -279,7 +309,7 @@ class Web {
           .split('\n')
           .join('\n[LOG][' + Date.now() + '] ') +
         '\n'
-      if (this.#logs.log[domain].length > 1000000)
+      if (this.#logs.log[domain].length > 100000)
         this.#logs.log[domain] = this.#logs.log[domain].substr(this.#logs.log[domain].length - 1000000)
       if (Candy.core('Config').config.websites[domain] && Candy.core('Config').config.websites[domain].status == 'errored')
         Candy.core('Config').config.websites[domain].status = 'running'
@@ -297,7 +327,7 @@ class Web {
           .join('\n[ERR][' + Date.now() + '] ') +
         '\n'
       this.#logs.err[domain] += data.toString()
-      if (this.#logs.err[domain].length > 1000000)
+      if (this.#logs.err[domain].length > 100000)
         this.#logs.err[domain] = this.#logs.err[domain].substr(this.#logs.err[domain].length - 1000000)
       if (Candy.core('Config').config.websites[domain]) Candy.core('Config').config.websites[domain].status = 'errored'
     })
