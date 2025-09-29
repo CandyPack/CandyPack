@@ -183,7 +183,12 @@ describe('Config', () => {
 
       expect(() => {
         config.init()
-      }).toThrow('Cannot read properties of null')
+      }).not.toThrow()
+
+      // Should still initialize properly with default server config
+      expect(config.config.server).toBeDefined()
+      expect(config.config.server.os).toBe('linux')
+      expect(config.config.server.arch).toBe('x64')
     })
   })
 
@@ -234,9 +239,14 @@ describe('Config', () => {
 
       expect(() => {
         config.init()
-      }).toThrow('Cannot read properties of undefined')
+      }).not.toThrow()
 
       expect(console.log).toHaveBeenCalledWith('Error parsing config file:', '/home/user/.candypack/config.json')
+
+      // Should still initialize with default server config
+      expect(config.config.server).toBeDefined()
+      expect(config.config.server.os).toBe('linux')
+      expect(config.config.server.arch).toBe('x64')
     })
 
     it('should handle file system errors gracefully', () => {
