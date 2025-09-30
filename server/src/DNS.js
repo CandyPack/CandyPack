@@ -54,6 +54,8 @@ class DNS {
   #publish() {
     if (this.#loaded || !Object.keys(Candy.core('Config').config.websites ?? {}).length) return
     this.#loaded = true
+
+    // Set up request handlers
     this.#udp.on('request', (request, response) => {
       try {
         this.#request(request, response)
@@ -68,104 +70,270 @@ class DNS {
         error('DNS TCP request handler error:', err.message)
       }
     })
-    this.#udp.on('error', err => error('DNS UDP Server Error:', err.stack))
-    this.#tcp.on('error', err => error('DNS TCP Server Error:', err.stack))
+
+    // Log system information before starting
+    this.#logSystemInfo()
 
     this.#startDNSServers()
   }
 
-  #startDNSServers() {
+  #logSystemInfo() {
     try {
-      this.#udp.serve(53)
-      this.#tcp.serve(53)
-      log('DNS servers started on port 53')
-    } catch (err) {
-      if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
-        log('Port 53 is in use, attempting to resolve systemd-resolve conflict...')
-        if (this.#handleSystemdResolveConflict()) {
-          // Retry after handling systemd-resolve
-          setTimeout(() => {
+      log('DNS Server initialization - System information:')
+      log('Platform:', os.platform())
+      log('Architecture:', os.arch())
+
+      // Check what's using port 53
+      try {
+        const port53Info = execSync(
+          'lsof -i :53 2>/dev/null || netstat -tulpn 2>/dev/null | grep :53 || ss -tulpn 2>/dev/null | grep :53 || echo "Port 53 appears to be free"',
+          {
+            encoding: 'utf8',
+            timeout: 5000
+          }
+        )
+        log('Port 53 status:', port53Info.trim() || 'No processes found on port 53')
+      } catch (err) {
+        log('Could not check port 53 status:', err.message)
+      }
+
+      // Check systemd-resolved status on Linux
+      if (os.platform() === 'linux') {
+        try {
+          const resolvedStatus = execSync('systemctl is-active systemd-resolved 2>/dev/null || echo "not-active"', {
+            encoding: 'utf8',
+            timeout: 3000
+          }).trim()
+          log('systemd-resolved status:', resolvedStatus)
+
+          if (resolvedStatus === 'active') {
             try {
-              this.#udp.serve(53)
-              this.#tcp.serve(53)
-              log('DNS servers started on port 53 after resolving systemd-resolve conflict')
-            } catch (retryErr) {
-              error('Failed to start DNS servers after systemd-resolve resolution:', retryErr.message)
+              const resolvedConfig = execSync(
+                'systemd-resolve --status 2>/dev/null | head -20 || resolvectl status 2>/dev/null | head -20 || echo "Could not get resolver status"',
+                {
+                  encoding: 'utf8',
+                  timeout: 3000
+                }
+              )
+              log('Current DNS resolver configuration:', resolvedConfig.trim())
+            } catch {
+              log('Could not get DNS resolver configuration')
             }
-          }, 2000)
-        } else {
-          error('Failed to resolve port 53 conflict:', err.message)
+          }
+        } catch (err) {
+          log('Could not check systemd-resolved status:', err.message)
         }
+      }
+    } catch (err) {
+      log('Error logging system info:', err.message)
+    }
+  }
+
+  async #startDNSServers() {
+    // First, proactively check if port 53 is available
+    const portAvailable = await this.#checkPortAvailability(53)
+    if (!portAvailable) {
+      log('Port 53 is already in use, attempting to resolve conflict...')
+      const resolved = await this.#handleSystemdResolveConflict()
+      if (resolved) {
+        // Wait a bit and retry
+        setTimeout(() => this.#attemptDNSStart(53), 3000)
       } else {
-        error('Failed to start DNS servers:', err.message)
+        log('Could not resolve port 53 conflict, using alternative port...')
+        this.#useAlternativePort()
+      }
+      return
+    }
+
+    // Port seems available, try to start
+    this.#attemptDNSStart(53)
+  }
+
+  #attemptDNSStart(port) {
+    try {
+      // Set up error handlers before starting
+      this.#udp.on('error', async err => {
+        error('DNS UDP Server Error:', err.message)
+        if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+          log(`Port ${port} conflict detected via error event, attempting resolution...`)
+          if (port === 53) {
+            const resolved = await this.#handleSystemdResolveConflict()
+            if (!resolved) {
+              this.#useAlternativePort()
+            }
+          }
+        }
+      })
+
+      this.#tcp.on('error', async err => {
+        error('DNS TCP Server Error:', err.message)
+        if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+          log(`Port ${port} conflict detected via error event, attempting resolution...`)
+          if (port === 53) {
+            const resolved = await this.#handleSystemdResolveConflict()
+            if (!resolved) {
+              this.#useAlternativePort()
+            }
+          }
+        }
+      })
+
+      // Try to start servers
+      this.#udp.serve(port)
+      this.#tcp.serve(port)
+      log(`DNS servers started on port ${port}`)
+    } catch (err) {
+      error('Failed to start DNS servers:', err.message)
+      if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+        log(`Port ${port} is in use (caught exception), attempting resolution...`)
+        if (port === 53) {
+          this.#handleSystemdResolveConflict().then(resolved => {
+            if (resolved) {
+              setTimeout(() => this.#attemptDNSStart(53), 3000)
+            } else {
+              this.#useAlternativePort()
+            }
+          })
+        } else {
+          this.#useAlternativePort()
+        }
       }
     }
   }
 
-  #handleSystemdResolveConflict() {
+  async #checkPortAvailability(port) {
     try {
-      // Check if we're on Linux and systemd-resolve is running
-      if (os.platform() !== 'linux') {
+      // Check if anything is listening on the port
+      const portCheck = execSync(
+        `lsof -i :${port} 2>/dev/null || netstat -tulpn 2>/dev/null | grep :${port} || ss -tulpn 2>/dev/null | grep :${port} || true`,
+        {
+          encoding: 'utf8',
+          timeout: 5000
+        }
+      )
+
+      if (portCheck.trim()) {
+        log(`Port ${port} is in use by:`, portCheck.trim())
         return false
       }
 
-      // Check if systemd-resolve is using port 53
-      const netstatOutput = execSync('netstat -tulpn 2>/dev/null | grep :53 || ss -tulpn 2>/dev/null | grep :53 || true', {
+      return true
+    } catch (err) {
+      log('Error checking port availability:', err.message)
+      return false
+    }
+  }
+
+  async #handleSystemdResolveConflict() {
+    try {
+      // Check if we're on Linux
+      if (os.platform() !== 'linux') {
+        log('Not on Linux, skipping systemd-resolve conflict resolution')
+        return false
+      }
+
+      // More comprehensive check for what's using port 53
+      let portInfo = ''
+      try {
+        portInfo = execSync(
+          'lsof -i :53 2>/dev/null || netstat -tulpn 2>/dev/null | grep :53 || ss -tulpn 2>/dev/null | grep :53 || true',
+          {
+            encoding: 'utf8',
+            timeout: 5000
+          }
+        )
+      } catch (err) {
+        log('Could not check port 53 usage:', err.message)
+        return false
+      }
+
+      if (!portInfo || (!portInfo.includes('systemd-resolve') && !portInfo.includes('resolved'))) {
+        log('systemd-resolve not detected on port 53, conflict may be with another service')
+        return false
+      }
+
+      log('Detected systemd-resolve using port 53, attempting resolution...')
+
+      // Try the direct approach first - disable DNS stub listener
+      const stubDisabled = await this.#disableSystemdResolveStub()
+      if (stubDisabled) {
+        return true
+      }
+
+      // If that fails, try alternative approach
+      return this.#tryAlternativeApproach()
+    } catch (err) {
+      error('Error handling systemd-resolve conflict:', err.message)
+      return false
+    }
+  }
+
+  async #disableSystemdResolveStub() {
+    try {
+      log('Attempting to disable systemd-resolved DNS stub listener...')
+
+      // Check if systemd-resolved is active
+      const isActive = execSync('systemctl is-active systemd-resolved 2>/dev/null || echo inactive', {
         encoding: 'utf8',
         timeout: 5000
-      })
+      }).trim()
 
-      if (!netstatOutput.includes('systemd-resolve') && !netstatOutput.includes('resolved')) {
+      if (isActive !== 'active') {
+        log('systemd-resolved is not active')
         return false
       }
 
-      log('Detected systemd-resolve using port 53, configuring to use alternative port...')
-
-      // Create systemd-resolved configuration to use alternative port
+      // Create or update resolved.conf to disable DNS stub
       const resolvedConfDir = '/etc/systemd/resolved.conf.d'
       const resolvedConfFile = `${resolvedConfDir}/candypack-dns.conf`
 
-      // Check if we have write permissions or try with sudo
       try {
+        // Ensure directory exists
         if (!fs.existsSync(resolvedConfDir)) {
           execSync(`sudo mkdir -p ${resolvedConfDir}`, {timeout: 10000})
         }
 
-        // Configure systemd-resolved to use port 5353 instead of 53
+        // Create configuration to disable DNS stub listener
         const resolvedConfig = `[Resolve]
-DNS=127.0.0.1#5353
 DNSStubListener=no
 `
 
         execSync(`echo '${resolvedConfig}' | sudo tee ${resolvedConfFile}`, {timeout: 10000})
-        log('Created systemd-resolved configuration to use port 5353')
+        log('Created systemd-resolved configuration to disable DNS stub listener')
 
-        // Restart systemd-resolved service
+        // Restart systemd-resolved
         execSync('sudo systemctl restart systemd-resolved', {timeout: 15000})
         log('Restarted systemd-resolved service')
 
-        // Wait a moment for the service to restart
-        setTimeout(() => {
-          // Update /etc/resolv.conf to point to our DNS server
-          try {
-            const resolvConf = `nameserver 127.0.0.1
-options edns0 trust-ad
-search .
-`
-            execSync(`echo '${resolvConf}' | sudo tee /etc/resolv.conf`, {timeout: 5000})
-            log('Updated /etc/resolv.conf to use CandyPack DNS')
-          } catch (resolvErr) {
-            log('Warning: Could not update /etc/resolv.conf:', resolvErr.message)
-          }
-        }, 1000)
+        // Wait for service to restart and port to be freed
+        return new Promise(resolve => {
+          setTimeout(() => {
+            try {
+              // Check if port 53 is now free
+              const portCheck = execSync('lsof -i :53 2>/dev/null || true', {
+                encoding: 'utf8',
+                timeout: 3000
+              })
 
-        return true
+              if (!portCheck.includes('systemd-resolve') && !portCheck.includes('resolved')) {
+                log('Port 53 is now available')
+                resolve(true)
+              } else {
+                log('Port 53 still in use, trying alternative approach')
+                resolve(this.#tryAlternativeApproach())
+              }
+            } catch (err) {
+              log('Error checking port availability:', err.message)
+              resolve(this.#tryAlternativeApproach())
+            }
+          }, 3000)
+        })
       } catch (sudoErr) {
         log('Could not configure systemd-resolved (no sudo access):', sudoErr.message)
-        return this.#tryAlternativeApproach()
+        return false
       }
     } catch (err) {
-      error('Error handling systemd-resolve conflict:', err.message)
+      log('Error disabling systemd-resolved stub:', err.message)
       return false
     }
   }
@@ -174,13 +342,153 @@ search .
     try {
       log('Trying alternative approach: temporarily stopping systemd-resolved...')
 
-      // Try to stop systemd-resolved temporarily
-      execSync('sudo systemctl stop systemd-resolved', {timeout: 10000})
-      log('Temporarily stopped systemd-resolved')
-      return true
+      // Check if we can stop systemd-resolved
+      try {
+        execSync('sudo systemctl stop systemd-resolved', {timeout: 10000})
+        log('Temporarily stopped systemd-resolved')
+
+        // Set up cleanup handlers to restart systemd-resolved when process exits
+        this.#setupCleanupHandlers()
+
+        return true
+      } catch (stopErr) {
+        log('Could not stop systemd-resolved:', stopErr.message)
+
+        // Last resort: try to use a different port for our DNS server
+        return this.#useAlternativePort()
+      }
     } catch (err) {
       log('Alternative approach failed:', err.message)
       return false
+    }
+  }
+
+  #setupCleanupHandlers() {
+    const restartSystemdResolved = () => {
+      try {
+        execSync('sudo systemctl start systemd-resolved', {timeout: 10000})
+        log('Restarted systemd-resolved on cleanup')
+      } catch (err) {
+        error('Failed to restart systemd-resolved on cleanup:', err.message)
+      }
+    }
+
+    // Handle various exit scenarios
+    process.on('exit', restartSystemdResolved)
+    process.on('SIGINT', () => {
+      restartSystemdResolved()
+      process.exit(0)
+    })
+    process.on('SIGTERM', () => {
+      restartSystemdResolved()
+      process.exit(0)
+    })
+    process.on('uncaughtException', err => {
+      error('Uncaught exception:', err.message)
+      restartSystemdResolved()
+      process.exit(1)
+    })
+    process.on('unhandledRejection', (reason, promise) => {
+      error('Unhandled rejection at:', promise, 'reason:', reason)
+      restartSystemdResolved()
+      process.exit(1)
+    })
+
+    log('Set up cleanup handlers to restart systemd-resolved on exit')
+  }
+
+  async #useAlternativePort() {
+    try {
+      log('Attempting to use alternative port for DNS server...')
+
+      // Try ports 5353, 1053, 8053 as alternatives
+      const alternativePorts = [5353, 1053, 8053]
+
+      for (const port of alternativePorts) {
+        const available = await this.#checkPortAvailability(port)
+        if (available) {
+          try {
+            // Create new server instances for alternative port
+            const udpAlt = dns.createServer()
+            const tcpAlt = dns.createTCPServer()
+
+            // Copy event handlers
+            udpAlt.on('request', (request, response) => {
+              try {
+                this.#request(request, response)
+              } catch (err) {
+                error('DNS UDP request handler error:', err.message)
+              }
+            })
+
+            tcpAlt.on('request', (request, response) => {
+              try {
+                this.#request(request, response)
+              } catch (err) {
+                error('DNS TCP request handler error:', err.message)
+              }
+            })
+
+            udpAlt.on('error', err => error('DNS UDP Server Error (alt port):', err.stack))
+            tcpAlt.on('error', err => error('DNS TCP Server Error (alt port):', err.stack))
+
+            // Start on alternative port
+            udpAlt.serve(port)
+            tcpAlt.serve(port)
+
+            // Replace original servers
+            this.#udp = udpAlt
+            this.#tcp = tcpAlt
+
+            log(`DNS servers started on alternative port ${port}`)
+
+            // Update system to use our alternative port
+            this.#updateSystemDNSConfig(port)
+            return true
+          } catch (portErr) {
+            log(`Failed to start on port ${port}:`, portErr.message)
+            continue
+          }
+        } else {
+          log(`Port ${port} is also in use, trying next...`)
+          continue
+        }
+      }
+
+      error('All alternative ports are in use')
+      return false
+    } catch (err) {
+      error('Failed to use alternative port:', err.message)
+      return false
+    }
+  }
+
+  #updateSystemDNSConfig(port) {
+    try {
+      // Update /etc/resolv.conf to point to our DNS server on alternative port
+      // Note: This is a simplified approach, in practice you might need more sophisticated DNS forwarding
+      const resolvConf = `nameserver 127.0.0.1
+# CandyPack DNS running on port ${port}
+# Original configuration backed up
+`
+
+      // Backup original resolv.conf
+      execSync('sudo cp /etc/resolv.conf /etc/resolv.conf.candypack.backup 2>/dev/null || true', {timeout: 5000})
+
+      // Update resolv.conf
+      execSync(`echo '${resolvConf}' | sudo tee /etc/resolv.conf`, {timeout: 5000})
+      log(`Updated /etc/resolv.conf to use CandyPack DNS on port ${port}`)
+
+      // Set up restoration on exit
+      process.on('exit', () => {
+        try {
+          execSync('sudo mv /etc/resolv.conf.candypack.backup /etc/resolv.conf 2>/dev/null || true', {timeout: 5000})
+        } catch {
+          // Silent fail on exit
+        }
+      })
+    } catch (err) {
+      log('Warning: Could not update system DNS configuration:', err.message)
     }
   }
 
