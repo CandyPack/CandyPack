@@ -10,7 +10,7 @@ class DNS {
   ip = '127.0.0.1'
   #loaded = false
   #tcp
-  #types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SOA']
+  #types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SOA', 'CAA']
   #udp
   #requestCount = new Map() // Rate limiting
   #rateLimit = 100 // requests per minute per IP
@@ -631,6 +631,8 @@ nameserver 8.8.4.4
       }
 
       if (!Candy.core('Config').config.websites[domain] || !Candy.core('Config').config.websites[domain].DNS) {
+        // For unknown domains, send proper NXDOMAIN response instead of empty response
+        response.header.rcode = dns.consts.NAME_TO_RCODE.NXDOMAIN
         return response.send()
       }
 
@@ -659,6 +661,13 @@ nameserver 8.8.4.4
         case dns.consts.NAME_TO_QTYPE.SOA:
           this.#processSOARecords(dnsRecords.SOA, questionName, response)
           break
+        case dns.consts.NAME_TO_QTYPE.CAA:
+          this.#processCAARecords(dnsRecords.CAA, questionName, response)
+          // If no CAA records found, add default Let's Encrypt CAA records
+          if (!response.answer.length && dnsRecords.CAA?.length === 0) {
+            this.#addDefaultCAARecords(questionName, response)
+          }
+          break
         default:
           // For ANY queries or unknown types, process all relevant records
           this.#processARecords(dnsRecords.A, questionName, response)
@@ -668,6 +677,7 @@ nameserver 8.8.4.4
           this.#processTXTRecords(dnsRecords.TXT, questionName, response)
           this.#processNSRecords(dnsRecords.NS, questionName, response, domain)
           this.#processSOARecords(dnsRecords.SOA, questionName, response)
+          this.#processCAARecords(dnsRecords.CAA, questionName, response)
       }
 
       response.send()
@@ -818,6 +828,62 @@ nameserver 8.8.4.4
     }
   }
 
+  #processCAARecords(records, questionName, response) {
+    try {
+      for (const record of records ?? []) {
+        if (!record || record.name !== questionName) continue
+
+        // CAA record format: flags tag value
+        // Example: "0 issue letsencrypt.org"
+        const caaParts = record.value.split(' ')
+        if (caaParts.length < 3) continue
+
+        const flags = parseInt(caaParts[0]) || 0
+        const tag = caaParts[1]
+        const value = caaParts.slice(2).join(' ')
+
+        response.answer.push(
+          dns.CAA({
+            name: record.name,
+            flags: flags,
+            tag: tag,
+            value: value,
+            ttl: record.ttl ?? 3600
+          })
+        )
+      }
+    } catch (err) {
+      error('Error processing CAA records:', err.message)
+    }
+  }
+
+  #addDefaultCAARecords(questionName, response) {
+    try {
+      // Add default CAA records allowing Let's Encrypt
+      response.answer.push(
+        dns.CAA({
+          name: questionName,
+          flags: 0,
+          tag: 'issue',
+          value: 'letsencrypt.org',
+          ttl: 3600
+        })
+      )
+      response.answer.push(
+        dns.CAA({
+          name: questionName,
+          flags: 0,
+          tag: 'issuewild',
+          value: 'letsencrypt.org',
+          ttl: 3600
+        })
+      )
+      log("Added default CAA records for Let's Encrypt to response for:", questionName)
+    } catch (err) {
+      error('Error adding default CAA records:', err.message)
+    }
+  }
+
   record(...args) {
     let domains = []
     for (let obj of args) {
@@ -842,13 +908,32 @@ nameserver 8.8.4.4
       .toISOString()
       .replace(/[^0-9]/g, '')
       .slice(0, 10)
-    for (let domain of domains)
+    for (let domain of domains) {
+      // Add SOA record
       Candy.core('Config').config.websites[domain].DNS.SOA = [
         {
           name: domain,
           value: 'ns1.' + domain + ' hostmaster.' + domain + ' ' + date + ' 3600 600 604800 3600'
         }
       ]
+
+      // Add default CAA records for Let's Encrypt SSL certificates
+      if (!Candy.core('Config').config.websites[domain].DNS.CAA) {
+        Candy.core('Config').config.websites[domain].DNS.CAA = [
+          {
+            name: domain,
+            value: '0 issue letsencrypt.org',
+            ttl: 3600
+          },
+          {
+            name: domain,
+            value: '0 issuewild letsencrypt.org',
+            ttl: 3600
+          }
+        ]
+        log("Added default CAA records for Let's Encrypt to domain:", domain)
+      }
+    }
   }
 }
 
