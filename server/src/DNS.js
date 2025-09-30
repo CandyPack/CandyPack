@@ -2,6 +2,9 @@ const {log, error} = Candy.server('Log', false).init('DNS')
 
 const axios = require('axios')
 const dns = require('native-dns')
+const {execSync} = require('child_process')
+const fs = require('fs')
+const os = require('os')
 
 class DNS {
   ip = '127.0.0.1'
@@ -68,12 +71,116 @@ class DNS {
     this.#udp.on('error', err => error('DNS UDP Server Error:', err.stack))
     this.#tcp.on('error', err => error('DNS TCP Server Error:', err.stack))
 
+    this.#startDNSServers()
+  }
+
+  #startDNSServers() {
     try {
       this.#udp.serve(53)
       this.#tcp.serve(53)
       log('DNS servers started on port 53')
     } catch (err) {
-      error('Failed to start DNS servers:', err.message)
+      if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+        log('Port 53 is in use, attempting to resolve systemd-resolve conflict...')
+        if (this.#handleSystemdResolveConflict()) {
+          // Retry after handling systemd-resolve
+          setTimeout(() => {
+            try {
+              this.#udp.serve(53)
+              this.#tcp.serve(53)
+              log('DNS servers started on port 53 after resolving systemd-resolve conflict')
+            } catch (retryErr) {
+              error('Failed to start DNS servers after systemd-resolve resolution:', retryErr.message)
+            }
+          }, 2000)
+        } else {
+          error('Failed to resolve port 53 conflict:', err.message)
+        }
+      } else {
+        error('Failed to start DNS servers:', err.message)
+      }
+    }
+  }
+
+  #handleSystemdResolveConflict() {
+    try {
+      // Check if we're on Linux and systemd-resolve is running
+      if (os.platform() !== 'linux') {
+        return false
+      }
+
+      // Check if systemd-resolve is using port 53
+      const netstatOutput = execSync('netstat -tulpn 2>/dev/null | grep :53 || ss -tulpn 2>/dev/null | grep :53 || true', {
+        encoding: 'utf8',
+        timeout: 5000
+      })
+
+      if (!netstatOutput.includes('systemd-resolve') && !netstatOutput.includes('resolved')) {
+        return false
+      }
+
+      log('Detected systemd-resolve using port 53, configuring to use alternative port...')
+
+      // Create systemd-resolved configuration to use alternative port
+      const resolvedConfDir = '/etc/systemd/resolved.conf.d'
+      const resolvedConfFile = `${resolvedConfDir}/candypack-dns.conf`
+
+      // Check if we have write permissions or try with sudo
+      try {
+        if (!fs.existsSync(resolvedConfDir)) {
+          execSync(`sudo mkdir -p ${resolvedConfDir}`, {timeout: 10000})
+        }
+
+        // Configure systemd-resolved to use port 5353 instead of 53
+        const resolvedConfig = `[Resolve]
+DNS=127.0.0.1#5353
+DNSStubListener=no
+`
+
+        execSync(`echo '${resolvedConfig}' | sudo tee ${resolvedConfFile}`, {timeout: 10000})
+        log('Created systemd-resolved configuration to use port 5353')
+
+        // Restart systemd-resolved service
+        execSync('sudo systemctl restart systemd-resolved', {timeout: 15000})
+        log('Restarted systemd-resolved service')
+
+        // Wait a moment for the service to restart
+        setTimeout(() => {
+          // Update /etc/resolv.conf to point to our DNS server
+          try {
+            const resolvConf = `nameserver 127.0.0.1
+options edns0 trust-ad
+search .
+`
+            execSync(`echo '${resolvConf}' | sudo tee /etc/resolv.conf`, {timeout: 5000})
+            log('Updated /etc/resolv.conf to use CandyPack DNS')
+          } catch (resolvErr) {
+            log('Warning: Could not update /etc/resolv.conf:', resolvErr.message)
+          }
+        }, 1000)
+
+        return true
+      } catch (sudoErr) {
+        log('Could not configure systemd-resolved (no sudo access):', sudoErr.message)
+        return this.#tryAlternativeApproach()
+      }
+    } catch (err) {
+      error('Error handling systemd-resolve conflict:', err.message)
+      return false
+    }
+  }
+
+  #tryAlternativeApproach() {
+    try {
+      log('Trying alternative approach: temporarily stopping systemd-resolved...')
+
+      // Try to stop systemd-resolved temporarily
+      execSync('sudo systemctl stop systemd-resolved', {timeout: 10000})
+      log('Temporarily stopped systemd-resolved')
+      return true
+    } catch (err) {
+      log('Alternative approach failed:', err.message)
+      return false
     }
   }
 
