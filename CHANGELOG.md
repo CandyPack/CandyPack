@@ -71,6 +71,70 @@ Powered by [🍭 CandyPack](https://candypack.dev)
 - Improve error handling for HTTP/HTTPS server startup
 - Refactor documentation files
 
+### ⚡️ Performance Upgrades
+
+- Core Process Module
+
+### ✨ What's New
+
+- Add Jest for testing
+- Add Jest for unit testing and code coverage
+- add semantic-release
+- add semantic-release with npm publishing
+- Added 'candy service delete' command.
+- Added 'candy subdomain delete' command.
+- Added 'candy web delete' command.
+- Added CLI prefix arguments support
+- Added German, Spanish, French, Portuguese, Russian, and Chinese language support for CLI
+- CLI Mouse Support
+- **cli:** Add Progress-Based Output
+- **release:** customize semantic-release notes generation
+- **server:** New Logging Module
+
+### 📚 Documentation
+
+- Add AGENTS.md and update contribution guidelines
+- Framework Docs
+- Remove 'coming soon' from documentation link
+- Server documentation
+- update AGENTS.md with detailed developer guide
+
+### 🛠️ Fixes & Improvements
+
+- Add missing conventional-changelog-conventionalcommits dependency
+- **CLI:** Fixed CLI Commands
+- Correct license and supported version in docs
+- DNS Server Improvements
+- Fix module instantiation and nullish services handling
+- Fixed website creation problem
+- **Framework:** Add error handling for config file parsing
+- **Framework:** No Controller View
+- IMAP Server Improvements
+- Limit log and error buffer sizes in Web and Watchdog
+- Rebooting
+- Refactor website creation and config handling
+- Resolve semantic-release configuration and dependency errors
+- Server startup problem
+- **Server:** Logs fixed
+- SMTP Server Improvements
+- Update auto-generated PR text to English
+- Web Server Improvements
+
+
+
+---
+
+Powered by [🍭 CandyPack](https://candypack.dev)
+
+### Refactor
+
+- Improve IMAP and SMTP authentication and TLS handling
+
+### ⚙️ Engine Tuning
+
+- Improve error handling for HTTP/HTTPS server startup
+- Refactor documentation files
+
 ### ✨ What's New
 
 - Added 'candy service delete' command.
