@@ -111,8 +111,6 @@ module.exports = {
 ---
 
 Powered by [🍭 CandyPack](https://candypack.dev)
-
-**v**{{nextRelease.version}}
 `
         }
       }
