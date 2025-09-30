@@ -1,21 +1,26 @@
-const http = require(`http`)
+class Server {
+  constructor() {
+    Candy.core('Config').config.server.pid = process.pid
+    Candy.core('Config').config.server.started = Date.now()
+    Candy.server('Service')
+    Candy.server('DNS')
+    Candy.server('Web')
+    Candy.server('Mail')
+    Candy.server('Api')
+    setTimeout(function () {
+      setInterval(function () {
+        Candy.server('Service').check()
+        Candy.server('SSL').check()
+        Candy.server('Web').check()
+        Candy.server('Mail').check()
+      }, 1000)
+    }, 1000)
+  }
 
-module.exports = {
-  init: function () {
-    let args = process.argv.slice(2)
-    if (!args[0]) {
-      console.error(`CandyPack Server requires a port.`)
-      process.exit(0)
-    }
-    let port = parseInt(args[0])
-    if (!port) {
-      console.error(`CandyPack Server requires a port.`)
-      process.exit(0)
-    }
-    http
-      .createServer((req, res) => {
-        return Candy.Route.request(req, res)
-      })
-      .listen(port)
+  stop() {
+    Candy.server('Service').stopAll()
+    Candy.server('Web').stopAll()
   }
 }
+
+module.exports = new Server()
