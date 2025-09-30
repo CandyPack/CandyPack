@@ -225,6 +225,11 @@ class DNS {
       this.#udp.serve(port)
       this.#tcp.serve(port)
       log(`DNS servers started on port ${port}`)
+
+      // Update system DNS configuration for internet access
+      if (port === 53) {
+        this.#setupSystemDNSForInternet()
+      }
     } catch (err) {
       error('Failed to start DNS servers:', err.message)
       if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
@@ -336,9 +341,11 @@ class DNS {
           execSync(`sudo mkdir -p ${resolvedConfDir}`, {timeout: 10000})
         }
 
-        // Create configuration to disable DNS stub listener
+        // Create configuration to disable DNS stub listener and use public DNS
         const resolvedConfig = `[Resolve]
 DNSStubListener=no
+DNS=1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4
+FallbackDNS=1.1.1.1 1.0.0.1
 `
 
         execSync(`echo '${resolvedConfig}' | sudo tee ${resolvedConfFile}`, {timeout: 10000})
@@ -506,21 +513,69 @@ DNSStubListener=no
     }
   }
 
-  #updateSystemDNSConfig(port) {
+  #setupSystemDNSForInternet() {
     try {
-      // Update /etc/resolv.conf to point to our DNS server on alternative port
-      // Note: This is a simplified approach, in practice you might need more sophisticated DNS forwarding
-      const resolvConf = `nameserver 127.0.0.1
-# CandyPack DNS running on port ${port}
-# Original configuration backed up
+      // Configure system to use public DNS for internet access
+      const resolvConf = `# CandyPack DNS Configuration
+# CandyPack handles local domains on port 53
+# Public DNS servers handle all internet domains
+
+nameserver 1.1.1.1
+nameserver 1.0.0.1
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+
+# Cloudflare DNS (1.1.1.1) - Fast and privacy-focused
+# Google DNS (8.8.8.8) - Reliable fallback
+# Original configuration backed up to /etc/resolv.conf.candypack.backup
 `
 
       // Backup original resolv.conf
       execSync('sudo cp /etc/resolv.conf /etc/resolv.conf.candypack.backup 2>/dev/null || true', {timeout: 5000})
 
-      // Update resolv.conf
+      // Update resolv.conf with public DNS servers
       execSync(`echo '${resolvConf}' | sudo tee /etc/resolv.conf`, {timeout: 5000})
-      log(`Updated /etc/resolv.conf to use CandyPack DNS on port ${port}`)
+      log('Configured system to use public DNS servers for internet access')
+      log('Cloudflare DNS (1.1.1.1) and Google DNS (8.8.8.8) will handle non-CandyPack domains')
+
+      // Set up restoration on exit
+      process.on('exit', () => {
+        try {
+          execSync('sudo mv /etc/resolv.conf.candypack.backup /etc/resolv.conf 2>/dev/null || true', {timeout: 5000})
+        } catch {
+          // Silent fail on exit
+        }
+      })
+    } catch (err) {
+      log('Warning: Could not configure system DNS for internet access:', err.message)
+    }
+  }
+
+  #updateSystemDNSConfig(port) {
+    try {
+      // Use reliable public DNS servers for internet access
+      // CandyPack DNS only handles local domains, everything else goes to public DNS
+      const resolvConf = `# CandyPack DNS Configuration
+# Local domains handled by CandyPack DNS on port ${port}
+# All other domains handled by reliable public DNS servers
+
+nameserver 1.1.1.1
+nameserver 1.0.0.1
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+
+# Cloudflare DNS (1.1.1.1) - Fast and privacy-focused
+# Google DNS (8.8.8.8) - Reliable fallback
+# Original configuration backed up to /etc/resolv.conf.candypack.backup
+`
+
+      // Backup original resolv.conf
+      execSync('sudo cp /etc/resolv.conf /etc/resolv.conf.candypack.backup 2>/dev/null || true', {timeout: 5000})
+
+      // Update resolv.conf with public DNS servers
+      execSync(`echo '${resolvConf}' | sudo tee /etc/resolv.conf`, {timeout: 5000})
+      log('Updated /etc/resolv.conf to use reliable public DNS servers (1.1.1.1, 8.8.8.8)')
+      log('CandyPack domains will be handled locally, all other domains via public DNS')
 
       // Set up restoration on exit
       process.on('exit', () => {
