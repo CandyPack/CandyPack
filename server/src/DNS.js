@@ -494,22 +494,25 @@ DNSStubListener=no
 
   #request(request, response) {
     try {
-      // Basic rate limiting
+      // Basic rate limiting (skip for localhost)
       const clientIP = request.address?.address || 'unknown'
       const now = Date.now()
 
-      if (!this.#requestCount.has(clientIP)) {
-        this.#requestCount.set(clientIP, {count: 1, firstRequest: now})
-      } else {
-        const clientData = this.#requestCount.get(clientIP)
-        if (now - clientData.firstRequest > this.#rateLimitWindow) {
-          // Reset window
+      // Skip rate limiting for localhost/loopback addresses
+      if (clientIP !== '127.0.0.1' && clientIP !== '::1' && clientIP !== 'localhost') {
+        if (!this.#requestCount.has(clientIP)) {
           this.#requestCount.set(clientIP, {count: 1, firstRequest: now})
         } else {
-          clientData.count++
-          if (clientData.count > this.#rateLimit) {
-            log(`Rate limit exceeded for ${clientIP}`)
-            return response.send()
+          const clientData = this.#requestCount.get(clientIP)
+          if (now - clientData.firstRequest > this.#rateLimitWindow) {
+            // Reset window
+            this.#requestCount.set(clientIP, {count: 1, firstRequest: now})
+          } else {
+            clientData.count++
+            if (clientData.count > this.#rateLimit) {
+              log(`Rate limit exceeded for ${clientIP}`)
+              return response.send()
+            }
           }
         }
       }
