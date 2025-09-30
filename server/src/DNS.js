@@ -34,21 +34,64 @@ class DNS {
   init() {
     this.#udp = dns.createServer()
     this.#tcp = dns.createTCPServer()
-    axios
-      .get('https://curlmyip.org/')
-      .then(res => {
-        const ip = res.data.trim()
-        if (ip && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
-          log('Server IP:', ip)
-          this.ip = ip
-        } else {
-          error('DNS', 'Invalid IP format received:', ip)
-        }
-      })
-      .catch(err => {
-        error('DNS', 'Failed to get external IP, using default:', err.message)
-      })
+    this.#getExternalIP()
     this.#publish()
+  }
+
+  async #getExternalIP() {
+    // Multiple IP detection services as fallbacks
+    const ipServices = [
+      'https://curlmyip.org/',
+      'https://ipv4.icanhazip.com/',
+      'https://api.ipify.org/',
+      'https://checkip.amazonaws.com/',
+      'https://ipinfo.io/ip'
+    ]
+
+    for (const service of ipServices) {
+      try {
+        log(`Attempting to get external IP from ${service}`)
+        const response = await axios.get(service, {
+          timeout: 5000,
+          headers: {
+            'User-Agent': 'CandyPack-DNS/1.0'
+          }
+        })
+
+        const ip = response.data.trim()
+        if (ip && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+          log('External IP detected:', ip)
+          this.ip = ip
+          return
+        } else {
+          log(`Invalid IP format from ${service}:`, ip)
+        }
+      } catch (err) {
+        log(`Failed to get IP from ${service}:`, err.message)
+        continue
+      }
+    }
+
+    // If all services fail, try to get local network IP
+    try {
+      const networkInterfaces = require('os').networkInterfaces()
+      for (const interfaceName in networkInterfaces) {
+        const interfaces = networkInterfaces[interfaceName]
+        for (const iface of interfaces) {
+          // Skip loopback and non-IPv4 addresses
+          if (!iface.internal && iface.family === 'IPv4') {
+            log('Using local network IP as fallback:', iface.address)
+            this.ip = iface.address
+            return
+          }
+        }
+      }
+    } catch (err) {
+      log('Failed to get local network IP:', err.message)
+    }
+
+    log('Could not determine external IP, using default 127.0.0.1')
+    error('DNS', 'All IP detection methods failed, DNS A records will use 127.0.0.1')
   }
 
   #publish() {
