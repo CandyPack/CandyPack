@@ -25,6 +25,14 @@
         {
           "file": "02-basic-commands.md",
           "title": "Basic Commands"
+        },
+        {
+          "file": "03-cli-reference.md",
+          "title": "CLI Reference"
+        },
+        {
+          "file": "04-cli-quick-reference.md",
+          "title": "CLI Quick Reference"
         }
       ]
     },
@@ -35,6 +43,10 @@
         {
           "file": "01-start-a-new-service.md",
           "title": "Start a New Service"
+        },
+        {
+          "file": "02-delete-a-service.md",
+          "title": "Delete a Service"
         }
       ]
     },
@@ -67,6 +79,10 @@
         {
           "file": "02-list-subdomains.md",
           "title": "List Subdomains"
+        },
+        {
+          "file": "03-delete-a-subdomain.md",
+          "title": "Delete a Subdomain"
         }
       ]
     },
