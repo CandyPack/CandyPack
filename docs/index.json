@@ -189,6 +189,10 @@
         {
           "file": "06-error-pages.md",
           "title": "Error Pages"
+        },
+        {
+          "file": "07-cron-jobs.md",
+          "title": "Cron Jobs"
         }
       ]
     },
@@ -282,6 +286,7 @@
         }
       ]
     },
+
     {
       "file": "Frontend",
       "title": "Frontend",
