@@ -61,13 +61,13 @@ class Cron {
             if (job.lastRun && weekDay % condition.value !== 0) shouldRun = false
             break
           case 'everyMonth':
-            if (job.lastRun && (unix / 2592000) % condition.value !== 0) shouldRun = false
+            if (job.lastRun && (year * 12 + month) % condition.value !== 0) shouldRun = false
             break
           case 'everyYear':
-            if (job.lastRun && (unix / 31536000) % condition.value !== 0) shouldRun = false
+            if (job.lastRun && year % condition.value !== 0) shouldRun = false
             break
           case 'everyYearDay':
-            if (job.lastRun && (unix / 365) % condition.value !== 0) shouldRun = false
+            if (job.lastRun && condition.value !== yearDay) shouldRun = false
             break
         }
         if (!shouldRun) break
