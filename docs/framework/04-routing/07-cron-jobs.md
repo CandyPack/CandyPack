@@ -46,9 +46,7 @@ You can also define cron jobs with inline functions:
 
 ```javascript
 // Simple inline function
-Candy.Route.cron(() => {
-  console.log('Simple task running')
-}).everyMinute(5)
+Candy.Route.cron(() => console.log('Simple task running')).everyMinute(5)
 
 // Async function
 Candy.Route.cron(async () => {
@@ -70,52 +68,52 @@ Candy.Route.cron(() => cleanupTask('/tmp')).everyDay(1)
 ### Specific Time Values
 
 ```javascript
-const job = Candy.Route.cron('task')
+Candy.Route.cron('task')
 
 // Minute (0-59)
-job.minute(30) // At 30th minute
+.minute(30) // At 30th minute
 
 // Hour (0-23)
-job.hour(14) // At 14:00
+.hour(14) // At 14:00
 
 // Day (1-31)
-job.day(15) // On the 15th of the month
+.day(15) // On the 15th of the month
 
 // Week day (0-6, 0=Sunday)
-job.weekDay(1) // On Monday
+.weekDay(1) // On Monday
 
 // Month (1-12)
-job.month(6) // In June
+.month(6) // In June
 
 // Year
-job.year(2024) // In 2024
+.year(2024) // In 2024
 
 // Year day (1-365)
-job.yearDay(100) // On the 100th day of the year
+.yearDay(100) // On the 100th day of the year
 ```
 
 ### Periodic Execution
 
 ```javascript
-const job = Candy.Route.cron('periodic')
+Candy.Route.cron('periodic')
 
 // Every N minutes
-job.everyMinute(5) // Every 5 minutes
+.everyMinute(5) // Every 5 minutes
 
 // Every N hours
-job.everyHour(3) // Every 3 hours
+.everyHour(3) // Every 3 hours
 
 // Every N days
-job.everyDay(2) // Every 2 days
+.everyDay(2) // Every 2 days
 
 // Every N weeks
-job.everyWeekDay(1) // Every week
+.everyWeekDay(1) // Every week
 
 // Every N months
-job.everyMonth(2) // Every 2 months
+.everyMonth(2) // Every 2 months
 
 // Every N years
-job.everyYear(1) // Every year
+.everyYear(1) // Every year
 ```
 
 ## Combination Usage
@@ -149,49 +147,3 @@ Candy.Route.cron('monthly-cleanup')
 - Controller files are re-required on each execution
 - Inline functions are stored in memory and executed directly
 - If a job fails, it stops but the system continues
-
-## Advanced Usage
-
-### Dynamic Job Addition
-
-```javascript
-// Adding jobs at runtime with functions
-function addDynamicJob(name, interval) {
-  Candy.Route.cron(() => {
-    console.log(`Dynamic job executed: ${name}`)
-    // Dynamic job logic...
-  }).everyMinute(interval)
-}
-
-addDynamicJob('dynamic-task', 10)
-```
-
-### Conditional Job Execution
-
-```javascript
-// Using inline function for conditional logic
-Candy.Route.cron(() => {
-  const hour = new Date().getHours()
-  
-  // Only run during business hours
-  if (hour >= 9 && hour <= 17) {
-    console.log('Business hours task running')
-    // Business hour tasks...
-  }
-}).everyHour(1)
-```
-
-### Environment-Based Jobs
-
-```javascript
-// Different behavior based on environment
-Candy.Route.cron(() => {
-  if (process.env.NODE_ENV === 'production') {
-    console.log('Production backup running')
-    // Production backup logic
-  } else {
-    console.log('Development cleanup running')
-    // Development cleanup logic
-  }
-}).everyDay(1).hour(2).minute(0)
-```
