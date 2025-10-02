@@ -185,6 +185,10 @@
         {
           "file": "05-advanced-routing.md",
           "title": "Advanced Routing"
+        },
+        {
+          "file": "06-error-pages.md",
+          "title": "Error Pages"
         }
       ]
     },
