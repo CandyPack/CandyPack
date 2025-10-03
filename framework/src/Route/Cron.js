@@ -10,7 +10,6 @@ class Cron {
   }
 
   check() {
-    console.log('Cron check at', new Date())
     const now = new Date()
     const minute = now.getMinutes()
     const hour = now.getHours()
