@@ -13,8 +13,10 @@
 ├── server/           # Server infrastructure
 │   └── src/          # Server modules (DNS, SSL, Mail, Web, etc.)
 ├── watchdog/         # Process monitoring system
-├── web/              # Example web application
-│   └── controller/   # Example controllers
+├── web/              # Template website (copied when creating new sites)
+│   ├── controller/   # Template controllers
+│   ├── package.json  # Template package.json with {{domain}} placeholders
+│   └── config.json   # Template configuration
 ├── docs/             # Documentation (framework & server)
 ├── locale/           # Internationalization files
 └── test/             # Jest test files
@@ -41,3 +43,13 @@
 - Each module can have an optional `init()` method for setup
 - Framework modules receive Candy instance for request context
 - Server modules are typically singletons for infrastructure
+
+### Web Template System
+- **Template Directory**: `web/` serves as the template for new websites
+- **Automatic Copying**: When creating a new site, entire `web/` directory is copied
+- **Template Variables**: Files can contain placeholders like `{{domain}}` and `{{domain_original}}`
+- **Post-Processing**: After copying, template variables are replaced with actual values
+- **Template Files**:
+  - `package.json` - Contains domain placeholders for name and description
+  - `config.json` - Basic routing configuration
+  - `controller/` - Example controller implementations

@@ -1,7 +1,4 @@
 'use strict'
 
-module.exports = {
-  init: function () {
-    require('./src/Candy.js').init()
-  }
-}
+global.__dir = process.cwd()
+require('./src/Candy.js').init()
