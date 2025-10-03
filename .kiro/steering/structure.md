@@ -18,6 +18,9 @@
 │   ├── package.json  # Template package.json with {{domain}} placeholders
 │   └── config.json   # Template configuration
 ├── docs/             # Documentation (framework & server)
+│   ├── index.json    # Documentation navigation structure
+│   ├── framework/    # Framework documentation files
+│   └── server/       # Server documentation files
 ├── locale/           # Internationalization files
 └── test/             # Jest test files
 ```
@@ -25,26 +28,31 @@
 ## Architecture Patterns
 
 ### Dependency Injection (Core)
+
 - **Global Candy**: Singleton registry pattern via `global.Candy`
 - **Module Loading**: Dynamic require with `core()`, `cli()`, `server()`, `watchdog()` methods
 - **Singleton Management**: Automatic instantiation and caching
 
 ### Framework Pattern
+
 - **Request Lifecycle**: Each request gets a fresh Candy instance with req/res context
 - **Controller Pattern**: Simple function exports in `controller/` directories
 - **Helper Functions**: Global shortcuts (`__()`, `abort()`, `return()`, etc.)
 
 ### File Naming Conventions
+
 - **PascalCase**: Class files and main modules (e.g., `Candy.js`, `Server.js`)
 - **camelCase**: Utility functions and instances
 - **lowercase**: Entry points (`index.js`)
 
 ### Module Structure
+
 - Each module can have an optional `init()` method for setup
 - Framework modules receive Candy instance for request context
 - Server modules are typically singletons for infrastructure
 
 ### Web Template System
+
 - **Template Directory**: `web/` serves as the template for new websites
 - **Automatic Copying**: When creating a new site, entire `web/` directory is copied
 - **Template Variables**: Files can contain placeholders like `{{domain}}` and `{{domain_original}}`
@@ -53,3 +61,12 @@
   - `package.json` - Contains domain placeholders for name and description
   - `config.json` - Basic routing configuration
   - `controller/` - Example controller implementations
+
+### Documentation System
+
+- **Index File**: `docs/index.json` contains the navigation structure for all documentation
+- **Adding New Docs**: When creating new documentation files, they MUST be added to `docs/index.json`
+- **Language**: All documentation content must be written in English
+- **Structure**: Documentation is organized into "server" and "framework" sections
+- **File Organization**: Each section has folders with numbered prefixes (01-overview, 02-structure, etc.)
+- **Navigation**: The index.json file defines the title and hierarchy shown in documentation site

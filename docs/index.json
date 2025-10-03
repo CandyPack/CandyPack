@@ -131,6 +131,10 @@
         {
           "file": "02-super-handy-helper-functions.md",
           "title": "Helper Functions"
+        },
+        {
+          "file": "03-development-server.md",
+          "title": "Development Server"
         }
       ]
     },
