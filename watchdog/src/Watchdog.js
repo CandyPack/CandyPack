@@ -123,6 +123,7 @@ class Watchdog {
     })
 
     child.stderr.on('data', data => {
+      this.#logBuffer += `[ERR][${new Date().toISOString()}] ${data.toString()}`
       this.#errorBuffer += `[ERR][${new Date().toISOString()}] ${data.toString()}`
     })
 

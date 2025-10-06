@@ -1,5 +1,7 @@
 const fs = require('fs')
 
+const Cron = require('./Route/Cron.js')
+
 var routes2 = {}
 const mime = {
   html: 'text/html',
@@ -229,6 +231,7 @@ class Route {
       }
       delete Candy.Route.buff
     }
+    Cron.init()
     this.loading = false
   }
 
@@ -344,6 +347,10 @@ class Route {
 
   error(code, file) {
     this.set('error', code, file)
+  }
+
+  cron(controller) {
+    return Cron.job(controller)
   }
 }
 

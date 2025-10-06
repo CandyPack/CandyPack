@@ -25,6 +25,14 @@
         {
           "file": "02-basic-commands.md",
           "title": "Basic Commands"
+        },
+        {
+          "file": "03-cli-reference.md",
+          "title": "CLI Reference"
+        },
+        {
+          "file": "04-cli-quick-reference.md",
+          "title": "CLI Quick Reference"
         }
       ]
     },
@@ -35,6 +43,10 @@
         {
           "file": "01-start-a-new-service.md",
           "title": "Start a New Service"
+        },
+        {
+          "file": "02-delete-a-service.md",
+          "title": "Delete a Service"
         }
       ]
     },
@@ -67,6 +79,10 @@
         {
           "file": "02-list-subdomains.md",
           "title": "List Subdomains"
+        },
+        {
+          "file": "03-delete-a-subdomain.md",
+          "title": "Delete a Subdomain"
         }
       ]
     },
@@ -106,31 +122,35 @@
   "framework": [
     {
       "file": "01-overview",
-      "title": "Welcome to the CandyPack Framework!",
+      "title": "Framework Overview",
       "children": [
         {
           "file": "01-whats-in-the-candy-box.md",
-          "title": "What's in the `Candy` box?"
+          "title": "Candy Object"
         },
         {
           "file": "02-super-handy-helper-functions.md",
-          "title": "Super-Handy Helper Functions"
+          "title": "Helper Functions"
+        },
+        {
+          "file": "03-development-server.md",
+          "title": "Development Server"
         }
       ]
     },
     {
       "file": "02-structure",
-      "title": "Where Do I Put My Files?",
+      "title": "Project Structure",
       "children": [
         {
           "file": "01-typical-project-layout.md",
-          "title": "Typical Project Layout"
+          "title": "Project Layout"
         }
       ]
     },
     {
       "file": "03-config",
-      "title": "Configuring Your Application",
+      "title": "Configuration",
       "children": [
         {
           "file": "01-database-connection.md",
@@ -138,7 +158,7 @@
         },
         {
           "file": "02-static-route-mapping-optional.md",
-          "title": "Static Route Mapping (Optional)"
+          "title": "Static Route Mapping"
         },
         {
           "file": "03-request-timeout.md",
@@ -148,69 +168,77 @@
     },
     {
       "file": "04-routing",
-      "title": "Routing: Directing Your Web Traffic",
+      "title": "Routing",
       "children": [
         {
           "file": "01-basic-page-routes.md",
-          "title": "Basic Page Routes"
+          "title": "Basic Routes"
         },
         {
           "file": "02-controller-less-view-routes.md",
-          "title": "Controller-less View Routes"
+          "title": "View Routes"
         },
         {
           "file": "03-api-and-data-routes.md",
-          "title": "API and Data Routes"
+          "title": "API Routes"
         },
         {
           "file": "04-authentication-aware-routes.md",
-          "title": "Authentication-Aware Routes"
+          "title": "Protected Routes"
         },
         {
           "file": "05-advanced-routing.md",
           "title": "Advanced Routing"
+        },
+        {
+          "file": "06-error-pages.md",
+          "title": "Error Pages"
+        },
+        {
+          "file": "07-cron-jobs.md",
+          "title": "Cron Jobs"
         }
       ]
     },
     {
       "file": "05-controllers",
-      "title": "Controllers: The Brains of Your App",
+      "title": "Controllers",
       "children": [
         {
           "file": "01-how-to-build-a-controller.md",
-          "title": "How to Build a Controller"
+          "title": "Building Controllers"
         },
         {
           "file": "02-your-trusty-candy-assistant.md",
-          "title": "Your trusty `Candy` Assistant"
+          "title": "Using Candy"
         }
       ]
     },
     {
       "file": "06-request-and-response",
-      "title": "Handling Requests and Sending Responses",
+      "title": "Request & Response",
       "children": [
         {
           "file": "01-the-request-object-what-is-the-user-asking-for.md",
-          "title": "The Request Object: What is the User Asking For?"
+          "title": "Request Object"
         },
         {
           "file": "02-sending-a-response-replying-to-the-user.md",
-          "title": "Sending a Response: Replying to the User"
+          "title": "Response Object"
         }
       ]
     },
     {
       "file": "07-views",
-      "title": "Views: Making Things Pretty",
+      "title": "Views",
       "children": [
         {
           "file": "01-the-view-directory.md",
-          "title": "The `view/` Directory"
+          "title": "View Directory"
         },
         {
           "file": "02-rendering-a-view.md",
-          "title": "Rendering a View"
+          "title": "Rendering Views"
         }
       ]
     },
@@ -220,55 +248,56 @@
       "children": [
         {
           "file": "01-user-logins-with-authjs.md",
-          "title": "User Logins with `Auth.js`"
+          "title": "User Authentication"
         },
         {
           "file": "02-foiling-villains-with-csrf-protection.md",
-          "title": "Foiling Villains with CSRF Protection"
+          "title": "CSRF Protection"
         }
       ]
     },
     {
       "file": "09-database",
-      "title": "Talking to Your Database",
+      "title": "Database",
       "children": [
         {
           "file": "01-automatic-connection.md",
-          "title": "Automatic Connection"
+          "title": "Database Connection"
         },
         {
           "file": "02-running-a-query.md",
-          "title": "Running a Query"
+          "title": "Running Queries"
         }
       ]
     },
     {
       "file": "10-mail",
-      "title": "Sending Emails",
+      "title": "Email",
       "children": [
         {
           "file": "01-the-mail-service.md",
-          "title": "The `Mail` Service"
+          "title": "Mail Service"
         }
       ]
     },
     {
       "file": "11-validation",
-      "title": "Validating User Input",
+      "title": "Validation",
       "children": [
         {
           "file": "01-the-validator-service.md",
-          "title": "The `Validator` Service"
+          "title": "Validator Service"
         }
       ]
     },
+
     {
       "file": "Frontend",
       "title": "Frontend",
       "children": [
         {
           "file": "01-candy-js.md",
-          "title": "Frontend Javascript Framework: candy.js"
+          "title": "candy.js Framework"
         }
       ]
     }

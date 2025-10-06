@@ -1,0 +1,18 @@
+{
+  "name": "{{domain}}",
+  "version": "1.0.0",
+  "description": "Website for {{domain_original}}",
+  "scripts": {
+    "start": "candy framework run",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "candypack": "*"
+  },
+  "keywords": [
+    "candypack",
+    "website"
+  ],
+  "author": "",
+  "license": "ISC"
+}

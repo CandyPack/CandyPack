@@ -32,6 +32,26 @@ To see a list of all available commands, use the `help` command:
 candy help
 ```
 
+### Using Prefix Arguments
+Many CandyPack commands support prefix arguments that allow you to provide values directly in the command line, avoiding interactive prompts. This is especially useful for automation and scripting.
+
+**Common Prefixes:**
+- `-d`, `--domain`: Specify domain name
+- `-e`, `--email`: Specify email address  
+- `-p`, `--password`: Specify password
+- `-s`, `--subdomain`: Specify subdomain
+- `-i`, `--id`: Specify service ID
+- `-k`, `--key`: Specify authentication key
+
+**Example:**
+```bash
+# Interactive mode (prompts for input)
+candy web create
+
+# Single-line mode with prefix
+candy web create -d example.com
+```
+
 ---
 
 **Next Steps:** For more advanced topics, such as managing websites, services, SSL certificates, and mail accounts, please refer to the upcoming documentation files.

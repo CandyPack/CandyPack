@@ -25,18 +25,12 @@ class Lang {
     if (!this.#lang) return
     if (!fs.existsSync(__dir + '/storage/')) fs.mkdirSync(__dir + '/storage/')
     if (!fs.existsSync(__dir + '/storage/language/')) fs.mkdirSync(__dir + '/storage/language/')
-    fs.writeFileSync(
-      __dir + '/storage/language/' + this.#lang + '.json',
-      JSON.stringify(this.#data, null, 4)
-    )
+    fs.writeFileSync(__dir + '/storage/language/' + this.#lang + '.json', JSON.stringify(this.#data, null, 4))
   }
 
   set(lang) {
     if (!lang || lang.length !== 2 || !this.#candy.Var(lang).is('alpha')) {
-      if (
-        this.#candy.Request.header('ACCEPT-LANGUAGE') &&
-        this.#candy.Request.header('ACCEPT-LANGUAGE').length > 1
-      )
+      if (this.#candy.Request.header('ACCEPT-LANGUAGE') && this.#candy.Request.header('ACCEPT-LANGUAGE').length > 1)
         lang = this.#candy.Request.header('ACCEPT-LANGUAGE').substr(0, 2)
       else lang = this.#candy.Config.lang?.default || 'en'
     }

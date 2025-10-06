@@ -2,12 +2,15 @@ const {log, error} = Candy.server('Log', false).init('DNS')
 
 const axios = require('axios')
 const dns = require('native-dns')
+const {execSync} = require('child_process')
+const fs = require('fs')
+const os = require('os')
 
 class DNS {
   ip = '127.0.0.1'
   #loaded = false
   #tcp
-  #types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SOA']
+  #types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SOA', 'CAA']
   #udp
   #requestCount = new Map() // Rate limiting
   #rateLimit = 100 // requests per minute per IP
@@ -31,26 +34,71 @@ class DNS {
   init() {
     this.#udp = dns.createServer()
     this.#tcp = dns.createTCPServer()
-    axios
-      .get('https://curlmyip.org/')
-      .then(res => {
-        const ip = res.data.trim()
-        if (ip && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
-          log('Server IP:', ip)
-          this.ip = ip
-        } else {
-          error('DNS', 'Invalid IP format received:', ip)
-        }
-      })
-      .catch(err => {
-        error('DNS', 'Failed to get external IP, using default:', err.message)
-      })
+    this.#getExternalIP()
     this.#publish()
+  }
+
+  async #getExternalIP() {
+    // Multiple IP detection services as fallbacks
+    const ipServices = [
+      'https://curlmyip.org/',
+      'https://ipv4.icanhazip.com/',
+      'https://api.ipify.org/',
+      'https://checkip.amazonaws.com/',
+      'https://ipinfo.io/ip'
+    ]
+
+    for (const service of ipServices) {
+      try {
+        log(`Attempting to get external IP from ${service}`)
+        const response = await axios.get(service, {
+          timeout: 5000,
+          headers: {
+            'User-Agent': 'CandyPack-DNS/1.0'
+          }
+        })
+
+        const ip = response.data.trim()
+        if (ip && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+          log('External IP detected:', ip)
+          this.ip = ip
+          return
+        } else {
+          log(`Invalid IP format from ${service}:`, ip)
+        }
+      } catch (err) {
+        log(`Failed to get IP from ${service}:`, err.message)
+        continue
+      }
+    }
+
+    // If all services fail, try to get local network IP
+    try {
+      const networkInterfaces = require('os').networkInterfaces()
+      for (const interfaceName in networkInterfaces) {
+        const interfaces = networkInterfaces[interfaceName]
+        for (const iface of interfaces) {
+          // Skip loopback and non-IPv4 addresses
+          if (!iface.internal && iface.family === 'IPv4') {
+            log('Using local network IP as fallback:', iface.address)
+            this.ip = iface.address
+            return
+          }
+        }
+      }
+    } catch (err) {
+      log('Failed to get local network IP:', err.message)
+    }
+
+    log('Could not determine external IP, using default 127.0.0.1')
+    error('DNS', 'All IP detection methods failed, DNS A records will use 127.0.0.1')
   }
 
   #publish() {
     if (this.#loaded || !Object.keys(Candy.core('Config').config.websites ?? {}).length) return
     this.#loaded = true
+
+    // Set up request handlers
     this.#udp.on('request', (request, response) => {
       try {
         this.#request(request, response)
@@ -65,36 +113,504 @@ class DNS {
         error('DNS TCP request handler error:', err.message)
       }
     })
-    this.#udp.on('error', err => error('DNS UDP Server Error:', err.stack))
-    this.#tcp.on('error', err => error('DNS TCP Server Error:', err.stack))
 
+    // Log system information before starting
+    this.#logSystemInfo()
+
+    this.#startDNSServers()
+  }
+
+  #logSystemInfo() {
     try {
-      this.#udp.serve(53)
-      this.#tcp.serve(53)
-      log('DNS servers started on port 53')
+      log('DNS Server initialization - System information:')
+      log('Platform:', os.platform())
+      log('Architecture:', os.arch())
+
+      // Check what's using port 53
+      try {
+        const port53Info = execSync(
+          'lsof -i :53 2>/dev/null || netstat -tulpn 2>/dev/null | grep :53 || ss -tulpn 2>/dev/null | grep :53 || echo "Port 53 appears to be free"',
+          {
+            encoding: 'utf8',
+            timeout: 5000
+          }
+        )
+        log('Port 53 status:', port53Info.trim() || 'No processes found on port 53')
+      } catch (err) {
+        log('Could not check port 53 status:', err.message)
+      }
+
+      // Check systemd-resolved status on Linux
+      if (os.platform() === 'linux') {
+        try {
+          const resolvedStatus = execSync('systemctl is-active systemd-resolved 2>/dev/null || echo "not-active"', {
+            encoding: 'utf8',
+            timeout: 3000
+          }).trim()
+          log('systemd-resolved status:', resolvedStatus)
+
+          if (resolvedStatus === 'active') {
+            try {
+              const resolvedConfig = execSync(
+                'systemd-resolve --status 2>/dev/null | head -20 || resolvectl status 2>/dev/null | head -20 || echo "Could not get resolver status"',
+                {
+                  encoding: 'utf8',
+                  timeout: 3000
+                }
+              )
+              log('Current DNS resolver configuration:', resolvedConfig.trim())
+            } catch {
+              log('Could not get DNS resolver configuration')
+            }
+          }
+        } catch (err) {
+          log('Could not check systemd-resolved status:', err.message)
+        }
+      }
+    } catch (err) {
+      log('Error logging system info:', err.message)
+    }
+  }
+
+  async #startDNSServers() {
+    // First, proactively check if port 53 is available
+    const portAvailable = await this.#checkPortAvailability(53)
+    if (!portAvailable) {
+      log('Port 53 is already in use, attempting to resolve conflict...')
+      const resolved = await this.#handleSystemdResolveConflict()
+      if (resolved) {
+        // Wait a bit and retry
+        setTimeout(() => this.#attemptDNSStart(53), 3000)
+      } else {
+        log('Could not resolve port 53 conflict, using alternative port...')
+        this.#useAlternativePort()
+      }
+      return
+    }
+
+    // Port seems available, try to start
+    this.#attemptDNSStart(53)
+  }
+
+  #attemptDNSStart(port) {
+    try {
+      // Set up error handlers before starting
+      this.#udp.on('error', async err => {
+        error('DNS UDP Server Error:', err.message)
+        if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+          log(`Port ${port} conflict detected via error event, attempting resolution...`)
+          if (port === 53) {
+            const resolved = await this.#handleSystemdResolveConflict()
+            if (!resolved) {
+              this.#useAlternativePort()
+            }
+          }
+        }
+      })
+
+      this.#tcp.on('error', async err => {
+        error('DNS TCP Server Error:', err.message)
+        if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+          log(`Port ${port} conflict detected via error event, attempting resolution...`)
+          if (port === 53) {
+            const resolved = await this.#handleSystemdResolveConflict()
+            if (!resolved) {
+              this.#useAlternativePort()
+            }
+          }
+        }
+      })
+
+      // Try to start servers
+      this.#udp.serve(port)
+      this.#tcp.serve(port)
+      log(`DNS servers started on port ${port}`)
+
+      // Update system DNS configuration for internet access
+      if (port === 53) {
+        this.#setupSystemDNSForInternet()
+      }
     } catch (err) {
       error('Failed to start DNS servers:', err.message)
+      if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+        log(`Port ${port} is in use (caught exception), attempting resolution...`)
+        if (port === 53) {
+          this.#handleSystemdResolveConflict().then(resolved => {
+            if (resolved) {
+              setTimeout(() => this.#attemptDNSStart(53), 3000)
+            } else {
+              this.#useAlternativePort()
+            }
+          })
+        } else {
+          this.#useAlternativePort()
+        }
+      }
+    }
+  }
+
+  async #checkPortAvailability(port) {
+    try {
+      // Check if anything is listening on the port
+      const portCheck = execSync(
+        `lsof -i :${port} 2>/dev/null || netstat -tulpn 2>/dev/null | grep :${port} || ss -tulpn 2>/dev/null | grep :${port} || true`,
+        {
+          encoding: 'utf8',
+          timeout: 5000
+        }
+      )
+
+      if (portCheck.trim()) {
+        log(`Port ${port} is in use by:`, portCheck.trim())
+        return false
+      }
+
+      return true
+    } catch (err) {
+      log('Error checking port availability:', err.message)
+      return false
+    }
+  }
+
+  async #handleSystemdResolveConflict() {
+    try {
+      // Check if we're on Linux
+      if (os.platform() !== 'linux') {
+        log('Not on Linux, skipping systemd-resolve conflict resolution')
+        return false
+      }
+
+      // More comprehensive check for what's using port 53
+      let portInfo = ''
+      try {
+        portInfo = execSync(
+          'lsof -i :53 2>/dev/null || netstat -tulpn 2>/dev/null | grep :53 || ss -tulpn 2>/dev/null | grep :53 || true',
+          {
+            encoding: 'utf8',
+            timeout: 5000
+          }
+        )
+      } catch (err) {
+        log('Could not check port 53 usage:', err.message)
+        return false
+      }
+
+      if (!portInfo || (!portInfo.includes('systemd-resolve') && !portInfo.includes('resolved'))) {
+        log('systemd-resolve not detected on port 53, conflict may be with another service')
+        return false
+      }
+
+      log('Detected systemd-resolve using port 53, attempting resolution...')
+
+      // Try the direct approach first - disable DNS stub listener
+      const stubDisabled = await this.#disableSystemdResolveStub()
+      if (stubDisabled) {
+        return true
+      }
+
+      // If that fails, try alternative approach
+      return this.#tryAlternativeApproach()
+    } catch (err) {
+      error('Error handling systemd-resolve conflict:', err.message)
+      return false
+    }
+  }
+
+  async #disableSystemdResolveStub() {
+    try {
+      log('Attempting to disable systemd-resolved DNS stub listener...')
+
+      // Check if systemd-resolved is active
+      const isActive = execSync('systemctl is-active systemd-resolved 2>/dev/null || echo inactive', {
+        encoding: 'utf8',
+        timeout: 5000
+      }).trim()
+
+      if (isActive !== 'active') {
+        log('systemd-resolved is not active')
+        return false
+      }
+
+      // Create or update resolved.conf to disable DNS stub
+      const resolvedConfDir = '/etc/systemd/resolved.conf.d'
+      const resolvedConfFile = `${resolvedConfDir}/candypack-dns.conf`
+
+      try {
+        // Ensure directory exists
+        if (!fs.existsSync(resolvedConfDir)) {
+          execSync(`sudo mkdir -p ${resolvedConfDir}`, {timeout: 10000})
+        }
+
+        // Create configuration to disable DNS stub listener and use public DNS
+        const resolvedConfig = `[Resolve]
+DNSStubListener=no
+DNS=1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4
+FallbackDNS=1.1.1.1 1.0.0.1
+`
+
+        execSync(`echo '${resolvedConfig}' | sudo tee ${resolvedConfFile}`, {timeout: 10000})
+        log('Created systemd-resolved configuration to disable DNS stub listener')
+
+        // Restart systemd-resolved
+        execSync('sudo systemctl restart systemd-resolved', {timeout: 15000})
+        log('Restarted systemd-resolved service')
+
+        // Wait for service to restart and port to be freed
+        return new Promise(resolve => {
+          setTimeout(() => {
+            try {
+              // Check if port 53 is now free
+              const portCheck = execSync('lsof -i :53 2>/dev/null || true', {
+                encoding: 'utf8',
+                timeout: 3000
+              })
+
+              if (!portCheck.includes('systemd-resolve') && !portCheck.includes('resolved')) {
+                log('Port 53 is now available')
+                resolve(true)
+              } else {
+                log('Port 53 still in use, trying alternative approach')
+                resolve(this.#tryAlternativeApproach())
+              }
+            } catch (err) {
+              log('Error checking port availability:', err.message)
+              resolve(this.#tryAlternativeApproach())
+            }
+          }, 3000)
+        })
+      } catch (sudoErr) {
+        log('Could not configure systemd-resolved (no sudo access):', sudoErr.message)
+        return false
+      }
+    } catch (err) {
+      log('Error disabling systemd-resolved stub:', err.message)
+      return false
+    }
+  }
+
+  #tryAlternativeApproach() {
+    try {
+      log('Trying alternative approach: temporarily stopping systemd-resolved...')
+
+      // Check if we can stop systemd-resolved
+      try {
+        execSync('sudo systemctl stop systemd-resolved', {timeout: 10000})
+        log('Temporarily stopped systemd-resolved')
+
+        // Set up cleanup handlers to restart systemd-resolved when process exits
+        this.#setupCleanupHandlers()
+
+        return true
+      } catch (stopErr) {
+        log('Could not stop systemd-resolved:', stopErr.message)
+
+        // Last resort: try to use a different port for our DNS server
+        return this.#useAlternativePort()
+      }
+    } catch (err) {
+      log('Alternative approach failed:', err.message)
+      return false
+    }
+  }
+
+  #setupCleanupHandlers() {
+    const restartSystemdResolved = () => {
+      try {
+        execSync('sudo systemctl start systemd-resolved', {timeout: 10000})
+        log('Restarted systemd-resolved on cleanup')
+      } catch (err) {
+        error('Failed to restart systemd-resolved on cleanup:', err.message)
+      }
+    }
+
+    // Handle various exit scenarios
+    process.on('exit', restartSystemdResolved)
+    process.on('SIGINT', () => {
+      restartSystemdResolved()
+      process.exit(0)
+    })
+    process.on('SIGTERM', () => {
+      restartSystemdResolved()
+      process.exit(0)
+    })
+    process.on('uncaughtException', err => {
+      error('Uncaught exception:', err.message)
+      restartSystemdResolved()
+      process.exit(1)
+    })
+    process.on('unhandledRejection', (reason, promise) => {
+      error('Unhandled rejection at:', promise, 'reason:', reason)
+      restartSystemdResolved()
+      process.exit(1)
+    })
+
+    log('Set up cleanup handlers to restart systemd-resolved on exit')
+  }
+
+  async #useAlternativePort() {
+    try {
+      log('Attempting to use alternative port for DNS server...')
+
+      // Try ports 5353, 1053, 8053 as alternatives
+      const alternativePorts = [5353, 1053, 8053]
+
+      for (const port of alternativePorts) {
+        const available = await this.#checkPortAvailability(port)
+        if (available) {
+          try {
+            // Create new server instances for alternative port
+            const udpAlt = dns.createServer()
+            const tcpAlt = dns.createTCPServer()
+
+            // Copy event handlers
+            udpAlt.on('request', (request, response) => {
+              try {
+                this.#request(request, response)
+              } catch (err) {
+                error('DNS UDP request handler error:', err.message)
+              }
+            })
+
+            tcpAlt.on('request', (request, response) => {
+              try {
+                this.#request(request, response)
+              } catch (err) {
+                error('DNS TCP request handler error:', err.message)
+              }
+            })
+
+            udpAlt.on('error', err => error('DNS UDP Server Error (alt port):', err.stack))
+            tcpAlt.on('error', err => error('DNS TCP Server Error (alt port):', err.stack))
+
+            // Start on alternative port
+            udpAlt.serve(port)
+            tcpAlt.serve(port)
+
+            // Replace original servers
+            this.#udp = udpAlt
+            this.#tcp = tcpAlt
+
+            log(`DNS servers started on alternative port ${port}`)
+
+            // Update system to use our alternative port
+            this.#updateSystemDNSConfig(port)
+            return true
+          } catch (portErr) {
+            log(`Failed to start on port ${port}:`, portErr.message)
+            continue
+          }
+        } else {
+          log(`Port ${port} is also in use, trying next...`)
+          continue
+        }
+      }
+
+      error('All alternative ports are in use')
+      return false
+    } catch (err) {
+      error('Failed to use alternative port:', err.message)
+      return false
+    }
+  }
+
+  #setupSystemDNSForInternet() {
+    try {
+      // Configure system to use public DNS for internet access
+      const resolvConf = `# CandyPack DNS Configuration
+# CandyPack handles local domains on port 53
+# Public DNS servers handle all internet domains
+
+nameserver 1.1.1.1
+nameserver 1.0.0.1
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+
+# Cloudflare DNS (1.1.1.1) - Fast and privacy-focused
+# Google DNS (8.8.8.8) - Reliable fallback
+# Original configuration backed up to /etc/resolv.conf.candypack.backup
+`
+
+      // Backup original resolv.conf
+      execSync('sudo cp /etc/resolv.conf /etc/resolv.conf.candypack.backup 2>/dev/null || true', {timeout: 5000})
+
+      // Update resolv.conf with public DNS servers
+      execSync(`echo '${resolvConf}' | sudo tee /etc/resolv.conf`, {timeout: 5000})
+      log('Configured system to use public DNS servers for internet access')
+      log('Cloudflare DNS (1.1.1.1) and Google DNS (8.8.8.8) will handle non-CandyPack domains')
+
+      // Set up restoration on exit
+      process.on('exit', () => {
+        try {
+          execSync('sudo mv /etc/resolv.conf.candypack.backup /etc/resolv.conf 2>/dev/null || true', {timeout: 5000})
+        } catch {
+          // Silent fail on exit
+        }
+      })
+    } catch (err) {
+      log('Warning: Could not configure system DNS for internet access:', err.message)
+    }
+  }
+
+  #updateSystemDNSConfig(port) {
+    try {
+      // Use reliable public DNS servers for internet access
+      // CandyPack DNS only handles local domains, everything else goes to public DNS
+      const resolvConf = `# CandyPack DNS Configuration
+# Local domains handled by CandyPack DNS on port ${port}
+# All other domains handled by reliable public DNS servers
+
+nameserver 1.1.1.1
+nameserver 1.0.0.1
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+
+# Cloudflare DNS (1.1.1.1) - Fast and privacy-focused
+# Google DNS (8.8.8.8) - Reliable fallback
+# Original configuration backed up to /etc/resolv.conf.candypack.backup
+`
+
+      // Backup original resolv.conf
+      execSync('sudo cp /etc/resolv.conf /etc/resolv.conf.candypack.backup 2>/dev/null || true', {timeout: 5000})
+
+      // Update resolv.conf with public DNS servers
+      execSync(`echo '${resolvConf}' | sudo tee /etc/resolv.conf`, {timeout: 5000})
+      log('Updated /etc/resolv.conf to use reliable public DNS servers (1.1.1.1, 8.8.8.8)')
+      log('CandyPack domains will be handled locally, all other domains via public DNS')
+
+      // Set up restoration on exit
+      process.on('exit', () => {
+        try {
+          execSync('sudo mv /etc/resolv.conf.candypack.backup /etc/resolv.conf 2>/dev/null || true', {timeout: 5000})
+        } catch {
+          // Silent fail on exit
+        }
+      })
+    } catch (err) {
+      log('Warning: Could not update system DNS configuration:', err.message)
     }
   }
 
   #request(request, response) {
     try {
-      // Basic rate limiting
+      // Basic rate limiting (skip for localhost)
       const clientIP = request.address?.address || 'unknown'
       const now = Date.now()
 
-      if (!this.#requestCount.has(clientIP)) {
-        this.#requestCount.set(clientIP, {count: 1, firstRequest: now})
-      } else {
-        const clientData = this.#requestCount.get(clientIP)
-        if (now - clientData.firstRequest > this.#rateLimitWindow) {
-          // Reset window
+      // Skip rate limiting for localhost/loopback addresses
+      if (clientIP !== '127.0.0.1' && clientIP !== '::1' && clientIP !== 'localhost') {
+        if (!this.#requestCount.has(clientIP)) {
           this.#requestCount.set(clientIP, {count: 1, firstRequest: now})
         } else {
-          clientData.count++
-          if (clientData.count > this.#rateLimit) {
-            log(`Rate limit exceeded for ${clientIP}`)
-            return response.send()
+          const clientData = this.#requestCount.get(clientIP)
+          if (now - clientData.firstRequest > this.#rateLimitWindow) {
+            // Reset window
+            this.#requestCount.set(clientIP, {count: 1, firstRequest: now})
+          } else {
+            clientData.count++
+            if (clientData.count > this.#rateLimit) {
+              log(`Rate limit exceeded for ${clientIP}`)
+              return response.send()
+            }
           }
         }
       }
@@ -115,6 +631,8 @@ class DNS {
       }
 
       if (!Candy.core('Config').config.websites[domain] || !Candy.core('Config').config.websites[domain].DNS) {
+        // For unknown domains, send proper NXDOMAIN response instead of empty response
+        response.header.rcode = dns.consts.NAME_TO_RCODE.NXDOMAIN
         return response.send()
       }
 
@@ -143,6 +661,13 @@ class DNS {
         case dns.consts.NAME_TO_QTYPE.SOA:
           this.#processSOARecords(dnsRecords.SOA, questionName, response)
           break
+        case dns.consts.NAME_TO_QTYPE.CAA:
+          this.#processCAARecords(dnsRecords.CAA, questionName, response)
+          // If no CAA records found, add default Let's Encrypt CAA records
+          if (!response.answer.length && dnsRecords.CAA?.length === 0) {
+            this.#addDefaultCAARecords(questionName, response)
+          }
+          break
         default:
           // For ANY queries or unknown types, process all relevant records
           this.#processARecords(dnsRecords.A, questionName, response)
@@ -152,6 +677,7 @@ class DNS {
           this.#processTXTRecords(dnsRecords.TXT, questionName, response)
           this.#processNSRecords(dnsRecords.NS, questionName, response, domain)
           this.#processSOARecords(dnsRecords.SOA, questionName, response)
+          this.#processCAARecords(dnsRecords.CAA, questionName, response)
       }
 
       response.send()
@@ -302,6 +828,62 @@ class DNS {
     }
   }
 
+  #processCAARecords(records, questionName, response) {
+    try {
+      for (const record of records ?? []) {
+        if (!record || record.name !== questionName) continue
+
+        // CAA record format: flags tag value
+        // Example: "0 issue letsencrypt.org"
+        const caaParts = record.value.split(' ')
+        if (caaParts.length < 3) continue
+
+        const flags = parseInt(caaParts[0]) || 0
+        const tag = caaParts[1]
+        const value = caaParts.slice(2).join(' ')
+
+        response.answer.push(
+          dns.CAA({
+            name: record.name,
+            flags: flags,
+            tag: tag,
+            value: value,
+            ttl: record.ttl ?? 3600
+          })
+        )
+      }
+    } catch (err) {
+      error('Error processing CAA records:', err.message)
+    }
+  }
+
+  #addDefaultCAARecords(questionName, response) {
+    try {
+      // Add default CAA records allowing Let's Encrypt
+      response.answer.push(
+        dns.CAA({
+          name: questionName,
+          flags: 0,
+          tag: 'issue',
+          value: 'letsencrypt.org',
+          ttl: 3600
+        })
+      )
+      response.answer.push(
+        dns.CAA({
+          name: questionName,
+          flags: 0,
+          tag: 'issuewild',
+          value: 'letsencrypt.org',
+          ttl: 3600
+        })
+      )
+      log("Added default CAA records for Let's Encrypt to response for:", questionName)
+    } catch (err) {
+      error('Error adding default CAA records:', err.message)
+    }
+  }
+
   record(...args) {
     let domains = []
     for (let obj of args) {
@@ -326,13 +908,32 @@ class DNS {
       .toISOString()
       .replace(/[^0-9]/g, '')
       .slice(0, 10)
-    for (let domain of domains)
+    for (let domain of domains) {
+      // Add SOA record
       Candy.core('Config').config.websites[domain].DNS.SOA = [
         {
           name: domain,
           value: 'ns1.' + domain + ' hostmaster.' + domain + ' ' + date + ' 3600 600 604800 3600'
         }
       ]
+
+      // Add default CAA records for Let's Encrypt SSL certificates
+      if (!Candy.core('Config').config.websites[domain].DNS.CAA) {
+        Candy.core('Config').config.websites[domain].DNS.CAA = [
+          {
+            name: domain,
+            value: '0 issue letsencrypt.org',
+            ttl: 3600
+          },
+          {
+            name: domain,
+            value: '0 issuewild letsencrypt.org',
+            ttl: 3600
+          }
+        ]
+        log("Added default CAA records for Let's Encrypt to domain:", domain)
+      }
+    }
   }
 }
 

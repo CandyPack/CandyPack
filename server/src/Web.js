@@ -1,4 +1,4 @@
-const {log} = Candy.server('Log', false).init('Web')
+const {log, error} = Candy.server('Log', false).init('Web')
 
 const childProcess = require('child_process')
 const fs = require('fs')
@@ -92,10 +92,24 @@ class Web {
       progress('ssl', 'progress', __('Setting up SSL certificate for %s...', domain))
     }
     progress('directory', 'progress', __('Setting up website files for %s...', domain))
+
     childProcess.execSync('npm link candypack', {cwd: web.path})
     if (fs.existsSync(web.path + 'node_modules/.bin')) fs.rmSync(web.path + 'node_modules/.bin', {recursive: true})
     if (!fs.existsSync(web.path + '/node_modules')) fs.mkdirSync(web.path + '/node_modules')
+
+    // Copy web template files
     fs.cpSync(__dirname + '/../../web/', web.path, {recursive: true})
+
+    // Process package.json template after copying
+    const packageJsonPath = path.join(web.path, 'package.json')
+    if (fs.existsSync(packageJsonPath)) {
+      let packageTemplate = fs.readFileSync(packageJsonPath, 'utf8')
+
+      // Replace template variables
+      packageTemplate = packageTemplate.replace(/\{\{domain\}\}/g, domain.replace(/\./g, '-')).replace(/\{\{domain_original\}\}/g, domain)
+
+      fs.writeFileSync(packageJsonPath, packageTemplate)
+    }
     progress('directory', 'success', __('Website files for %s set.', domain))
     return Candy.server('Api').result(true, __('Website %s1 created at %s2.', web.domain, web.path))
   }
@@ -288,15 +302,11 @@ class Web {
     } while (using)
     Candy.core('Config').config.websites[domain].port = port
     this.#ports[port] = true
-    if (!fs.existsSync(Candy.core('Config').config.websites[domain].path + '/index.js')) {
-      log(__("Website %s doesn't have index.js file.", domain))
-      this.#active[domain] = false
-      return
-    }
-    var child = childProcess.spawn('node', [Candy.core('Config').config.websites[domain].path + '/index.js', port], {
+    var child = childProcess.spawn('candypack', ['framework', 'run', port], {
       cwd: Candy.core('Config').config.websites[domain].path
     })
     let pid = child.pid
+    log('Web server started for ' + domain + ' with PID ' + pid)
     child.stdout.on('data', data => {
       if (!this.#logs.log[domain]) this.#logs.log[domain] = ''
       this.#logs.log[domain] +=
@@ -332,6 +342,7 @@ class Web {
       if (Candy.core('Config').config.websites[domain]) Candy.core('Config').config.websites[domain].status = 'errored'
     })
     child.on('exit', () => {
+      error('Child process exited for ' + domain)
       if (!Candy.core('Config').config.websites[domain]) return
       Candy.core('Config').config.websites[domain].pid = null
       Candy.core('Config').config.websites[domain].updated = Date.now()
