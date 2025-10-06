@@ -1,6 +1,7 @@
 module.exports = {
   init: async function () {
     global.Candy = this.instance()
+    await global.Candy.Env.init()
     await global.Candy.Config.init()
     await global.Candy.Mysql.init()
     await global.Candy.Route.init()
@@ -15,6 +16,7 @@ module.exports = {
     let _candy = {}
 
     _candy.Config = require('./Config.js')
+    _candy.Env = require('./Env.js')
     _candy.Mail = (...args) => new (require('./Mail.js'))(...args)
     _candy.Mysql = require('./Mysql.js')
     _candy.Route = global.Candy?.Route ?? new (require('./Route.js'))()
@@ -39,6 +41,9 @@ module.exports = {
       }
       _candy.direct = function (url) {
         return _candy.Request.redirect(url)
+      }
+      _candy.env = function (key, defaultValue) {
+        return _candy.Env.get(key, defaultValue)
       }
       _candy.return = function (data) {
         return _candy.Request.end(data)

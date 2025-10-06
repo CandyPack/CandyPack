@@ -153,6 +153,10 @@
       "title": "Configuration",
       "children": [
         {
+          "file": "00-configuration-overview.md",
+          "title": "Configuration Overview"
+        },
+        {
           "file": "01-database-connection.md",
           "title": "Database Connection"
         },
@@ -163,6 +167,10 @@
         {
           "file": "03-request-timeout.md",
           "title": "Request Timeout"
+        },
+        {
+          "file": "04-environment-variables.md",
+          "title": "Environment Variables"
         }
       ]
     },

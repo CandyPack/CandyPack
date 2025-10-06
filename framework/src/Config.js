@@ -20,24 +20,48 @@ module.exports = {
     } catch {
       this.system = {}
     }
+
     if (fs.existsSync(__dir + '/config.json')) {
       let config = {}
       try {
         config = JSON.parse(fs.readFileSync(__dir + '/config.json'))
-      } catch {
-        console.error('Error reading config file:', __dir + '/config.json')
+        config = this._interpolate(config)
+      } catch (err) {
+        console.error('Error reading config file:', __dir + '/config.json', err.message)
       }
-      for (const iterator of Object.keys(config)) {
-        if (typeof config[iterator] === 'object') {
-          for (const iterator2 of Object.keys(config[iterator])) {
-            if (!Candy.Config[iterator]) Candy.Config[iterator] = {}
-            Candy.Config[iterator][iterator2] = config[iterator][iterator2]
-          }
-        } else {
-          Candy.Config[iterator] = config[iterator]
-        }
-      }
+      this._deepMerge(this, config)
     }
     this.encrypt.key = nodeCrypto.createHash('md5').update(this.encrypt.key).digest('hex')
+  },
+
+  _interpolate: function (obj) {
+    if (typeof obj === 'string') {
+      return obj.replace(/\$\{(\w+)\}/g, (_, key) => process.env[key] || '')
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(item => this._interpolate(item))
+    }
+    if (obj && typeof obj === 'object') {
+      const result = {}
+      for (const key of Object.keys(obj)) {
+        result[key] = this._interpolate(obj[key])
+      }
+      return result
+    }
+    return obj
+  },
+
+  _deepMerge: function (target, source) {
+    for (const key of Object.keys(source)) {
+      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        // Ensure target[key] is also an object before recursive merge
+        if (!target[key] || typeof target[key] !== 'object' || Array.isArray(target[key])) {
+          target[key] = {}
+        }
+        this._deepMerge(target[key], source[key])
+      } else {
+        target[key] = source[key]
+      }
+    }
   }
 }
