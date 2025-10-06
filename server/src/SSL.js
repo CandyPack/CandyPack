@@ -125,7 +125,7 @@ class SSL {
   #handleSSLError(domain, err) {
     if (!this.#checked[domain]) this.#checked[domain] = {error: 0}
     if (this.#checked[domain].error < 5) {
-      this.#checked[domain].error = this.#checked[domain] ? this.#checked[domain].error + 1 : 1
+      this.#checked[domain].error = this.#checked[domain].error + 1
     }
     this.#checked[domain].interval = this.#checked[domain].error * 1000 * 60 * 5 + Date.now()
 
