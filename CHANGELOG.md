@@ -1,3 +1,32 @@
+### ⚙️ Engine Tuning
+
+- Refactor SSL certificate generation and error handling
+
+### ✨ What's New
+
+- Development Server Mode
+- **Framework:** Custom Cron Jobs
+
+### 📚 Documentation
+
+- Simplify and standardize documentation titles
+
+### 🛠️ Fixes & Improvements
+
+- Add CAA record support and default Let's Encrypt CAA
+- Enhance system DNS config to use public resolvers
+- Handle systemd-resolved conflict on DNS port 53
+- Improve external IP detection with multiple fallbacks
+- Log stderr output to log buffer with timestamp
+- Make husky prepare script non-failing
+- Skip rate limiting for localhost in DNS requests
+
+
+
+---
+
+Powered by [🍭 CandyPack](https://candypack.dev)
+
 ### 🛠️ Fixes & Improvements
 
 - Server Startup
