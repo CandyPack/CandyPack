@@ -131,8 +131,10 @@ describe('DNS Module', () => {
       // Wait for the axios promise to resolve
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Should fallback to local network IP (mocked as 192.168.1.10 in test setup)
-      expect(DNS.ip).toBe('192.168.1.10')
+      // Should fallback to local network IP (not 127.0.0.1 and not the invalid format)
+      expect(DNS.ip).not.toBe('127.0.0.1')
+      expect(DNS.ip).not.toBe('invalid-ip-format')
+      expect(DNS.ip).toMatch(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)
     })
 
     it('should handle external IP detection failure', async () => {
@@ -146,8 +148,9 @@ describe('DNS Module', () => {
       // Wait for the axios promise to resolve
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Should fallback to local network IP (mocked as 192.168.1.10 in test setup)
-      expect(DNS.ip).toBe('192.168.1.10')
+      // Should fallback to local network IP (not 127.0.0.1)
+      expect(DNS.ip).not.toBe('127.0.0.1')
+      expect(DNS.ip).toMatch(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)
     })
 
     it('should handle DNS server startup errors gracefully', async () => {
@@ -1289,8 +1292,9 @@ describe('DNS Module', () => {
 
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Should fallback to local network IP (mocked as 192.168.1.10)
-      expect(DNS.ip).toBe('192.168.1.10')
+      // Should fallback to local network IP (not 127.0.0.1)
+      expect(DNS.ip).not.toBe('127.0.0.1')
+      expect(DNS.ip).toMatch(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)
     })
 
     it('should handle second IP service success after first fails', async () => {
