@@ -48,13 +48,13 @@ class Cron {
             if (condition.value !== yearDay) shouldRun = false
             break
           case 'everyMinute':
-            if (job.lastRun && (unix / 60) % condition.value !== 0) shouldRun = false
+            if (job.lastRun && Math.floor(unix / 60) % condition.value !== 0) shouldRun = false
             break
           case 'everyHour':
-            if (job.lastRun && (unix / 3600) % condition.value !== 0) shouldRun = false
+            if (job.lastRun && Math.floor(unix / 3600) % condition.value !== 0) shouldRun = false
             break
           case 'everyDay':
-            if (job.lastRun && (unix / 86400) % condition.value !== 0) shouldRun = false
+            if (job.lastRun && Math.floor(unix / 86400) % condition.value !== 0) shouldRun = false
             break
           case 'everyWeekDay':
             if (job.lastRun && weekDay % condition.value !== 0) shouldRun = false
