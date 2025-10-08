@@ -73,8 +73,6 @@ function runTestsForFiles(files) {
     }
 
     // Run Jest for specific test files - no coverage threshold enforcement
-
-    // Run each test file directly
     const testFiles = testPatterns.join(' ')
     const command = `npx jest ${testFiles} --passWithNoTests`
 
