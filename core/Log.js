@@ -4,7 +4,7 @@ class Log {
   constructor() {
     // Detect if we're running in CLI mode
     // CLI mode is when the main module is in cli/ or bin/ directory
-    if (process.mainModule && process.mainModule.filename) {
+    if (require.main && require.main.filename) {
       const mainFile = process.mainModule.filename
       this.#cliMode = mainFile.includes('/cli/') || mainFile.includes('/bin/')
     }
