@@ -1,5 +1,6 @@
 const fs = require('fs')
 const os = require('os')
+const path = require('path')
 
 const {log, error} = Candy.core('Log', false).init('Config')
 
@@ -59,9 +60,9 @@ class Config {
 
   // Load individual module file from config directory with corruption recovery
   #loadModuleFile(moduleName) {
-    const moduleFile = this.#configDir + '/' + moduleName + '.json'
-    const bakDir = this.#dir + '/.bak'
-    const backupFile = bakDir + '/' + moduleName + '.json.bak'
+    const moduleFile = path.join(this.#configDir, moduleName + '.json')
+    const bakDir = path.join(this.#dir, '.bak')
+    const backupFile = path.join(bakDir, moduleName + '.json.bak')
     const corruptedFile = moduleFile + '.corrupted'
 
     // Return null if file doesn't exist
@@ -90,9 +91,9 @@ class Config {
   // Atomic write helper method - writes data safely with backup
   #atomicWrite(filePath, data) {
     const tempFile = filePath + '.tmp'
-    const bakDir = this.#dir + '/.bak'
-    const fileName = filePath.split('/').pop()
-    const backupFile = bakDir + '/' + fileName + '.bak'
+    const bakDir = path.join(this.#dir, '.bak')
+    const fileName = path.basename(filePath)
+    const backupFile = path.join(bakDir, fileName + '.bak')
 
     try {
       // 1. Write to temporary file first
@@ -348,7 +349,7 @@ class Config {
 
         // Only write module file if it has data
         if (Object.keys(moduleData).length > 0) {
-          const moduleFile = this.#configDir + '/' + moduleName + '.json'
+          const moduleFile = path.join(this.#configDir, moduleName + '.json')
 
           try {
             // Write each module to its respective file using atomic write
@@ -527,7 +528,7 @@ class Config {
       if (fs.existsSync(this.#configDir)) {
         const files = fs.readdirSync(this.#configDir)
         for (const file of files) {
-          const filePath = this.#configDir + '/' + file
+          const filePath = path.join(this.#configDir, file)
           try {
             fs.unlinkSync(filePath)
           } catch (err) {
@@ -634,7 +635,7 @@ class Config {
         continue
       }
 
-      const moduleFile = this.#configDir + '/' + moduleName + '.json'
+      const moduleFile = path.join(this.#configDir, moduleName + '.json')
       const moduleData = {}
 
       // Extract relevant config keys for this module
@@ -683,9 +684,9 @@ class Config {
 
   init() {
     try {
-      this.#dir = os.homedir() + '/.candypack'
-      this.#file = this.#dir + '/config.json'
-      this.#configDir = this.#dir + '/config'
+      this.#dir = path.join(os.homedir(), '.candypack')
+      this.#file = path.join(this.#dir, 'config.json')
+      this.#configDir = path.join(this.#dir, 'config')
 
       // Ensure base directory exists
       if (!fs.existsSync(this.#dir)) {
@@ -863,11 +864,11 @@ class Config {
     }
     if (!this.#loaded) {
       if (data.length > 2) {
-        var backup = this.#dir + '/config-corrupted.json'
+        var backup = path.join(this.#dir, 'config-corrupted.json')
         if (fs.existsSync(this.#file)) fs.copyFileSync(this.#file, backup)
       }
-      const bakDir = this.#dir + '/.bak'
-      const backupFile = bakDir + '/config.json.bak'
+      const bakDir = path.join(this.#dir, '.bak')
+      const backupFile = path.join(bakDir, 'config.json.bak')
       // Try new backup location first, then fall back to old location
       const backupPath = fs.existsSync(backupFile) ? backupFile : this.#file + '.bak'
       if (fs.existsSync(backupPath)) {
@@ -1047,12 +1048,12 @@ class Config {
       // Write backup file to .bak directory after a delay
       setTimeout(() => {
         try {
-          const bakDir = this.#dir + '/.bak'
+          const bakDir = path.join(this.#dir, '.bak')
           // Ensure .bak directory exists
           if (!fs.existsSync(bakDir)) {
             fs.mkdirSync(bakDir, {recursive: true})
           }
-          fs.writeFileSync(bakDir + '/config.json.bak', json, 'utf8')
+          fs.writeFileSync(path.join(bakDir, 'config.json.bak'), json, 'utf8')
         } catch (backupErr) {
           error(`[Config] Failed to write backup file: ${backupErr.message}`)
           error(`[Config] Error code: ${backupErr.code}`)
