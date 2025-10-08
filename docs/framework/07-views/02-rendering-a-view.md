@@ -1,43 +1,179 @@
-## 🎨 Rendering a View
+## 🎨 Rendering Views
 
-To bring a view to life, you'll use the `Candy.View.render()` method.
+In CandyPack, you use the `Candy.View` object to render views. There are two main approaches:
 
-`Candy.View.render('path/to/your-view', { some: 'data' })`
+### 1. Combining Skeleton and View Parts
 
-*   `'path/to/your-view'`: The path to your view file inside the `view/` folder. No need to add the file extension!
-*   `{ some: 'data' }`: An optional object of data you want to pass to your view. This is how you send dynamic information from your controller to your HTML.
+The most common usage is to select a skeleton and place view parts into it.
 
-#### Let's Build a Profile Page!
+```javascript
+module.exports = function (Candy) {
+  Candy.View
+    .skeleton('main')           // Use skeleton/main.html
+    .set('header', 'main')      // Place view/header/main.html into {{ HEADER }}
+    .set('content', 'home')     // Place view/content/home.html into {{ CONTENT }}
+    .set('footer', 'main')      // Place view/footer/main.html into {{ FOOTER }}
+}
+```
 
-Imagine you have a user profile page at `view/user/profile.html`:
+### 2. Bulk Setting with Object
 
+You can set all view parts at once:
+
+```javascript
+module.exports = function (Candy) {
+  Candy.View.set({
+    skeleton: 'main',
+    header: 'main',
+    content: 'home',
+    footer: 'main'
+  })
+}
+```
+
+### 3. Subdirectories with Dot Notation
+
+View files can be organized in subdirectories. You can access them using dot notation:
+
+```javascript
+Candy.View.set({
+  skeleton: 'dashboard',
+  header: 'dashboard.main',      // view/header/dashboard/main.html
+  sidebar: 'dashboard.menu',     // view/sidebar/dashboard/menu.html
+  content: 'user.profile'        // view/content/user/profile.html
+})
+```
+
+### 4. Direct View Rendering from Routes
+
+You can render views directly from route files without using a controller:
+
+```javascript
+// route/www.js
+Candy.Route.page('/about').view({
+  skeleton: 'main',
+  header: 'main',
+  content: 'about',
+  footer: 'main'
+})
+```
+
+### 5. All Feature
+
+If you're using the same directory structure for all placeholders, you can use the `all()` method:
+
+```javascript
+Candy.View
+  .skeleton('main')
+  .all('home')  // view/home/header.html, view/home/content.html, view/home/footer.html
+```
+
+In this case, placeholders like `{{ HEADER }}`, `{{ CONTENT }}`, `{{ FOOTER }}` in the skeleton are automatically matched with `view/home/header.html`, `view/home/content.html`, `view/home/footer.html` files.
+
+### Setting Dynamic Page Titles and Meta Tags
+
+Since skeleton files only support view part placeholders, you have two approaches for dynamic titles:
+
+#### Approach 1: Include Head as a View Part
+
+Create a separate view part for the `<head>` section:
+
+**Skeleton (skeleton/main.html):**
 ```html
 <!DOCTYPE html>
-<html>
-<head>
-    <title>User Profile</title>
-</head>
+<html lang="en">
+<div id="head">
+    {{ HEAD }}
+</div>
 <body>
-    <!-- The 'name' and 'email' variables come from our controller -->
-    <h1>Hello, {{ name }}!</h1>
-    <p>We've got your email down as {{ email }}.</p>
+    <header>
+        {{ HEADER }}
+    </header>
+    
+    <main>
+        {{ CONTENT }}
+    </main>
+    
+    <footer>
+        {{ FOOTER }}
+    </footer>
 </body>
 </html>
 ```
 
-Now, let's make a controller to render it:
+**Note:** Each placeholder is wrapped in an HTML tag so AJAX can identify and update specific sections.
 
+**Head View (view/head/main.html):**
+```html
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ Candy.pageTitle }}</title>
+    <meta name="description" content="{{ Candy.pageDescription }}">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+```
+
+**Controller:**
 ```javascript
-module.exports = function (Candy) {
-  // Let's create some data to send to the view
-  const userData = {
-    name: 'Captain Coder',
-    email: 'captain@coder.com'
-  };
-
-  // Now, render the view and pass the data along
-  return Candy.View.render('user/profile', userData);
+module.exports = async function (Candy) {
+  const productId = Candy.Request.get('id')
+  const product = await Candy.Mysql.table('products')
+    .where('id', productId)
+    .first()
+  
+  // Set dynamic title and description
+  Candy.pageTitle = product ? `${product.name} - My Store` : 'Product Not Found'
+  Candy.pageDescription = product ? product.short_description : ''
+  
+  Candy.product = product
+  
+  Candy.View.set({
+    skeleton: 'main',
+    head: 'main',        // Include dynamic head
+    header: 'main',
+    content: 'product.detail',
+    footer: 'main'
+  })
 }
 ```
 
-When this code runs, CandyPack's simple template engine will find the `{{ name }}` and `{{ email }}` placeholders in your HTML and replace them with the data from your controller. Voila! A beautiful, dynamic page.
+#### Approach 2: Set Title in Content View
+
+Include the title tag in your content view:
+
+**Skeleton (skeleton/simple.html):**
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    {{ CONTENT }}
+</body>
+</html>
+```
+
+**Content View (view/content/product.html):**
+```html
+<title>{{ Candy.product.name }} - My Store</title>
+
+<div class="product">
+    <h1>{{ Candy.product.name }}</h1>
+    <p>{{ Candy.product.description }}</p>
+</div>
+```
+
+**Note:** This approach is less clean but works for simple cases.
+
+### Important Notes
+
+- View files must have the `.html` extension
+- Skeleton files should be in the `skeleton/` directory, view files in the `view/` directory
+- Placeholders for view parts are written in uppercase: `{{ HEADER }}`, `{{ CONTENT }}`, etc.
+- View part names are specified in lowercase: `header`, `content`, etc.
+- Variables in skeleton/views are accessed via `Candy` object: `{{ Candy.variableName }}`
+- You don't need to use `return` from the controller, `Candy.View.set()` automatically initiates the rendering process

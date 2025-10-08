@@ -1,28 +1,96 @@
-## 📥 The Request Object: What is the User Asking For?
+## 📥 The Request Object
 
-Your `Candy.Request` object is a treasure chest of information about the user's incoming request. It tells you everything you need to know about what they're trying to do.
+The `Candy.Request` object contains information about the user's incoming request.
 
-#### Peeking Inside the Request
+### Getting Request Parameters
 
-Here are some of the goodies you can find:
+#### Using Candy.request() (Recommended)
 
-*   `Candy.Request.get`: Data from the URL's query string (like `?id=123`).
-*   `Candy.Request.post`: Data from a submitted HTML form.
-*   `Candy.Request.headers`: The HTTP headers sent by the browser.
-*   `Candy.Request.ip`: The user's IP address.
-*   `Candy.Request.method`: The HTTP method used ('GET', 'POST', etc.).
-*   `Candy.Request.url`: The full URL the user visited.
-*   `Candy.Request.host`: The website's hostname.
-*   `Candy.Request.files`: Any files the user uploaded.
+The easiest way to get request parameters is using `Candy.request()`:
 
-**Example Time!**
+```javascript
+module.exports = async function (Candy) {
+  // Get parameter from GET or POST automatically
+  const userName = await Candy.request('name')
+  const userId = await Candy.request('id')
+  
+  return `Hello ${userName}!`
+}
+```
+
+**Specify Method (Optional):**
+
+```javascript
+module.exports = async function (Candy) {
+  // Get from GET parameters only
+  const searchQuery = await Candy.request('q', 'GET')
+  
+  // Get from POST parameters only
+  const formName = await Candy.request('name', 'POST')
+  
+  return `Searching for: ${searchQuery}`
+}
+```
+
+#### Direct Access
+
+You can also access request data directly:
+
 ```javascript
 module.exports = function (Candy) {
-  // Let's get the user's name from the URL (?name=Jules)
-  const userName = Candy.Request.get.name;
-  // And find out what browser they're using
-  const userAgent = Candy.Request.headers['user-agent'];
+  // GET parameters (URL query string like ?id=123)
+  const userId = Candy.Request.get('id')
+  
+  // POST parameters (form data)
+  const userName = Candy.Request.post('name')
+  
+  return `User: ${userName}`
+}
+```
 
-  return `Hey ${userName}! Thanks for visiting with ${userAgent}.`;
+### Request Properties
+
+*   `Candy.Request.method` - HTTP method ('GET', 'POST', etc.)
+*   `Candy.Request.url` - Full URL the user visited
+*   `Candy.Request.host` - Website's hostname
+*   `Candy.Request.ip` - User's IP address
+*   `Candy.Request.ssl` - Whether connection is SSL/HTTPS
+
+### Request Headers
+
+```javascript
+module.exports = function (Candy) {
+  const userAgent = Candy.Request.header('user-agent')
+  const contentType = Candy.Request.header('content-type')
+  
+  return `Browser: ${userAgent}`
+}
+```
+
+### Complete Example
+
+```javascript
+module.exports = async function (Candy) {
+  // Get request parameters
+  const productId = await Candy.request('id')
+  const quantity = await Candy.request('quantity') || 1
+  
+  // Check request method
+  if (Candy.Request.method === 'POST') {
+    // Handle form submission
+    const result = await processOrder(productId, quantity)
+    return { success: true, orderId: result.id }
+  }
+  
+  // Show product page
+  Candy.set({
+    productId: productId,
+    quantity: quantity
+  })
+  
+  Candy.View.set({
+    skeleton: 'main',
+    content: 'product.detail'
+  })
 }
 ```

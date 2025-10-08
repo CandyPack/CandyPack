@@ -242,11 +242,19 @@
       "children": [
         {
           "file": "01-the-view-directory.md",
-          "title": "View Directory"
+          "title": "View System Overview"
         },
         {
           "file": "02-rendering-a-view.md",
           "title": "Rendering Views"
+        },
+        {
+          "file": "03-template-syntax.md",
+          "title": "Template Syntax"
+        },
+        {
+          "file": "04-passing-data-to-views.md",
+          "title": "Passing Data to Views"
         }
       ]
     },
