@@ -16,7 +16,7 @@ describe('DNS Module', () => {
 
   beforeEach(() => {
     setupGlobalMocks()
-
+    
     // Set up the Log mock before requiring DNS
     const {mockCandy} = require('./__mocks__/globalCandy')
     mockCandy.setMock('core', 'Log', {
@@ -215,7 +215,7 @@ describe('DNS Module', () => {
 
     it('should log DNS server errors when they occur', async () => {
       const dns = require('native-dns')
-      // mockError already defined at top
+      const mockLog = global.Candy.server('Log').init('DNS').error
       const udpServer = {on: jest.fn(), serve: jest.fn()}
       const tcpServer = {on: jest.fn(), serve: jest.fn()}
 
@@ -845,7 +845,7 @@ describe('DNS Module', () => {
 
     it('should handle request processing errors gracefully', () => {
       const dns = require('native-dns')
-      // mockError already defined at top
+      const mockLog = global.Candy.server('Log').init('DNS').error
       const udpServer = dns.createServer.mock.results[0].value
       const requestHandler = udpServer.on.mock.calls.find(call => call[0] === 'request')[1]
 
@@ -1167,7 +1167,7 @@ describe('DNS Module', () => {
 
     it('should handle response.send failure gracefully', () => {
       const dns = require('native-dns')
-      // mockError already defined at top
+      const mockLog = global.Candy.server('Log').init('DNS').error
 
       mockResponse.send = jest.fn(() => {
         throw new Error('Send failed')
@@ -1672,7 +1672,7 @@ describe('port management and conflict resolution', () => {
 
   it('should handle error handler with EADDRINUSE', async () => {
     const dns = require('native-dns')
-    // mockError already defined at top
+    const mockLog = global.Candy.server('Log').init('DNS').error
 
     const udpServer = {
       on: jest.fn(),
@@ -1711,7 +1711,7 @@ describe('port management and conflict resolution', () => {
 
   it('should handle error handler with EACCES', async () => {
     const dns = require('native-dns')
-    // mockError already defined at top
+    const mockLog = global.Candy.server('Log').init('DNS').error
 
     const udpServer = {
       on: jest.fn(),
@@ -1828,7 +1828,7 @@ describe('alternative port and system DNS configuration', () => {
   })
 
   it('should handle all alternative ports in use', async () => {
-    // mockError already defined at top
+    const mockLog = global.Candy.server('Log').init('DNS').error
 
     jest.doMock('os', () => ({
       platform: jest.fn(() => 'darwin'),

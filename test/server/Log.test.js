@@ -1,4 +1,4 @@
-const Log = require('../../server/src/Log')
+const Log = require('../../core/Log')
 
 describe('Log', () => {
   let consoleLogSpy

@@ -5,11 +5,24 @@
 
 const {setupGlobalMocks, cleanupGlobalMocks} = require('./__mocks__/testHelpers')
 
+// Create mock log function first
+const mockLog = jest.fn()
+const mockError = jest.fn()
+
 describe('Api', () => {
   let Api
 
   beforeEach(() => {
     setupGlobalMocks()
+
+    // Set up the Log mock before requiring Api
+    const {mockCandy} = require('./__mocks__/globalCandy')
+    mockCandy.setMock('core', 'Log', {
+      init: jest.fn().mockReturnValue({
+        log: mockLog,
+        error: mockError
+      })
+    })
 
     // Mock the net module at the module level
     jest.doMock('net', () => ({
