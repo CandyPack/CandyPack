@@ -5,7 +5,7 @@ class Log {
     // Detect if we're running in CLI mode
     // CLI mode is when the main module is in cli/ or bin/ directory
     if (require.main && require.main.filename) {
-      const mainFile = process.mainModule.filename
+      const mainFile = require.main.filename
       this.#cliMode = mainFile.includes('/cli/') || mainFile.includes('/bin/')
     }
   }
