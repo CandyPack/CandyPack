@@ -60,7 +60,8 @@ class Config {
   // Load individual module file from config directory with corruption recovery
   #loadModuleFile(moduleName) {
     const moduleFile = this.#configDir + '/' + moduleName + '.json'
-    const backupFile = moduleFile + '.bak'
+    const bakDir = this.#dir + '/.bak'
+    const backupFile = bakDir + '/' + moduleName + '.json.bak'
     const corruptedFile = moduleFile + '.corrupted'
 
     // Return null if file doesn't exist
@@ -89,16 +90,22 @@ class Config {
   // Atomic write helper method - writes data safely with backup
   #atomicWrite(filePath, data) {
     const tempFile = filePath + '.tmp'
-    const backupFile = filePath + '.bak'
+    const bakDir = this.#dir + '/.bak'
+    const fileName = filePath.split('/').pop()
+    const backupFile = bakDir + '/' + fileName + '.bak'
 
     try {
       // 1. Write to temporary file first
       const jsonData = JSON.stringify(data, null, 4)
       fs.writeFileSync(tempFile, jsonData, 'utf8')
 
-      // 2. Copy existing file to .bak before overwriting (if it exists)
+      // 2. Copy existing file to .bak directory before overwriting (if it exists)
       if (fs.existsSync(filePath)) {
         try {
+          // Ensure .bak directory exists
+          if (!fs.existsSync(bakDir)) {
+            fs.mkdirSync(bakDir, {recursive: true})
+          }
           fs.copyFileSync(filePath, backupFile)
         } catch (backupErr) {
           error(`[Config] Warning: Failed to create backup for ${filePath}: ${backupErr.message}`)
@@ -859,10 +866,14 @@ class Config {
         var backup = this.#dir + '/config-corrupted.json'
         if (fs.existsSync(this.#file)) fs.copyFileSync(this.#file, backup)
       }
-      if (fs.existsSync(this.#file + '.bak')) {
-        data = fs.readFileSync(this.#file + '.bak', 'utf8')
+      const bakDir = this.#dir + '/.bak'
+      const backupFile = bakDir + '/config.json.bak'
+      // Try new backup location first, then fall back to old location
+      const backupPath = fs.existsSync(backupFile) ? backupFile : this.#file + '.bak'
+      if (fs.existsSync(backupPath)) {
+        data = fs.readFileSync(backupPath, 'utf8')
         if (!data) {
-          error('Error reading backup file:', this.#file + '.bak')
+          error('Error reading backup file:', backupPath)
           this.#save(true)
           return
         }
@@ -1033,10 +1044,15 @@ class Config {
       // Write main config file
       fs.writeFileSync(this.#file, json, 'utf8')
 
-      // Write backup file after a delay
+      // Write backup file to .bak directory after a delay
       setTimeout(() => {
         try {
-          fs.writeFileSync(this.#file + '.bak', json, 'utf8')
+          const bakDir = this.#dir + '/.bak'
+          // Ensure .bak directory exists
+          if (!fs.existsSync(bakDir)) {
+            fs.mkdirSync(bakDir, {recursive: true})
+          }
+          fs.writeFileSync(bakDir + '/config.json.bak', json, 'utf8')
         } catch (backupErr) {
           error(`[Config] Failed to write backup file: ${backupErr.message}`)
           error(`[Config] Error code: ${backupErr.code}`)

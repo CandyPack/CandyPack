@@ -375,7 +375,7 @@ describe('Config', () => {
       jest.advanceTimersByTime(5000)
 
       expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-        '/home/user/.candypack/config.json.bak',
+        '/home/user/.candypack/.bak/config.json.bak',
         expect.stringContaining('"testBackup": "value"'),
         'utf8'
       )
@@ -689,7 +689,7 @@ describe('Config', () => {
       jest.advanceTimersByTime(5000)
 
       expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-        '/home/user/.candypack/config.json.bak',
+        '/home/user/.candypack/.bak/config.json.bak',
         expect.stringContaining('"backupTest": "value"'),
         'utf8'
       )
