@@ -34,11 +34,18 @@ npm run release       # Semantic release (automated)
 curl -sL https://candypack.dev/install | bash  # Quick install
 npm install -g candypack                       # Manual install
 
-# Git Hooks
+# Git Hooks & CI/CD
 # Pre-commit automatically runs:
 # 1. lint-staged (ESLint + Prettier on staged files)
 # 2. Test execution for changed core/ and server/ files (test/scripts/check-coverage.js)
 # Note: Coverage is tracked but doesn't block commits - focus is on test pass/fail
+
+# GitHub Actions (on PR to main/dev):
+# 1. Runs all tests with coverage
+# 2. Runs linter
+# 3. Tests on Node.js 18.x and 22.x
+# 4. Uploads coverage to Codecov
+# 5. Comments PR with coverage report
 ```
 
 ## Code Style
