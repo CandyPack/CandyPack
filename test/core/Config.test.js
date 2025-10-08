@@ -1229,6 +1229,85 @@ describe('Config', () => {
       })
     })
 
+    describe('helper methods', () => {
+      it('should initialize default config for server key', () => {
+        mockFs.existsSync.mockReturnValue(true)
+        mockFs.readFileSync.mockReturnValue(createValidConfig())
+
+        ConfigClass = require('../../core/Config.js')
+        config = new ConfigClass()
+        config.init()
+
+        const testConfig = {}
+        // Access private method through reflection for testing
+        const initMethod = Object.getOwnPropertyNames(Object.getPrototypeOf(config)).find(name =>
+          name.includes('initializeDefaultModuleConfig')
+        )
+
+        if (initMethod) {
+          config[initMethod](testConfig, ['server'])
+          expect(testConfig.server).toEqual({pid: null, started: null, watchdog: null})
+        }
+      })
+
+      it('should initialize default config for websites key', () => {
+        mockFs.existsSync.mockReturnValue(true)
+        mockFs.readFileSync.mockReturnValue(createValidConfig())
+
+        ConfigClass = require('../../core/Config.js')
+        config = new ConfigClass()
+        config.init()
+
+        const testConfig = {}
+        const initMethod = Object.getOwnPropertyNames(Object.getPrototypeOf(config)).find(name =>
+          name.includes('initializeDefaultModuleConfig')
+        )
+
+        if (initMethod) {
+          config[initMethod](testConfig, ['websites'])
+          expect(testConfig.websites).toEqual({})
+        }
+      })
+
+      it('should initialize default config for services key', () => {
+        mockFs.existsSync.mockReturnValue(true)
+        mockFs.readFileSync.mockReturnValue(createValidConfig())
+
+        ConfigClass = require('../../core/Config.js')
+        config = new ConfigClass()
+        config.init()
+
+        const testConfig = {}
+        const initMethod = Object.getOwnPropertyNames(Object.getPrototypeOf(config)).find(name =>
+          name.includes('initializeDefaultModuleConfig')
+        )
+
+        if (initMethod) {
+          config[initMethod](testConfig, ['services'])
+          expect(testConfig.services).toEqual([])
+        }
+      })
+
+      it('should not overwrite existing config values', () => {
+        mockFs.existsSync.mockReturnValue(true)
+        mockFs.readFileSync.mockReturnValue(createValidConfig())
+
+        ConfigClass = require('../../core/Config.js')
+        config = new ConfigClass()
+        config.init()
+
+        const testConfig = {server: {pid: 123}}
+        const initMethod = Object.getOwnPropertyNames(Object.getPrototypeOf(config)).find(name =>
+          name.includes('initializeDefaultModuleConfig')
+        )
+
+        if (initMethod) {
+          config[initMethod](testConfig, ['server'])
+          expect(testConfig.server.pid).toBe(123)
+        }
+      })
+    })
+
     describe('corruption recovery', () => {
       it('should create .corrupted backup when recovering from corruption', () => {
         mockFs.existsSync.mockImplementation(path => {

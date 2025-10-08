@@ -32,6 +32,28 @@ class Config {
     api: ['api']
   }
 
+  // Initialize default configuration for module keys
+  #initializeDefaultModuleConfig(config, keys) {
+    for (const key of keys) {
+      if (config[key] === undefined) {
+        // Initialize with appropriate default values
+        if (key === 'server') {
+          config[key] = {
+            pid: null,
+            started: null,
+            watchdog: null
+          }
+        } else if (key === 'websites') {
+          config[key] = {}
+        } else if (key === 'services') {
+          config[key] = []
+        } else {
+          config[key] = {}
+        }
+      }
+    }
+  }
+
   force() {
     this.#save()
   }
@@ -225,43 +247,14 @@ class Config {
           } else {
             // Module file is missing or corrupted - initialize with defaults
             log(`[Config] Module ${moduleName} not loaded, using defaults`)
-            for (const key of keys) {
-              if (mergedConfig[key] === undefined) {
-                // Initialize with appropriate default values
-                if (key === 'server') {
-                  mergedConfig[key] = {
-                    pid: null,
-                    started: null,
-                    watchdog: null
-                  }
-                } else if (key === 'websites') {
-                  mergedConfig[key] = {}
-                } else if (key === 'services') {
-                  mergedConfig[key] = []
-                } else {
-                  mergedConfig[key] = {}
-                }
-              }
-            }
+            this.#initializeDefaultModuleConfig(mergedConfig, keys)
           }
         } catch (err) {
           error(`[Config] Error loading module ${moduleName}: ${err.message}`)
           failedModules.push(moduleName)
 
           // Initialize with defaults even on error
-          for (const key of keys) {
-            if (mergedConfig[key] === undefined) {
-              if (key === 'server') {
-                mergedConfig[key] = {pid: null, started: null, watchdog: null}
-              } else if (key === 'websites') {
-                mergedConfig[key] = {}
-              } else if (key === 'services') {
-                mergedConfig[key] = []
-              } else {
-                mergedConfig[key] = {}
-              }
-            }
-          }
+          this.#initializeDefaultModuleConfig(mergedConfig, keys)
         }
       }
 
