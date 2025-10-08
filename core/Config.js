@@ -519,18 +519,8 @@ class Config {
     try {
       // Remove modular config directory if it exists
       if (fs.existsSync(this.#configDir)) {
-        const files = fs.readdirSync(this.#configDir)
-        for (const file of files) {
-          const filePath = path.join(this.#configDir, file)
-          try {
-            fs.unlinkSync(filePath)
-          } catch (err) {
-            error(`[Config] Failed to delete ${filePath}: ${err.message}`)
-          }
-        }
-
         try {
-          fs.rmdirSync(this.#configDir)
+          fs.rmSync(this.#configDir, {recursive: true, force: true})
           log('[Config] Removed modular config directory')
         } catch (err) {
           error(`[Config] Failed to remove config directory: ${err.message}`)

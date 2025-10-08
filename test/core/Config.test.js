@@ -79,6 +79,7 @@ describe('Config', () => {
       readFileSync: jest.fn(),
       writeFileSync: jest.fn(),
       copyFileSync: jest.fn(),
+      rmSync: jest.fn(),
       promises: {
         writeFile: jest.fn().mockResolvedValue()
       }
@@ -97,6 +98,7 @@ describe('Config', () => {
     fs.readFileSync = mockFs.readFileSync
     fs.writeFileSync = mockFs.writeFileSync
     fs.copyFileSync = mockFs.copyFileSync
+    fs.rmSync = mockFs.rmSync
     fs.promises = mockFs.promises
 
     os.homedir = mockOs.homedir
@@ -726,10 +728,8 @@ describe('Config', () => {
 
   describe('modular configuration', () => {
     beforeEach(() => {
-      mockFs.readdirSync = jest.fn()
-      mockFs.rmdirSync = jest.fn()
-      mockFs.unlinkSync = jest.fn()
       mockFs.renameSync = jest.fn()
+      mockFs.unlinkSync = jest.fn()
     })
 
     describe('format detection', () => {
@@ -946,12 +946,11 @@ describe('Config', () => {
           throw new Error('Write failed')
         })
 
-        mockFs.readdirSync.mockReturnValue([])
-
         ConfigClass = require('../../core/Config.js')
         config = new ConfigClass()
         config.init()
 
+        expect(mockFs.rmSync).toHaveBeenCalledWith('/home/user/.candypack/config', {recursive: true, force: true})
         expect(config.config.server).toBeDefined()
       })
 
@@ -974,6 +973,82 @@ describe('Config', () => {
         ConfigClass = require('../../core/Config.js')
         config = new ConfigClass()
         config.init()
+
+        expect(config.config.server).toBeDefined()
+      })
+
+      it('should use rmSync with recursive and force options during rollback', () => {
+        mockFs.existsSync.mockImplementation(path => {
+          if (path === '/home/user/.candypack') return true
+          if (path === '/home/user/.candypack/config.json') return true
+          if (path === '/home/user/.candypack/config') return false
+          return false
+        })
+
+        mockFs.readFileSync.mockReturnValue(createValidConfig())
+
+        let configDirCreated = false
+        mockFs.mkdirSync.mockImplementation(path => {
+          if (path === '/home/user/.candypack/config') {
+            configDirCreated = true
+            mockFs.existsSync.mockImplementation(p => {
+              if (p === path) return configDirCreated
+              if (p === '/home/user/.candypack') return true
+              if (p === '/home/user/.candypack/config.json') return true
+              return false
+            })
+          }
+        })
+
+        mockFs.writeFileSync.mockImplementation(() => {
+          throw new Error('Write failed')
+        })
+
+        ConfigClass = require('../../core/Config.js')
+        config = new ConfigClass()
+        config.init()
+
+        expect(mockFs.rmSync).toHaveBeenCalledWith('/home/user/.candypack/config', {
+          recursive: true,
+          force: true
+        })
+      })
+
+      it('should handle rmSync errors gracefully during rollback', () => {
+        mockFs.existsSync.mockImplementation(path => {
+          if (path === '/home/user/.candypack') return true
+          if (path === '/home/user/.candypack/config.json') return true
+          if (path === '/home/user/.candypack/config') return false
+          return false
+        })
+
+        mockFs.readFileSync.mockReturnValue(createValidConfig())
+
+        mockFs.mkdirSync.mockImplementation(path => {
+          if (path === '/home/user/.candypack/config') {
+            mockFs.existsSync.mockImplementation(p => {
+              if (p === path) return true
+              if (p === '/home/user/.candypack') return true
+              if (p === '/home/user/.candypack/config.json') return true
+              return false
+            })
+          }
+        })
+
+        mockFs.writeFileSync.mockImplementation(() => {
+          throw new Error('Write failed')
+        })
+
+        mockFs.rmSync.mockImplementation(() => {
+          throw new Error('rmSync failed')
+        })
+
+        ConfigClass = require('../../core/Config.js')
+        config = new ConfigClass()
+
+        expect(() => {
+          config.init()
+        }).not.toThrow()
 
         expect(config.config.server).toBeDefined()
       })
