@@ -61,6 +61,50 @@ const users = await Candy.Mysql.table('users')
   .get()
 ```
 
+### Complex Where Conditions
+
+For complex queries with nested AND/OR conditions, use arrays:
+
+```javascript
+// SQL: WHERE (status = 'active' AND verified = 1) OR (role = 'admin')
+const users = await Candy.Mysql.table('users')
+  .where([
+    ['status', 'active'],
+    ['verified', 1]
+  ])
+  .orWhere(['role', 'admin'])
+  .get()
+
+// SQL: WHERE status = 'active' AND (role = 'admin' OR role = 'moderator')
+const users = await Candy.Mysql.table('users')
+  .where('status', 'active')
+  .where([
+    ['role', 'admin'],
+    'OR',
+    ['role', 'moderator']
+  ])
+  .get()
+
+// Complex nested conditions
+// SQL: WHERE (status = 'active' AND (role = 'admin' OR role = 'moderator')) 
+//      AND (verified = 1 OR email_verified = 1)
+const users = await Candy.Mysql.table('users')
+  .where([
+    ['status', 'active'],
+    [
+      ['role', 'admin'],
+      'OR',
+      ['role', 'moderator']
+    ]
+  ])
+  .where([
+    ['verified', 1],
+    'OR',
+    ['email_verified', 1]
+  ])
+  .get()
+```
+
 ### Ordering and Limiting
 
 ```javascript
