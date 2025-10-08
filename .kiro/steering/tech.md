@@ -13,9 +13,10 @@
 ## Code Quality Tools
 
 - **Linting**: ESLint with Prettier integration
-- **Testing**: Jest with coverage reporting
-- **Git Hooks**: Husky with pre-commit linting
+- **Testing**: Jest with coverage reporting (no threshold enforcement)
+- **Git Hooks**: Husky with pre-commit linting and test execution
 - **Release**: Semantic Release with conventional commits
+- **Test Check**: Automatic test execution on commit for changed files (pass/fail only)
 
 ## Common Commands
 
@@ -32,6 +33,19 @@ npm run release       # Semantic release (automated)
 # Installation
 curl -sL https://candypack.dev/install | bash  # Quick install
 npm install -g candypack                       # Manual install
+
+# Git Hooks & CI/CD
+# Pre-commit automatically runs:
+# 1. lint-staged (ESLint + Prettier on staged files)
+# 2. Test execution for changed core/ and server/ files (test/scripts/check-coverage.js)
+# Note: Coverage is tracked but doesn't block commits - focus is on test pass/fail
+
+# GitHub Actions (on PR to main/dev):
+# 1. Runs all tests with coverage
+# 2. Runs linter
+# 3. Tests on Node.js 18.x and 22.x
+# 4. Uploads coverage to Codecov
+# 5. Comments PR with coverage report
 ```
 
 ## Code Style
@@ -40,3 +54,20 @@ npm install -g candypack                       # Manual install
 - **ESLint**: Separate configs for server/framework/web/browser contexts
 - **Globals**: `Candy` and `__` are global variables across the codebase
 - **Module System**: CommonJS (`require`/`module.exports`) for server-side code
+
+## Logging Standards
+
+- **Log Class**: Use `Candy.core('Log', false).init('ModuleName')` for all logging
+- **Usage Pattern**:
+
+  ```javascript
+  const {log, error} = Candy.core('Log', false).init('ModuleName')
+
+  log('Info message')
+  log('Message with %s placeholder', 'value')
+  error('Error message', errorObject)
+  ```
+
+- **CLI Mode**: Logs are automatically suppressed in CLI mode to avoid breaking the interface
+- **Location**: Log class is in `core/Log.js` (also available via `server/src/Log.js` for backward compatibility)
+- **Never use**: `console.log()` or `console.error()` directly - always use the Log class

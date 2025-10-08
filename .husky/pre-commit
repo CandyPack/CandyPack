@@ -1,1 +1,2 @@
 npx lint-staged
+node test/scripts/check-coverage.js

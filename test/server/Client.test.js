@@ -1,39 +1,28 @@
+// Create mock log function first
+const mockLog = jest.fn()
+
 // Mock global Candy first
 const {mockCandy} = require('./__mocks__/globalCandy')
+
+// Set up the Log mock before setting global.Candy
+mockCandy.setMock('core', 'Log', {
+  init: jest.fn().mockReturnValue({
+    log: mockLog,
+    error: jest.fn()
+  })
+})
+
 global.Candy = mockCandy
 
 // Mock axios
 jest.mock('axios')
 const axios = require('axios')
 
-// Mock the Client module to intercept the log function
-jest.mock('../../server/src/Client', () => {
-  const mockLog = jest.fn()
-
-  // Set up the mock to return our log function
-  global.Candy.setMock('server', 'Log', {
-    init: jest.fn().mockReturnValue({log: mockLog})
-  })
-
-  // Require the actual module after setting up the mock
-  const actualClient = jest.requireActual('../../server/src/Client')
-
-  // Store reference to mockLog for tests
-  actualClient._mockLog = mockLog
-
-  return actualClient
-})
-
 const Client = require('../../server/src/Client')
 
 describe('Client', () => {
-  let mockLog
-
   beforeEach(() => {
     jest.clearAllMocks()
-
-    // Get reference to the mock log function
-    mockLog = Client._mockLog
 
     // Reset config
     mockCandy.setMock('core', 'Config', {

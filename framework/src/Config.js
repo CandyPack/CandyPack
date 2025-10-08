@@ -36,7 +36,14 @@ module.exports = {
 
   _interpolate: function (obj) {
     if (typeof obj === 'string') {
-      return obj.replace(/\$\{(\w+)\}/g, (_, key) => process.env[key] || '')
+      return obj.replace(/\$\{(\w+)\}/g, (_, key) => {
+        // Special variables
+        if (key === 'candy') {
+          return __dirname.replace(/\/framework\/src$/, '')
+        }
+        // Environment variables
+        return process.env[key] || ''
+      })
     }
     if (Array.isArray(obj)) {
       return obj.map(item => this._interpolate(item))

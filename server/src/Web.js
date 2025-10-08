@@ -1,4 +1,4 @@
-const {log, error} = Candy.server('Log', false).init('Web')
+const {log, error} = Candy.core('Log', false).init('Web')
 
 const childProcess = require('child_process')
 const fs = require('fs')
