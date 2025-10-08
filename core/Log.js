@@ -1,4 +1,15 @@
 class Log {
+  #cliMode = false
+
+  constructor() {
+    // Detect if we're running in CLI mode
+    // CLI mode is when the main module is in cli/ or bin/ directory
+    if (process.mainModule && process.mainModule.filename) {
+      const mainFile = process.mainModule.filename
+      this.#cliMode = mainFile.includes('/cli/') || mainFile.includes('/bin/')
+    }
+  }
+
   init(...arg) {
     this.module = '[' + arg.join('][') + '] '
     return {
@@ -8,10 +19,14 @@ class Log {
   }
 
   error(...arg) {
+    // Always show errors, even in CLI mode
     console.error(this.module, ...arg)
   }
 
   log(...arg) {
+    // Suppress logs in CLI mode to avoid breaking the interface
+    if (this.#cliMode) return
+
     if (!arg.length) return this
     if (typeof arg[0] === 'string' && arg[0].includes('%s')) {
       let message = arg.shift()

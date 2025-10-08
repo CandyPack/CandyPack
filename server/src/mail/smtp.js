@@ -1,4 +1,4 @@
-const {log, error} = Candy.server('Log', false).init('Mail', 'SMTP')
+const {log, error} = Candy.core('Log', false).init('Mail', 'SMTP')
 
 const nodeCrypto = require('crypto')
 const dns = require('dns')

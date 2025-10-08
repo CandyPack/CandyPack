@@ -1,4 +1,4 @@
-const {log, error} = Candy.server('Log', false).init('Service')
+const {log, error} = Candy.core('Log', false).init('Service')
 
 const bcrypt = require('bcrypt')
 const SMTPServer = require('smtp-server').SMTPServer

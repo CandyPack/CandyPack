@@ -1,4 +1,4 @@
-const {log, error} = Candy.server('Log', false).init('SSL')
+const {log, error} = Candy.core('Log', false).init('SSL')
 
 const acme = require('acme-client')
 const fs = require('fs')

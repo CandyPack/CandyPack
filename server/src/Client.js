@@ -1,4 +1,4 @@
-const {log} = Candy.server('Log', false).init('Client')
+const {log} = Candy.core('Log', false).init('Client')
 
 const axios = require('axios')
 
