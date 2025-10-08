@@ -73,11 +73,6 @@ function runTestsForFiles(files) {
     }
 
     // Run Jest for specific test files - no coverage threshold enforcement
-    if (testPatterns.length === 0) {
-      console.log('⚠️  No test files found for changed files')
-      console.log('Skipping test execution (no tests available yet)\n')
-      return true
-    }
 
     // Run each test file directly
     const testFiles = testPatterns.join(' ')
