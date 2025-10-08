@@ -277,12 +277,12 @@
       "title": "Database",
       "children": [
         {
-          "file": "01-automatic-connection.md",
+          "file": "01-database-connection.md",
           "title": "Database Connection"
         },
         {
-          "file": "02-running-a-query.md",
-          "title": "Running Queries"
+          "file": "02-using-mysql.md",
+          "title": "Using MySQL"
         }
       ]
     },
