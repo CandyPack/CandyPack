@@ -5,6 +5,8 @@ class candy {
   #page = null
   #token = {hash: [], data: false}
   #formSubmitHandlers = new Map()
+  #loader = {elements: {}, callback: null}
+  #isNavigating = false
 
   constructor() {
     this.#data = this.data()
@@ -137,6 +139,65 @@ class candy {
 
   action(obj) {
     if (obj.function) for (let func in obj.function) this.fn[func] = obj.function[func]
+
+    // Handle navigate configuration
+    if (obj.navigate !== undefined && obj.navigate !== false) {
+      let selector, elements, callback
+
+      // Minimal: navigate: 'main'
+      if (typeof obj.navigate === 'string') {
+        selector = 'a[href^="/"]:not([data-navigate="false"]):not(.no-navigate)'
+        elements = {content: obj.navigate}
+        callback = null
+      }
+      // Medium/Advanced: navigate: {...}
+      else if (typeof obj.navigate === 'object') {
+        // Determine base selector
+        let baseSelector
+        if (obj.navigate.links) {
+          baseSelector = obj.navigate.links
+        } else if (obj.navigate.selector) {
+          baseSelector = obj.navigate.selector
+        } else {
+          baseSelector = 'a[href^="/"]' // Default: all internal links
+        }
+
+        // Add exclusions to selector
+        selector = `${baseSelector}:not([data-navigate="false"]):not(.no-navigate)`
+
+        // Determine elements to update
+        if (obj.navigate.update) {
+          if (typeof obj.navigate.update === 'string') {
+            elements = {content: obj.navigate.update}
+          } else {
+            elements = obj.navigate.update
+          }
+        } else if (obj.navigate.elements) {
+          elements = obj.navigate.elements
+        } else {
+          elements = {content: 'main'} // Default
+        }
+
+        // Determine callback
+        callback = obj.navigate.on || obj.navigate.callback || null
+      }
+      // Boolean: navigate: true
+      else if (obj.navigate === true) {
+        selector = 'a[href^="/"]:not([data-navigate="false"]):not(.no-navigate)'
+        elements = {content: 'main'}
+        callback = null
+      }
+
+      // Initialize loader after DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          this.loader(selector, elements, callback)
+        })
+      } else {
+        this.loader(selector, elements, callback)
+      }
+    }
+
     if (obj.start) document.addEventListener('DOMContentLoaded', () => obj.start())
     if (obj.load) {
       if (!this.actions.load) this.actions.load = []
@@ -160,7 +221,7 @@ class candy {
       }
     }
     for (let key in obj) {
-      if (['function', 'start', 'load', 'page', 'interval'].includes(key)) continue
+      if (['function', 'start', 'load', 'page', 'interval', 'navigate'].includes(key)) continue
       for (let key2 in obj[key]) {
         if (typeof obj[key][key2] == 'function') {
           this.#on(document, key, key2, obj[key][key2])
@@ -401,6 +462,143 @@ class candy {
         }
       })
     return return_token
+  }
+
+  load(url, callback, push = true) {
+    if (this.#isNavigating) return false
+
+    const currentUrl = window.location.href
+
+    // Normalize URL
+    if (url.substr(0, 4) !== 'http') {
+      const parts = currentUrl.replace('://', '{:--}').split('/')
+      parts[0] = parts[0].replace('{:--}', '://')
+      if (url.substr(0, 1) === '/') {
+        url = parts[0] + url
+      } else {
+        parts[parts.length - 1] = ''
+        url = parts.join('/') + url
+      }
+    }
+
+    if (url === '' || url.substring(0, 11) === 'javascript:' || url.includes('#')) return false
+
+    this.#isNavigating = true
+
+    this.#ajax({
+      url: url,
+      type: 'GET',
+      headers: {
+        'X-Candy': 'ajaxload',
+        'X-Candy-Load': Object.keys(this.#loader.elements).join(',')
+      },
+      dataType: 'json',
+      success: (data, status, xhr) => {
+        if (url !== currentUrl && push) {
+          window.history.pushState(null, document.title, url)
+        }
+
+        const newPage = xhr.getResponseHeader('X-Candy-Page')
+        if (newPage) this.#page = newPage
+
+        // Update elements with fade effect
+        const elements = Object.entries(this.#loader.elements)
+        let completed = 0
+
+        if (elements.length === 0) {
+          this.#handleLoadComplete(data, callback)
+          return
+        }
+
+        elements.forEach(([key, selector]) => {
+          const element = document.querySelector(selector)
+          if (!element) {
+            completed++
+            if (completed === elements.length) {
+              this.#handleLoadComplete(data, callback)
+            }
+            return
+          }
+
+          this.#fadeOut(element, 400, () => {
+            if (data.output && data.output[key]) {
+              element.innerHTML = data.output[key]
+            }
+            this.#fadeIn(element, 400, () => {
+              completed++
+              if (completed === elements.length) {
+                this.#handleLoadComplete(data, callback)
+              }
+            })
+          })
+        })
+      },
+      error: () => {
+        this.#isNavigating = false
+        window.location.replace(url)
+      }
+    })
+  }
+
+  #handleLoadComplete(data, callback) {
+    setTimeout(() => {
+      // Call load actions
+      if (this.actions.load) {
+        if (Array.isArray(this.actions.load)) {
+          this.actions.load.forEach(fn => fn(this.page(), data.variables))
+        } else if (typeof this.actions.load === 'function') {
+          this.actions.load(this.page(), data.variables)
+        }
+      }
+
+      // Call page-specific actions
+      if (this.actions.page && this.actions.page[this.page()]) {
+        const pageActions = this.actions.page[this.page()]
+        if (Array.isArray(pageActions)) {
+          pageActions.forEach(fn => fn(data.variables))
+        } else if (typeof pageActions === 'function') {
+          pageActions(data.variables)
+        }
+      }
+
+      // Call custom callback
+      if (callback && typeof callback === 'function') {
+        callback(this.page(), data.variables)
+      }
+
+      // Scroll to top
+      window.scrollTo({top: 0, behavior: 'smooth'})
+
+      this.#isNavigating = false
+    }, 500)
+  }
+
+  loader(selector, elements, callback) {
+    this.#loader.elements = elements
+    this.#loader.callback = callback
+
+    // Handle link clicks
+    this.#on(document, 'click', selector, e => {
+      if (e.ctrlKey || e.metaKey) return
+
+      const url = e.target.getAttribute('href')
+      const target = e.target.getAttribute('target')
+
+      if (!url || url === '' || url.substring(0, 11) === 'javascript:' || url.substring(0, 1) === '#') return
+
+      const currentHost = window.location.host
+      const isExternal = url.includes('://') && !url.includes(currentHost)
+
+      if ((target === null || target === '_self') && !isExternal) {
+        e.preventDefault()
+        this.load(url, callback)
+      }
+    })
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', () => {
+      this.load(window.location.href, callback, false)
+    })
   }
 }
 

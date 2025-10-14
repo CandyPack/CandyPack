@@ -81,6 +81,15 @@ class Route {
         page: this.routes[Candy.Request.route]['page'][url].file || this.routes[Candy.Request.route].error[404].file || ''
       }
     }
+
+    // Handle AJAX page load requests
+    if (Candy.Request.method == 'get' && Candy.Request.header('X-Candy') == 'ajaxload') {
+      let loadElements = Candy.Request.header('X-Candy-Load')
+      if (loadElements) {
+        Candy.Request.ajaxLoad = loadElements.split(',')
+      }
+      Candy.Request.isAjaxLoad = true
+    }
     if (Candy.Config.route && Candy.Config.route[url]) {
       Candy.Config.route[url] = Candy.Config.route[url].replace('${candy}', `${__dir}/node_modules/candypack`)
       if (fs.existsSync(Candy.Config.route[url])) {
