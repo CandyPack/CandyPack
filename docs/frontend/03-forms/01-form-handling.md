@@ -9,10 +9,7 @@ Learn how to handle forms with automatic AJAX submission, CSRF protection, and v
 ```html
 <form id="contact-form" action="/api/contact" method="POST">
   <input name="email" type="email" required>
-  <span candy-form-error="email"></span>
-  
   <button type="submit">Submit</button>
-  <div candy-form-success></div>
 </form>
 ```
 
@@ -27,9 +24,11 @@ Candy.form('#contact-form', function(data) {
 That's it! candy.js handles:
 - ✅ AJAX submission
 - ✅ CSRF token (automatic)
-- ✅ Validation errors
-- ✅ Success messages
+- ✅ Validation errors (auto-generated)
+- ✅ Success messages (auto-generated)
 - ✅ Loading states
+
+**Note:** Error and success message elements are automatically created if not present in your HTML. You can optionally add them for custom styling or positioning.
 
 ## Form Configuration
 
@@ -66,16 +65,22 @@ Candy.form('#my-form', '/success-page')
 
 ## Error Handling
 
-### Inline Errors
+### Automatic Error Display
 
-Display errors next to fields:
+By default, errors are automatically displayed next to the input fields when validation fails. The system creates error elements automatically.
+
+### Custom Error Placement (Optional)
+
+If you want to control where errors appear, add error elements manually:
 
 ```html
 <input name="email" type="email">
 <span candy-form-error="email"></span>
 ```
 
-Errors are automatically displayed when validation fails.
+**If not present:** The system automatically creates `<span candy-form-error="email">` after the input field.
+
+**If present:** The system uses your existing element and updates its content.
 
 ### Custom Error Display
 
@@ -109,7 +114,13 @@ input._candy_error {
 
 ## Success Messages
 
-### Inline Success
+### Automatic Success Display
+
+Success messages are automatically displayed at the end of the form when submission succeeds.
+
+### Custom Success Placement (Optional)
+
+If you want to control where success messages appear, add a success element manually:
 
 ```html
 <form id="my-form" action="/api/submit" method="POST">
@@ -118,6 +129,10 @@ input._candy_error {
   <div candy-form-success></div>
 </form>
 ```
+
+**If not present:** The system automatically creates `<span candy-form-success>` at the end of the form.
+
+**If present:** The system uses your existing element and updates its content.
 
 ### Custom Success Message
 
@@ -312,18 +327,13 @@ module.exports = async function(Candy) {
 ```html
 <form id="contact-form" action="/api/contact" method="POST">
   <input name="name" type="text" required>
-  <span candy-form-error="name"></span>
-  
   <input name="email" type="email" required>
-  <span candy-form-error="email"></span>
-  
   <textarea name="message" required></textarea>
-  <span candy-form-error="message"></span>
-  
   <button type="submit">Send Message</button>
-  <div candy-form-success></div>
 </form>
 ```
+
+**Note:** Error and success elements are auto-generated. Add them manually only if you need custom positioning or styling.
 
 ```javascript
 Candy.form('#contact-form', function(data) {
@@ -338,13 +348,8 @@ Candy.form('#contact-form', function(data) {
 ```html
 <form id="login-form" action="/api/login" method="POST">
   <input name="email" type="email" required>
-  <span candy-form-error="email"></span>
-  
   <input name="password" type="password" required>
-  <span candy-form-error="password"></span>
-  
   <button type="submit">Login</button>
-  <div candy-form-success></div>
 </form>
 ```
 
@@ -362,20 +367,20 @@ Candy.form('#login-form', function(data) {
 ```html
 <form id="register-form" action="/api/register" method="POST">
   <input name="name" type="text" required>
-  <span candy-form-error="name"></span>
-  
   <input name="email" type="email" required>
-  <span candy-form-error="email"></span>
-  
   <input name="password" type="password" required minlength="8">
-  <span candy-form-error="password"></span>
-  
   <input name="password_confirm" type="password" required>
-  <span candy-form-error="password_confirm"></span>
-  
   <button type="submit">Register</button>
-  <div candy-form-success></div>
 </form>
+```
+
+**Tip:** For better UX, you can add custom error elements for specific positioning:
+
+```html
+<div class="form-group">
+  <input name="email" type="email" required>
+  <span candy-form-error="email" class="error-message"></span>
+</div>
 ```
 
 ## Best Practices
@@ -397,9 +402,10 @@ Candy.form('#login-form', function(data) {
 
 ### Errors Not Displaying
 
-- Ensure `candy-form-error` attributes match field names
-- Check that server returns errors in correct format
+- Errors are automatically created - no manual elements needed
+- Check that server returns errors in correct format: `{result: {success: false}, errors: {fieldName: 'message'}}`
 - Verify `messages` option is not set to `false`
+- If using custom error elements, ensure `candy-form-error` attributes match field names exactly
 
 ### CSRF Token Errors
 
