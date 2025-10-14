@@ -423,7 +423,7 @@ class candy {
       document.addEventListener('candy:ajaxSuccess', event => {
         const {detail} = event
         const {xhr, requestUrl} = detail
-        if (requestUrl.startsWith('http')) return false
+        if (requestUrl.includes('://')) return false
         try {
           const token = xhr.getResponseHeader('X-Candy-Token')
           if (token) this.#token.hash.push(token)
@@ -469,8 +469,8 @@ class candy {
 
     const currentUrl = window.location.href
 
-    // Normalize URL
-    if (!url.startsWith('http')) {
+    // Normalize URL (check if relative)
+    if (!url.includes('://')) {
       const parts = currentUrl.replace('://', '{:--}').split('/')
       parts[0] = parts[0].replace('{:--}', '://')
       if (url.startsWith('/')) {
