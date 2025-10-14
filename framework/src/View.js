@@ -112,7 +112,6 @@ class View {
     if (this.#candy.Request.res.finished) return
 
     // Handle AJAX load requests
-    // Debug: console.log('isAjaxLoad:', this.#candy.Request.isAjaxLoad, 'ajaxLoad:', this.#candy.Request.ajaxLoad)
     if (this.#candy.Request.isAjaxLoad === true && this.#candy.Request.ajaxLoad && this.#candy.Request.ajaxLoad.length > 0) {
       let output = {}
       let variables = {}
