@@ -119,10 +119,10 @@
       ]
     }
   ],
-  "framework": [
+  "backend": [
     {
       "file": "01-overview",
-      "title": "Framework Overview",
+      "title": "Backend Overview",
       "children": [
         {
           "file": "01-whats-in-the-candy-box.md",
@@ -305,25 +305,54 @@
           "title": "Validator Service"
         }
       ]
-    },
-
+    }
+  ],
+  "frontend": [
     {
-      "file": "Frontend",
-      "title": "Frontend",
+      "file": "01-overview",
+      "title": "candy.js Overview",
       "children": [
         {
-          "file": "01-candy-js.md",
-          "title": "candy.js Framework"
+          "file": "01-introduction.md",
+          "title": "Introduction"
         }
       ]
     },
     {
-      "file": "05-ajax-loading",
-      "title": "AJAX Page Loading",
+      "file": "02-ajax-navigation",
+      "title": "AJAX Navigation",
       "children": [
         {
-          "file": "01-overview.md",
-          "title": "Overview & Quick Start"
+          "file": "01-quick-start.md",
+          "title": "Quick Start"
+        },
+        {
+          "file": "02-configuration.md",
+          "title": "Configuration"
+        },
+        {
+          "file": "03-advanced-usage.md",
+          "title": "Advanced Usage"
+        }
+      ]
+    },
+    {
+      "file": "03-forms",
+      "title": "Form Handling",
+      "children": [
+        {
+          "file": "01-form-handling.md",
+          "title": "Form Handling"
+        }
+      ]
+    },
+    {
+      "file": "04-api-requests",
+      "title": "API Requests",
+      "children": [
+        {
+          "file": "01-get-post.md",
+          "title": "GET & POST Requests"
         }
       ]
     }

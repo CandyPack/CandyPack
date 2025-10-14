@@ -5,7 +5,8 @@ CandyPack is a next-generation server and framework toolkit that combines hostin
 ## Core Components
 
 - **Server**: Full-featured hosting platform with DNS, SSL, mail server (IMAP/SMTP), and multi-domain support
-- **Framework**: Web application framework with routing, authentication, CSRF protection, and internationalization
+- **Backend**: Web application framework with routing, authentication, CSRF protection, and internationalization
+- **Frontend**: Client-side framework (candy.js) with AJAX navigation, form handling, and API requests
 - **CLI**: Command-line interface for server management and deployment
 - **Watchdog**: Process monitoring and management system
 

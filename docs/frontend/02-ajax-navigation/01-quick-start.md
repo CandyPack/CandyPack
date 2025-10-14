@@ -107,7 +107,7 @@ module.exports = function (Candy) {
 
 ### AJAX Page Load
 
-1. User clicks `<a href="/about" candy-link>`
+1. User clicks `<a href="/about">`
 2. JavaScript intercepts click and sends AJAX request with `X-Candy: ajaxload` header
 3. Server detects AJAX request and returns only requested sections as JSON:
    ```json
@@ -293,9 +293,14 @@ Candy.Request.set({
 Access in client:
 
 ```javascript
-Candy.loader('a[candy-link]', {content: 'main'}, function(page, variables) {
-  console.log(variables.user.name) // 'John'
-  console.log(variables.stats.views) // 1234
+Candy.action({
+  navigate: {
+    update: 'main',
+    on: function(page, variables) {
+      console.log(variables.user.name) // 'John'
+      console.log(variables.stats.views) // 1234
+    }
+  }
 })
 ```
 
