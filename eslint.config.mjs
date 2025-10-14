@@ -75,9 +75,28 @@ export default defineConfig([
   },
   {
     files: ['web/**/*.js'],
+    ignores: ['web/public/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.node,
+        Candy: 'readonly'
+      },
+      sourceType: 'script'
+    },
+    extends: ['js/recommended'],
+    plugins: {
+      js,
+      prettier: prettierPlugin
+    },
+    rules: {
+      'prettier/prettier': 'error'
+    }
+  },
+  {
+    files: ['web/public/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
         Candy: 'readonly'
       },
       sourceType: 'script'
