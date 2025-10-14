@@ -423,7 +423,7 @@ class candy {
       document.addEventListener('candy:ajaxSuccess', event => {
         const {detail} = event
         const {xhr, requestUrl} = detail
-        if (requestUrl.substr(0, 4) == 'http') return false
+        if (requestUrl.startsWith('http')) return false
         try {
           const token = xhr.getResponseHeader('X-Candy-Token')
           if (token) this.#token.hash.push(token)
@@ -470,10 +470,10 @@ class candy {
     const currentUrl = window.location.href
 
     // Normalize URL
-    if (url.substr(0, 4) !== 'http') {
+    if (!url.startsWith('http')) {
       const parts = currentUrl.replace('://', '{:--}').split('/')
       parts[0] = parts[0].replace('{:--}', '://')
-      if (url.substr(0, 1) === '/') {
+      if (url.startsWith('/')) {
         url = parts[0] + url
       } else {
         parts[parts.length - 1] = ''
@@ -481,7 +481,7 @@ class candy {
       }
     }
 
-    if (url === '' || url.substring(0, 11) === 'javascript:' || url.includes('#')) return false
+    if (url === '' || url.startsWith('javascript:') || url.includes('#')) return false
 
     this.#isNavigating = true
 
@@ -584,7 +584,7 @@ class candy {
       const url = e.target.getAttribute('href')
       const target = e.target.getAttribute('target')
 
-      if (!url || url === '' || url.substring(0, 11) === 'javascript:' || url.substring(0, 1) === '#') return
+      if (!url || url === '' || url.startsWith('javascript:') || url.startsWith('#')) return
 
       const currentHost = window.location.host
       const isExternal = url.includes('://') && !url.includes(currentHost)
