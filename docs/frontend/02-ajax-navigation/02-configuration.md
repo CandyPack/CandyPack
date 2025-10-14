@@ -2,6 +2,20 @@
 
 Learn how to configure and customize AJAX navigation in your CandyPack application.
 
+## Prerequisites
+
+Before configuring AJAX navigation, ensure your skeleton template is properly set up. See the [Quick Start guide](01-quick-start.md#skeleton-structure-required) for skeleton setup instructions.
+
+**Key requirements:**
+- Skeleton placeholders must be UPPERCASE and wrapped in HTML tags (e.g., `<main>{{ CONTENT }}</main>`)
+- Controller keys are lowercase (e.g., `content: 'home'`)
+- Frontend selectors target the HTML tags (e.g., `content: 'main'` targets `<main>` tag)
+
+**Mapping example:**
+- Skeleton: `<main>{{ CONTENT }}</main>`
+- Controller: `content: 'home'`
+- Frontend: `update: { content: 'main' }`
+
 ## Configuration Options
 
 ### Basic Configuration
@@ -205,7 +219,7 @@ In your controller, send data to the client:
 ```javascript
 module.exports = function(Candy) {
   // Set variables for AJAX responses
-  Candy.Request.set({
+  Candy.set({
     title: 'About Page',
     user: {name: 'John', role: 'admin'},
     stats: {views: 1234}
@@ -346,7 +360,7 @@ Candy.action({
 
 ### Variables Not Available
 
-- Confirm `Candy.Request.set(data, true)` has `true` parameter
+- Confirm `Candy.set(data, true)` has `true` parameter
 - Check variables are set before `View.print()`
 
 ## Next Steps

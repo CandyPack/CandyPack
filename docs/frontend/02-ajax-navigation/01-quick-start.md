@@ -76,26 +76,76 @@ No special attributes needed! Just use normal links:
 
 All internal links (starting with `/`) are automatically handled.
 
-### 3. Server-Side Setup
+## Server-Side Setup
 
-Controllers automatically support AJAX loading. Optionally send variables:
+### Skeleton Structure (Required)
+
+For AJAX navigation to work properly, you must define a skeleton template that contains placeholders for the sections you want to update.
+
+**Important Rules:**
+- Placeholders must be **UPPERCASE** (e.g., `{{ HEADER }}`, `{{ CONTENT }}`)
+- Each placeholder must be **wrapped in HTML tags** (e.g., `<header>{{ HEADER }}</header>`)
+- HTML tags provide boundaries for AJAX to identify and update specific sections
+
+Example `skeleton/main.html`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Site</title>
+  <script src="/assets/js/candy.js"></script>
+  <script src="/assets/js/app.js"></script>
+</head>
+<body>
+  <header>
+    {{ HEADER }}
+  </header>
+  
+  <main>
+    {{ CONTENT }}
+  </main>
+  
+  <footer>
+    {{ FOOTER }}
+  </footer>
+</body>
+</html>
+```
+
+**Key Points:**
+- Placeholder names in skeleton are UPPERCASE: `{{ HEADER }}`, `{{ CONTENT }}`
+- Controller keys are lowercase: `header`, `content`, `footer`
+- Frontend selectors target the HTML tags: `'header'`, `'main'`, `'footer'`
+
+### Controller Setup
+
+Controllers automatically support AJAX loading. Use `Candy.View.skeleton()` to specify which skeleton to use:
 
 ```javascript
 module.exports = function (Candy) {
-  // Set variables for AJAX responses
-  Candy.Request.set({
+  // Define the skeleton template
+  Candy.View.skeleton('main')
+  
+  // Set view parts - lowercase keys map to UPPERCASE placeholders
+  Candy.View.set({
+    header: 'main',      // Loads view/header/main.html into {{ HEADER }}
+    content: 'about',    // Loads view/content/about.html into {{ CONTENT }}
+    footer: 'main'       // Loads view/footer/main.html into {{ FOOTER }}
+  })
+  
+  // Optional: Send variables to frontend (AJAX only)
+  Candy.set({
     pageTitle: 'About',
     data: {foo: 'bar'}
   }, true) // true = include in AJAX responses
-  
-  Candy.View.skeleton('main')
-  Candy.View.set({
-    header: 'main',
-    content: 'about',
-    footer: 'main'
-  })
 }
 ```
+
+**Mapping:**
+- Controller key `header` → Skeleton placeholder `{{ HEADER }}`
+- Controller key `content` → Skeleton placeholder `{{ CONTENT }}`
+- Controller key `footer` → Skeleton placeholder `{{ FOOTER }}`
 
 ## How It Works
 
@@ -108,7 +158,9 @@ module.exports = function (Candy) {
 ### AJAX Page Load
 
 1. User clicks `<a href="/about">`
-2. JavaScript intercepts click and sends AJAX request with `X-Candy: ajaxload` header
+2. JavaScript intercepts click and sends AJAX request with:
+   - Header: `X-Candy: ajaxload`
+   - Header: `X-Candy-Load: content,header` (requested sections)
 3. Server detects AJAX request and returns only requested sections as JSON:
    ```json
    {
@@ -122,8 +174,15 @@ module.exports = function (Candy) {
      }
    }
    ```
-4. JavaScript updates specified elements with fade animation
+4. JavaScript updates specified DOM elements with fade animation
 5. Browser URL updates via History API
+6. Page-specific callbacks execute
+
+**Key Points:**
+- The `output` keys in the JSON response match the lowercase keys from `Candy.View.set()` in your controller
+- These keys correspond to UPPERCASE placeholders in your skeleton (e.g., `content` → `{{ CONTENT }}`)
+- Only the sections specified in `navigate.update` are sent and updated
+- Frontend selectors target the HTML tags wrapping the placeholders
 6. Page-specific callbacks execute
 
 ## API Reference
@@ -284,7 +343,7 @@ Send data from server to client in AJAX responses:
 
 ```javascript
 // In controller
-Candy.Request.set({
+Candy.set({
   user: {name: 'John', role: 'admin'},
   stats: {views: 1234}
 }, true) // true = include in AJAX
@@ -486,11 +545,52 @@ Candy.action({
 
 ### Elements not updating
 
-- Verify element selectors match actual DOM elements
-- Check that view parts are defined in controller
-- Ensure skeleton template has correct placeholders
+This is usually caused by mismatched keys between your skeleton, controller, and frontend configuration.
+
+**Check these three places match:**
+
+1. **Skeleton template** (`skeleton/main.html`):
+   ```html
+   <header>
+     {{ HEADER }}
+   </header>
+   <main>
+     {{ CONTENT }}
+   </main>
+   ```
+
+2. **Controller** (`controller/page/about.js`):
+   ```javascript
+   Candy.View.skeleton('main')
+   Candy.View.set({
+     header: 'main',    // Lowercase → {{ HEADER }}
+     content: 'about'   // Lowercase → {{ CONTENT }}
+   })
+   ```
+
+3. **Frontend** (`public/assets/js/app.js`):
+   ```javascript
+   Candy.action({
+     navigate: {
+       update: {
+         header: 'header',  // Targets <header> tag
+         content: 'main'    // Targets <main> tag
+       }
+     }
+   })
+   ```
+
+**Mapping:**
+- Skeleton: `{{ HEADER }}` (uppercase) wrapped in `<header>` tag
+- Controller: `header: 'main'` (lowercase key)
+- Frontend: `header: 'header'` (lowercase key, CSS selector for `<header>` tag)
+
+**Also verify:**
+- Element selectors match actual DOM elements (e.g., `'main'` matches `<main>`)
+- Skeleton template is defined with `Candy.View.skeleton('main')`
+- View parts are defined in controller with `Candy.View.set()`
 
 ### Variables not available
 
-- Confirm `Candy.Request.set(data, true)` has `true` as second parameter
+- Confirm `Candy.set(data, true)` has `true` as second parameter
 - Check that variables are set before `View.print()` is called

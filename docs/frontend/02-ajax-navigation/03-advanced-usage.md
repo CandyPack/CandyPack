@@ -2,6 +2,8 @@
 
 Advanced techniques and patterns for AJAX navigation in CandyPack.
 
+**Note:** All examples assume you have properly configured your skeleton template and controller. See the [Quick Start guide](01-quick-start.md#skeleton-structure-required) for setup instructions.
+
 ## Programmatic Navigation
 
 ### Using Candy.load()

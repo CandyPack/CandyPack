@@ -6,10 +6,6 @@
 
 After including `candy.js` in your page, you will have access to a global `Candy` object. This object is the main entry point for all the features of the framework.
 
-```javascript
-window.Candy
-```
-
 ## Core Concepts
 
 ### Actions
