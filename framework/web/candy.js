@@ -541,36 +541,34 @@ class candy {
   }
 
   #handleLoadComplete(data, callback) {
-    setTimeout(() => {
-      // Call load actions
-      if (this.actions.load) {
-        if (Array.isArray(this.actions.load)) {
-          this.actions.load.forEach(fn => fn(this.page(), data.variables))
-        } else if (typeof this.actions.load === 'function') {
-          this.actions.load(this.page(), data.variables)
-        }
+    // Call load actions
+    if (this.actions.load) {
+      if (Array.isArray(this.actions.load)) {
+        this.actions.load.forEach(fn => fn(this.page(), data.variables))
+      } else if (typeof this.actions.load === 'function') {
+        this.actions.load(this.page(), data.variables)
       }
+    }
 
-      // Call page-specific actions
-      if (this.actions.page && this.actions.page[this.page()]) {
-        const pageActions = this.actions.page[this.page()]
-        if (Array.isArray(pageActions)) {
-          pageActions.forEach(fn => fn(data.variables))
-        } else if (typeof pageActions === 'function') {
-          pageActions(data.variables)
-        }
+    // Call page-specific actions
+    if (this.actions.page && this.actions.page[this.page()]) {
+      const pageActions = this.actions.page[this.page()]
+      if (Array.isArray(pageActions)) {
+        pageActions.forEach(fn => fn(data.variables))
+      } else if (typeof pageActions === 'function') {
+        pageActions(data.variables)
       }
+    }
 
-      // Call custom callback
-      if (callback && typeof callback === 'function') {
-        callback(this.page(), data.variables)
-      }
+    // Call custom callback
+    if (callback && typeof callback === 'function') {
+      callback(this.page(), data.variables)
+    }
 
-      // Scroll to top
-      window.scrollTo({top: 0, behavior: 'smooth'})
+    // Scroll to top
+    window.scrollTo({top: 0, behavior: 'smooth'})
 
-      this.#isNavigating = false
-    }, 500)
+    this.#isNavigating = false
   }
 
   loader(selector, elements, callback) {
