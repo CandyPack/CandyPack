@@ -68,11 +68,11 @@ class Route {
     let url = Candy.Request.url.split('?')[0]
     if (url.substr(-1) === '/') url = url.substr(0, url.length - 1)
     if (
-      Candy.Request.url == '/' &&
-      Candy.Request.method == 'get' &&
-      Candy.Request.header('X-Candy') == 'token' &&
+      Candy.Request.url === '/' &&
+      Candy.Request.method === 'get' &&
+      Candy.Request.header('X-Candy') === 'token' &&
       Candy.Request.header('Referer').startsWith((Candy.Request.ssl ? 'https://' : 'http://') + Candy.Request.host + '/') &&
-      Candy.Request.header('X-Candy-Client') == Candy.Request.cookie('candy_client')
+      Candy.Request.header('X-Candy-Client') === Candy.Request.cookie('candy_client')
     ) {
       Candy.Request.header('Access-Control-Allow-Origin', (Candy.Request.ssl ? 'https://' : 'http://') + Candy.Request.host)
       Candy.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
@@ -83,7 +83,7 @@ class Route {
     }
 
     // Handle AJAX page load requests
-    if (Candy.Request.method == 'get' && Candy.Request.header('X-Candy') == 'ajaxload') {
+    if (Candy.Request.method === 'get' && Candy.Request.header('X-Candy') === 'ajaxload') {
       let loadElements = Candy.Request.header('X-Candy-Load')
       if (loadElements) {
         Candy.Request.ajaxLoad = loadElements.split(',')
@@ -270,7 +270,7 @@ class Route {
 
   set(type, url, file, options = {}) {
     if (!options) options = {}
-    if (typeof url != 'string') url.toString()
+    if (typeof url !== 'string') url.toString()
     if (url.length && url.substr(-1) === '/') url = url.substr(0, url.length - 1)
     let path = `${__dir}/route/${Candy.Route.buff}.js`
     if (typeof file !== 'function') {
