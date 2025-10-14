@@ -1,6 +1,8 @@
 const nodeCrypto = require('crypto')
 const fs = require('fs')
 
+const CACHE_DIR = './storage/.cache'
+
 class View {
   #cache = {}
   #functions = {
@@ -108,6 +110,40 @@ class View {
   // - PRINT VIEW
   print() {
     if (this.#candy.Request.res.finished) return
+
+    // Handle AJAX load requests
+    if (this.#candy.Request.isAjaxLoad === true && this.#candy.Request.ajaxLoad && this.#candy.Request.ajaxLoad.length > 0) {
+      let output = {}
+      let variables = {}
+
+      // Collect variables marked for AJAX
+      for (let key in this.#candy.Request.variables) {
+        if (this.#candy.Request.variables[key].ajax) {
+          variables[key] = this.#candy.Request.variables[key].value
+        }
+      }
+
+      // Render requested elements
+      for (let element of this.#candy.Request.ajaxLoad) {
+        if (this.#part[element]) {
+          let viewPath = this.#part[element]
+          if (viewPath.includes('.')) viewPath = viewPath.replace(/\./g, '/')
+          if (fs.existsSync(`./view/${element}/${viewPath}.html`)) {
+            output[element] = this.#render(`./view/${element}/${viewPath}.html`)
+          }
+        }
+      }
+
+      this.#candy.Request.header('Content-Type', 'application/json')
+      this.#candy.Request.header('X-Candy-Page', this.#candy.Request.page || '')
+      this.#candy.Request.end({
+        output: output,
+        variables: variables
+      })
+      return
+    }
+
+    // Normal page rendering
     let result = ''
     if (this.#part.skeleton && fs.existsSync(`./skeleton/${this.#part.skeleton}.html`)) {
       result = fs.readFileSync(`./skeleton/${this.#part.skeleton}.html`, 'utf8')
@@ -189,12 +225,9 @@ class View {
         }
       }
       let cache = `${nodeCrypto.createHash('md5').update(file).digest('hex')}`
-      if (!fs.existsSync('./storage/cache')) fs.mkdirSync('./storage/cache', {recursive: true})
-      fs.writeFileSync(
-        './storage/cache/' + cache,
-        `module.exports = (Candy, get, __) => {\nlet html = '';\n${result}\nreturn html.trim()\n}`
-      )
-      delete require.cache[require.resolve(__dir + '/storage/cache/' + cache)]
+      if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, {recursive: true})
+      fs.writeFileSync(`${CACHE_DIR}/${cache}`, `module.exports = (Candy, get, __) => {\nlet html = '';\n${result}\nreturn html.trim()\n}`)
+      delete require.cache[require.resolve(`${__dir}/${CACHE_DIR}/${cache}`)]
       if (!Candy.View) Candy.View = {}
       if (!Candy.View.cache) Candy.View.cache = {}
       Candy.View.cache[file] = {
@@ -203,7 +236,7 @@ class View {
       }
     }
     try {
-      return require(__dir + '/storage/cache/' + Candy.View.cache[file].cache)(
+      return require(`${__dir}/${CACHE_DIR}/${Candy.View.cache[file].cache}`)(
         this.#candy,
         key => this.#candy.Request.get(key),
         (...args) => this.#candy.Lang.get(...args)

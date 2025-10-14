@@ -1,8 +1,8 @@
 import js from '@eslint/js'
 import globals from 'globals'
 import {defineConfig} from 'eslint/config'
-import prettierPlugin from "eslint-plugin-prettier";
-import prettierConfig from "eslint-config-prettier";
+import prettierPlugin from 'eslint-plugin-prettier'
+import prettierConfig from 'eslint-config-prettier'
 
 export default defineConfig([
   {
@@ -16,12 +16,13 @@ export default defineConfig([
       },
       sourceType: 'script'
     },
-    extends: ['js/recommended'],
     plugins: {
       js,
       prettier: prettierPlugin
     },
     rules: {
+      ...js.configs.recommended.rules,
+      ...prettierConfig.rules,
       'prettier/prettier': 'error'
     }
   },
@@ -35,12 +36,13 @@ export default defineConfig([
       },
       sourceType: 'script'
     },
-    extends: ['js/recommended'],
     plugins: {
       js,
       prettier: prettierPlugin
     },
     rules: {
+      ...js.configs.recommended.rules,
+      ...prettierConfig.rules,
       'prettier/prettier': 'error'
     }
   },
@@ -55,12 +57,13 @@ export default defineConfig([
       },
       sourceType: 'script'
     },
-    extends: ['js/recommended'],
     plugins: {
       js,
       prettier: prettierPlugin
     },
     rules: {
+      ...js.configs.recommended.rules,
+      ...prettierConfig.rules,
       'prettier/prettier': 'error'
     }
   },
@@ -70,11 +73,14 @@ export default defineConfig([
       globals: {...globals.browser},
       sourceType: 'module'
     },
-    extends: ['js/recommended'],
-    plugins: {js}
+    plugins: {js},
+    rules: {
+      ...js.configs.recommended.rules
+    }
   },
   {
     files: ['web/**/*.js'],
+    ignores: ['web/public/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -82,12 +88,32 @@ export default defineConfig([
       },
       sourceType: 'script'
     },
-    extends: ['js/recommended'],
     plugins: {
       js,
       prettier: prettierPlugin
     },
     rules: {
+      ...js.configs.recommended.rules,
+      ...prettierConfig.rules,
+      'prettier/prettier': 'error'
+    }
+  },
+  {
+    files: ['web/public/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        Candy: 'readonly'
+      },
+      sourceType: 'script'
+    },
+    plugins: {
+      js,
+      prettier: prettierPlugin
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...prettierConfig.rules,
       'prettier/prettier': 'error'
     }
   }

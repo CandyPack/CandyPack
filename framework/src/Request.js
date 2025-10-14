@@ -10,6 +10,9 @@ class CandyRequest {
   #status = 200
   #timeout = null
   variables = {}
+  isAjaxLoad = false
+  ajaxLoad = null
+  page = null
 
   constructor(id, req, res, candy) {
     this.id = id

@@ -316,6 +316,16 @@
           "title": "candy.js Framework"
         }
       ]
+    },
+    {
+      "file": "05-ajax-loading",
+      "title": "AJAX Page Loading",
+      "children": [
+        {
+          "file": "01-overview.md",
+          "title": "Overview & Quick Start"
+        }
+      ]
     }
   ]
 }
