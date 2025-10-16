@@ -570,8 +570,12 @@ class candy {
     this.#on(document, 'click', selector, e => {
       if (e.ctrlKey || e.metaKey) return
 
-      const url = e.target.getAttribute('href')
-      const target = e.target.getAttribute('target')
+      // Get the matched anchor element (passed as 'this' from #on method)
+      const anchor = e.currentTarget || e.target.closest(selector)
+      if (!anchor) return
+
+      const url = anchor.getAttribute('href')
+      const target = anchor.getAttribute('target')
 
       if (!url || url === '' || url.startsWith('javascript:') || url.startsWith('#')) return
 
