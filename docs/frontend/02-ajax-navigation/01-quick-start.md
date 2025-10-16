@@ -183,7 +183,6 @@ module.exports = function (Candy) {
 - These keys correspond to UPPERCASE placeholders in your skeleton (e.g., `content` → `{{ CONTENT }}`)
 - Only the sections specified in `navigate.update` are sent and updated
 - Frontend selectors target the HTML tags wrapping the placeholders
-6. Page-specific callbacks execute
 
 ## API Reference
 
