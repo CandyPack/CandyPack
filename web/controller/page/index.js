@@ -14,13 +14,6 @@
  * - Dynamic page loading with candy-link
  */
 
-/**
- * Home Page Controller
- *
- * Uses CandyPack's skeleton-based view system.
- * Skeleton provides the layout, views provide the content.
- */
-
 module.exports = function (Candy) {
   // Set variables that will be available in AJAX responses
   Candy.set(
