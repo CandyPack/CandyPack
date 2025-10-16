@@ -19,6 +19,7 @@ module.exports = function (Candy) {
 
   Candy.View.set({
     skeleton: 'main',
+    head: 'main',
     header: 'main',
     content: 'about',
     footer: 'main'

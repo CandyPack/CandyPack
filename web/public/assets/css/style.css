@@ -12,7 +12,7 @@
   --accent: #8b5cf6;
   --success: #10b981;
   --error: #ef4444;
-  
+
   /* Dark Theme Colors */
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b;
@@ -22,23 +22,29 @@
   --text-muted: #94a3b8;
   --border: #334155;
   --shadow: rgba(0, 0, 0, 0.3);
-  
+
+  /* Additional Color Variables */
+  --white: #ffffff;
+  --text-dark: #0f172a;
+  --text-light: #cbd5e1;
+  --secondary: #cbd5e1;
+
   /* Card & Surface */
   --card-bg: #1e293b;
   --code-bg: #0f172a;
   --code-color: #e2e8f0;
-  
+
   /* Typography */
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-  
+
   /* Spacing */
   --spacing-xs: 0.5rem;
   --spacing-sm: 1rem;
   --spacing-md: 2rem;
   --spacing-lg: 3rem;
   --spacing-xl: 4rem;
-  
+
   /* Layout */
   --max-width: 1200px;
   --border-radius: 0.5rem;
@@ -73,7 +79,12 @@ body {
    Typography
    ============================================ */
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 700;
   line-height: 1.2;
   margin-bottom: var(--spacing-sm);
@@ -110,6 +121,7 @@ a:hover {
 code {
   font-family: var(--font-mono);
   background-color: var(--secondary);
+  color: var(--text-dark);
   padding: 0.2rem 0.4rem;
   border-radius: 0.25rem;
   font-size: 0.9em;
@@ -118,6 +130,7 @@ code {
 pre {
   font-family: var(--font-mono);
   background-color: var(--secondary);
+  color: var(--text-dark);
   padding: var(--spacing-sm);
   border-radius: var(--border-radius);
   overflow-x: auto;
@@ -145,6 +158,7 @@ pre code {
 
 .navbar {
   background-color: var(--bg-secondary);
+  color: var(--text-primary);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -200,6 +214,7 @@ pre code {
 
 header {
   background-color: var(--bg-secondary);
+  color: var(--text-primary);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -261,7 +276,7 @@ nav a {
 
 nav a:hover,
 nav a.active {
-  color: var(--primary);
+  color: var(--text-dark);
   background-color: var(--secondary);
 }
 
@@ -273,6 +288,7 @@ nav a.active {
   text-align: center;
   padding: var(--spacing-xl) 0;
   background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  color: var(--text-primary);
   border-bottom: 1px solid var(--border);
 }
 
@@ -347,6 +363,7 @@ nav a.active {
 
 .feature-card {
   background: var(--white);
+  color: var(--text-dark);
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
   padding: var(--spacing-md);
@@ -433,12 +450,14 @@ nav a.active {
 .form-section {
   padding: var(--spacing-xl) 0;
   background-color: var(--secondary);
+  color: var(--text-dark);
 }
 
 form {
   max-width: 600px;
   margin: 0 auto;
   background: var(--white);
+  color: var(--text-dark);
   padding: var(--spacing-md);
   border-radius: var(--border-radius);
   box-shadow: 0 4px 8px var(--shadow);
@@ -456,8 +475,8 @@ label,
   color: var(--text-dark);
 }
 
-input[type="text"],
-input[type="email"],
+input[type='text'],
+input[type='email'],
 textarea,
 .form-input {
   width: 100%;
@@ -538,6 +557,7 @@ textarea.error {
 .demo-section {
   padding: var(--spacing-xl) 0;
   background: var(--secondary);
+  color: var(--text-dark);
 }
 
 .demo-grid {
@@ -549,6 +569,7 @@ textarea.error {
 
 .demo-card {
   background: var(--white);
+  color: var(--text-dark);
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
   padding: var(--spacing-md);
@@ -567,6 +588,7 @@ textarea.error {
 
 .demo-box {
   background: var(--white);
+  color: var(--text-dark);
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
   padding: var(--spacing-md);
@@ -580,6 +602,7 @@ textarea.error {
 
 .stats-display {
   background: var(--secondary);
+  color: var(--text-dark);
   padding: var(--spacing-sm);
   border-radius: var(--border-radius);
   margin-top: var(--spacing-sm);
@@ -603,6 +626,7 @@ textarea.error {
 
 .stat-item {
   background: var(--white);
+  color: var(--text-dark);
   padding: var(--spacing-sm);
   border-radius: var(--border-radius);
   border-left: 3px solid var(--primary);
@@ -654,6 +678,7 @@ textarea.error {
   margin-top: var(--spacing-xl);
   padding: var(--spacing-lg);
   background: var(--secondary);
+  color: var(--text-dark);
   border-radius: var(--border-radius);
 }
 
@@ -726,6 +751,7 @@ footer a:hover {
 
 .component-card {
   background: var(--white);
+  color: var(--text-dark);
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
   padding: var(--spacing-md);
@@ -750,12 +776,27 @@ footer a:hover {
 .philosophy-list li {
   padding: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
-  background: var(--secondary);
+  background: var(--white);
+  color: var(--text-dark);
   border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px var(--shadow);
+  line-height: 1.6;
+}
+
+.philosophy-list li * {
+  color: inherit;
 }
 
 .philosophy-list strong {
   color: var(--primary);
+  font-weight: 600;
+}
+
+.philosophy-list code {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
 }
 
 .links-grid {
@@ -767,6 +808,7 @@ footer a:hover {
 
 .link-card {
   background: var(--white);
+  color: var(--text-dark);
   border: 2px solid var(--border);
   border-radius: var(--border-radius);
   padding: var(--spacing-md);
@@ -802,6 +844,7 @@ footer a:hover {
   text-align: center;
   padding: var(--spacing-lg) 0;
   background: var(--secondary);
+  color: var(--text-dark);
   border-radius: var(--border-radius);
   margin-bottom: var(--spacing-lg);
 }
@@ -819,6 +862,7 @@ footer a:hover {
 
 .example-card {
   background: var(--white);
+  color: var(--text-dark);
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
   padding: var(--spacing-md);
@@ -860,6 +904,7 @@ footer a:hover {
   margin: var(--spacing-xl) 0;
   padding: var(--spacing-lg) 0;
   background: var(--secondary);
+  color: var(--text-dark);
   border-radius: var(--border-radius);
 }
 
@@ -879,6 +924,7 @@ footer a:hover {
 
 .resource-card {
   background: var(--white);
+  color: var(--text-dark);
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
   padding: var(--spacing-md);
@@ -929,6 +975,7 @@ footer a:hover {
   padding: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
   background: var(--white);
+  color: var(--text-dark);
   border-left: 4px solid var(--primary);
   border-radius: var(--border-radius);
 }
@@ -976,6 +1023,7 @@ footer a:hover {
   margin: var(--spacing-xl) 0;
   padding: var(--spacing-lg);
   background: var(--secondary);
+  color: var(--text-dark);
   border-radius: var(--border-radius);
 }
 
@@ -994,6 +1042,7 @@ footer a:hover {
   padding: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
   background: var(--white);
+  color: var(--text-dark);
   border-radius: var(--border-radius);
   border-left: 3px solid var(--accent);
 }
@@ -1007,41 +1056,97 @@ footer a:hover {
    ============================================ */
 
 /* Spacing */
-.mt-xs { margin-top: var(--spacing-xs); }
-.mt-sm { margin-top: var(--spacing-sm); }
-.mt-md { margin-top: var(--spacing-md); }
-.mt-lg { margin-top: var(--spacing-lg); }
-.mt-xl { margin-top: var(--spacing-xl); }
+.mt-xs {
+  margin-top: var(--spacing-xs);
+}
+.mt-sm {
+  margin-top: var(--spacing-sm);
+}
+.mt-md {
+  margin-top: var(--spacing-md);
+}
+.mt-lg {
+  margin-top: var(--spacing-lg);
+}
+.mt-xl {
+  margin-top: var(--spacing-xl);
+}
 
-.mb-xs { margin-bottom: var(--spacing-xs); }
-.mb-sm { margin-bottom: var(--spacing-sm); }
-.mb-md { margin-bottom: var(--spacing-md); }
-.mb-lg { margin-bottom: var(--spacing-lg); }
-.mb-xl { margin-bottom: var(--spacing-xl); }
+.mb-xs {
+  margin-bottom: var(--spacing-xs);
+}
+.mb-sm {
+  margin-bottom: var(--spacing-sm);
+}
+.mb-md {
+  margin-bottom: var(--spacing-md);
+}
+.mb-lg {
+  margin-bottom: var(--spacing-lg);
+}
+.mb-xl {
+  margin-bottom: var(--spacing-xl);
+}
 
-.pt-xs { padding-top: var(--spacing-xs); }
-.pt-sm { padding-top: var(--spacing-sm); }
-.pt-md { padding-top: var(--spacing-md); }
-.pt-lg { padding-top: var(--spacing-lg); }
-.pt-xl { padding-top: var(--spacing-xl); }
+.pt-xs {
+  padding-top: var(--spacing-xs);
+}
+.pt-sm {
+  padding-top: var(--spacing-sm);
+}
+.pt-md {
+  padding-top: var(--spacing-md);
+}
+.pt-lg {
+  padding-top: var(--spacing-lg);
+}
+.pt-xl {
+  padding-top: var(--spacing-xl);
+}
 
-.pb-xs { padding-bottom: var(--spacing-xs); }
-.pb-sm { padding-bottom: var(--spacing-sm); }
-.pb-md { padding-bottom: var(--spacing-md); }
-.pb-lg { padding-bottom: var(--spacing-lg); }
-.pb-xl { padding-bottom: var(--spacing-xl); }
+.pb-xs {
+  padding-bottom: var(--spacing-xs);
+}
+.pb-sm {
+  padding-bottom: var(--spacing-sm);
+}
+.pb-md {
+  padding-bottom: var(--spacing-md);
+}
+.pb-lg {
+  padding-bottom: var(--spacing-lg);
+}
+.pb-xl {
+  padding-bottom: var(--spacing-xl);
+}
 
 /* Text Alignment */
-.text-center { text-align: center; }
-.text-left { text-align: left; }
-.text-right { text-align: right; }
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
 
 /* Display */
-.hidden { display: none; }
-.block { display: block; }
-.inline-block { display: inline-block; }
-.flex { display: flex; }
-.grid { display: grid; }
+.hidden {
+  display: none;
+}
+.block {
+  display: block;
+}
+.inline-block {
+  display: inline-block;
+}
+.flex {
+  display: flex;
+}
+.grid {
+  display: grid;
+}
 
 /* Flexbox Utilities */
 .flex-center {
@@ -1061,10 +1166,18 @@ footer a:hover {
   flex-direction: column;
 }
 
-.gap-xs { gap: var(--spacing-xs); }
-.gap-sm { gap: var(--spacing-sm); }
-.gap-md { gap: var(--spacing-md); }
-.gap-lg { gap: var(--spacing-lg); }
+.gap-xs {
+  gap: var(--spacing-xs);
+}
+.gap-sm {
+  gap: var(--spacing-sm);
+}
+.gap-md {
+  gap: var(--spacing-md);
+}
+.gap-lg {
+  gap: var(--spacing-lg);
+}
 
 /* ============================================
    Responsive Breakpoints
@@ -1076,11 +1189,11 @@ footer a:hover {
     --spacing-lg: 2.5rem;
     --spacing-xl: 3rem;
   }
-  
+
   .hero h1 {
     font-size: 2.5rem;
   }
-  
+
   .features-grid {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
@@ -1093,91 +1206,91 @@ footer a:hover {
     --spacing-lg: 2rem;
     --spacing-xl: 2.5rem;
   }
-  
+
   html {
     font-size: 14px;
   }
-  
+
   h1 {
     font-size: 2rem;
   }
-  
+
   h2 {
     font-size: 1.75rem;
   }
-  
+
   h3 {
     font-size: 1.25rem;
   }
-  
+
   .hero h1 {
     font-size: 2rem;
   }
-  
+
   .hero p {
     font-size: 1rem;
   }
-  
+
   .navbar .container {
     flex-direction: column;
     gap: var(--spacing-sm);
   }
-  
+
   .nav-links {
     flex-direction: column;
     gap: var(--spacing-xs);
     width: 100%;
   }
-  
+
   .nav-link {
     display: block;
     text-align: center;
   }
-  
+
   .header-content {
     flex-direction: column;
     gap: var(--spacing-sm);
   }
-  
+
   .nav {
     flex-direction: column;
     gap: var(--spacing-xs);
     width: 100%;
   }
-  
+
   nav ul {
     flex-direction: column;
     gap: var(--spacing-xs);
     width: 100%;
   }
-  
+
   nav a {
     display: block;
     text-align: center;
   }
-  
+
   .hero-buttons {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .btn {
     width: 100%;
   }
-  
+
   .features-grid,
   .feature-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .demo-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .examples-grid {
     grid-template-columns: 1fr;
   }
-  
+
   form {
     padding: var(--spacing-sm);
   }
@@ -1188,11 +1301,11 @@ footer a:hover {
   .container {
     padding: 0 var(--spacing-xs);
   }
-  
+
   .hero {
     padding: var(--spacing-md) 0;
   }
-  
+
   .features,
   .form-section,
   .demo-section {
@@ -1286,6 +1399,7 @@ footer a:hover {
 .structure-item {
   padding: 1.5rem;
   background: var(--card-bg);
+  color: var(--text-primary);
   border-radius: 8px;
   border: 1px solid var(--border);
 }
@@ -1333,6 +1447,7 @@ footer a:hover {
   position: relative;
   padding: 2rem 1.5rem;
   background: var(--card-bg);
+  color: var(--text-primary);
   border-radius: 8px;
   border: 1px solid var(--border);
 }
@@ -1397,9 +1512,13 @@ footer a:hover {
   gap: 1.5rem;
   padding: 1.5rem;
   background: var(--card-bg);
+  color: var(--text-primary);
   border-radius: 8px;
   border: 1px solid var(--border);
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    border-color 0.2s;
 }
 
 .feature-item:hover {
@@ -1437,6 +1556,7 @@ footer a:hover {
 
 .resources {
   background: var(--bg-secondary);
+  color: var(--text-primary);
   padding: 4rem 0;
   border-top: 1px solid var(--border);
 }
@@ -1452,11 +1572,14 @@ footer a:hover {
   display: block;
   padding: 2rem;
   background: var(--bg-primary);
+  color: var(--text-primary);
   border-radius: 8px;
   border: 1px solid var(--border);
   text-decoration: none;
-  color: inherit;
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    border-color 0.2s;
 }
 
 .resource-card:hover {
@@ -1596,7 +1719,9 @@ footer a:hover {
   background: var(--card-bg);
   border-radius: 8px;
   border: 1px solid var(--border);
-  transition: transform 0.2s, border-color 0.2s;
+  transition:
+    transform 0.2s,
+    border-color 0.2s;
 }
 
 .component-card:hover {
@@ -1616,28 +1741,6 @@ footer a:hover {
   margin: 0;
 }
 
-/* Philosophy List */
-.philosophy-list {
-  list-style: none;
-  padding: 0;
-}
-
-.philosophy-list li {
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-secondary);
-  line-height: 1.8;
-}
-
-.philosophy-list li:last-child {
-  border-bottom: none;
-}
-
-.philosophy-list strong {
-  color: var(--primary);
-  font-weight: 600;
-}
-
 /* Links Grid */
 .links-grid {
   display: grid;
@@ -1654,7 +1757,10 @@ footer a:hover {
   border: 1px solid var(--border);
   text-decoration: none;
   color: inherit;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .link-card:hover {
