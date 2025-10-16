@@ -469,17 +469,8 @@ class candy {
 
     const currentUrl = window.location.href
 
-    // Normalize URL (check if relative)
-    if (!url.includes('://')) {
-      const parts = currentUrl.replace('://', '{:--}').split('/')
-      parts[0] = parts[0].replace('{:--}', '://')
-      if (url.startsWith('/')) {
-        url = parts[0] + url
-      } else {
-        parts[parts.length - 1] = ''
-        url = parts.join('/') + url
-      }
-    }
+    // Normalize URL to be absolute
+    url = new URL(url, currentUrl).href
 
     if (url === '' || url.startsWith('javascript:') || url.includes('#')) return false
 
