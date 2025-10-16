@@ -7,12 +7,6 @@
  * For AJAX requests, only content is returned. For full page loads, skeleton + content.
  */
 
-/**
- * About Page Controller
- *
- * Uses CandyPack's skeleton-based view system.
- */
-
 module.exports = function (Candy) {
   // Set variables for AJAX responses
   Candy.set(
