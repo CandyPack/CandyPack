@@ -668,41 +668,6 @@ textarea.error {
    Footer
    ============================================ */
 
-.footer {
-  background-color: var(--text-dark);
-  color: var(--white);
-  padding: var(--spacing-md) 0;
-  margin-top: var(--spacing-xl);
-  text-align: center;
-}
-
-.footer .container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  align-items: center;
-}
-
-.footer p {
-  color: var(--secondary);
-  margin-bottom: 0;
-}
-
-.footer-links {
-  display: flex;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.footer-links a {
-  color: var(--white);
-}
-
-.footer-links a:hover {
-  color: var(--primary);
-}
-
 footer {
   background-color: var(--text-dark);
   color: var(--white);
