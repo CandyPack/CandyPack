@@ -143,7 +143,7 @@ class Validator {
                     error = value && !Array.isArray(value)
                     break
                   case 'date':
-                    error = value && value !== '' && (isNaN(Date.parse(value)) || new Date(value).getTime() <= 0)
+                    error = value && value !== '' && isNaN(Date.parse(value))
                     break
                   case 'min':
                     error = value && value !== '' && vars[1] && value < vars[1]
