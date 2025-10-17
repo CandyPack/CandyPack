@@ -259,21 +259,7 @@
       ]
     },
     {
-      "file": "08-authentication",
-      "title": "Authentication & Security",
-      "children": [
-        {
-          "file": "01-user-logins-with-authjs.md",
-          "title": "User Authentication"
-        },
-        {
-          "file": "02-foiling-villains-with-csrf-protection.md",
-          "title": "CSRF Protection"
-        }
-      ]
-    },
-    {
-      "file": "09-database",
+      "file": "08-database",
       "title": "Database",
       "children": [
         {
@@ -287,22 +273,40 @@
       ]
     },
     {
-      "file": "10-mail",
-      "title": "Email",
-      "children": [
-        {
-          "file": "01-the-mail-service.md",
-          "title": "Mail Service"
-        }
-      ]
-    },
-    {
-      "file": "11-validation",
+      "file": "09-validation",
       "title": "Validation",
       "children": [
         {
           "file": "01-the-validator-service.md",
           "title": "Validator Service"
+        }
+      ]
+    },
+    {
+      "file": "10-authentication",
+      "title": "Authentication & Security",
+      "children": [
+        {
+          "file": "01-user-logins-with-authjs.md",
+          "title": "User Authentication"
+        },
+        {
+          "file": "02-foiling-villains-with-csrf-protection.md",
+          "title": "CSRF Protection"
+        },
+        {
+          "file": "03-register.md",
+          "title": "User Registration"
+        }
+      ]
+    },
+    {
+      "file": "11-mail",
+      "title": "Email",
+      "children": [
+        {
+          "file": "01-the-mail-service.md",
+          "title": "Mail Service"
         }
       ]
     }
@@ -353,16 +357,6 @@
         {
           "file": "01-get-post.md",
           "title": "GET & POST Requests"
-        }
-      ]
-    },
-    {
-      "file": "05-ajax-loading",
-      "title": "AJAX Page Loading",
-      "children": [
-        {
-          "file": "01-overview.md",
-          "title": "Overview & Quick Start"
         }
       ]
     }
