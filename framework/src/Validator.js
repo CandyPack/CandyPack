@@ -67,7 +67,15 @@ class Validator {
     for (const method of Object.keys(this.#checklist)) {
       for (const key of Object.keys(this.#checklist[method])) {
         const checks = this.#checklist[method][key]
-        const value = await this.#request.request(key, method)
+        let value
+
+        if (method === 'VAR') {
+          value = checks.customValue
+        } else if (method === 'FILES') {
+          value = this.#request.file ? await this.#request.file(key) : null
+        } else {
+          value = await this.#request.request(key, method)
+        }
 
         for (const checkItem of checks) {
           let error = false
@@ -206,8 +214,10 @@ class Validator {
     this.#method = 'VAR'
     this.#name = name
     if (!this.#checklist[this.#method]) this.#checklist[this.#method] = {}
-    if (!this.#checklist[this.#method][name]) this.#checklist[this.#method][name] = []
-    this.#checklist[this.#method][name].customValue = value === null ? name : value
+    if (!this.#checklist[this.#method][name]) {
+      this.#checklist[this.#method][name] = []
+      this.#checklist[this.#method][name].customValue = value === null ? name : value
+    }
     return this
   }
 
