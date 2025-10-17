@@ -232,19 +232,25 @@ module.exports = async function (Candy) {
 module.exports = async function (Candy) {
   const validator = Candy.Validator
   const userRole = Candy.Auth.user('role')
-  const isAdmin = userRole === 'admin'
+  const userCredits = Candy.Auth.user('credits') || 0
 
   validator.post('title').check('required').message('Title is required')
+  validator.post('content').check('required').message('Content is required')
 
-  if (isAdmin) {
+  if (userRole !== 'premium') {
     validator
-      .post('publish_immediately')
-      .check('accepted').message('Admins must confirm immediate publishing')
+      .var('user_credits', userCredits)
+      .check('numeric').message('Invalid credits value')
+      .check('min:10').message('You need at least 10 credits to publish')
 
     validator
-      .var('admin_check', isAdmin)
-      .check('equal:true').message('Only admins can publish')
+      .post('content')
+      .check('maxlen:1000').message('Free users are limited to 1000 characters')
   }
+
+  validator
+    .var('role_check', userRole)
+    .check('!equal:banned').message('Your account has been banned')
 
   if (await validator.error()) {
     return validator.result('Validation failed')
