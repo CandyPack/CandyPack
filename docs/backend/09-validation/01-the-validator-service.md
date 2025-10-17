@@ -133,6 +133,127 @@ module.exports = async function (Candy) {
 }
 ```
 
+#### Multiple Checks Per Field
+
+You can chain multiple `check()` calls for the same field, each with its own specific error message. The validator will return the first error it encounters:
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+
+  validator
+    .post('password')
+    .check('required').message('Password is required')
+    .check('minlen:8').message('Password must be at least 8 characters')
+    .check('maxlen:50').message('Password cannot exceed 50 characters')
+    .check('regex:[A-Z]').message('Password must contain at least one uppercase letter')
+    .check('regex:[0-9]').message('Password must contain at least one number')
+
+  if (await validator.error()) {
+    return validator.result('Validation failed')
+  }
+
+  return validator.success('Password is strong')
+}
+```
+
+#### Example: Complex Form Validation
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+
+  validator
+    .post('username')
+    .check('required').message('Username is required')
+    .check('username').message('Username can only contain letters and numbers')
+    .check('minlen:3').message('Username must be at least 3 characters')
+    .check('maxlen:20').message('Username cannot exceed 20 characters')
+
+  validator
+    .post('email')
+    .check('required').message('Email is required')
+    .check('email').message('Please enter a valid email address')
+
+  validator
+    .post('age')
+    .check('required').message('Age is required')
+    .check('numeric').message('Age must be a number')
+    .check('min:18').message('You must be at least 18 years old')
+    .check('max:120').message('Please enter a valid age')
+
+  validator
+    .post('website')
+    .check('!required').message('Website is optional')
+    .check('url').message('Please enter a valid URL')
+
+  validator
+    .post('bio')
+    .check('maxlen:500').message('Bio cannot exceed 500 characters')
+    .check('xss').message('Bio contains invalid HTML tags')
+
+  if (await validator.error()) {
+    return validator.result('Please fix the errors')
+  }
+
+  return validator.success('Profile updated successfully')
+}
+```
+
+#### Example: Date Range Validation
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+
+  validator
+    .post('start_date')
+    .check('required').message('Start date is required')
+    .check('date').message('Invalid date format')
+    .check('mindate:2024-01-01').message('Start date must be after January 1, 2024')
+
+  validator
+    .post('end_date')
+    .check('required').message('End date is required')
+    .check('date').message('Invalid date format')
+    .check('maxdate:2025-12-31').message('End date must be before December 31, 2025')
+
+  if (await validator.error()) {
+    return validator.result('Invalid date range')
+  }
+
+  return validator.success('Date range is valid')
+}
+```
+
+#### Example: Conditional Validation with Custom Variables
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+  const userRole = Candy.Auth.user('role')
+  const isAdmin = userRole === 'admin'
+
+  validator.post('title').check('required').message('Title is required')
+
+  if (isAdmin) {
+    validator
+      .post('publish_immediately')
+      .check('accepted').message('Admins must confirm immediate publishing')
+
+    validator
+      .var('admin_check', isAdmin)
+      .check('equal:true').message('Only admins can publish')
+  }
+
+  if (await validator.error()) {
+    return validator.result('Validation failed')
+  }
+
+  return validator.success('Article published')
+}
+```
+
 #### Response Format
 
 The `result()` method returns a standardized response:

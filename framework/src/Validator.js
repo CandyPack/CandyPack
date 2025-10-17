@@ -12,7 +12,8 @@ class Validator {
 
   check(rules) {
     if (!this.#checklist[this.#method]) this.#checklist[this.#method] = {}
-    this.#checklist[this.#method][this.#name] = {rules: rules, message: null}
+    if (!this.#checklist[this.#method][this.#name]) this.#checklist[this.#method][this.#name] = []
+    this.#checklist[this.#method][this.#name].push({rules: rules, message: null})
     return this
   }
 
@@ -29,7 +30,10 @@ class Validator {
   }
 
   message(value) {
-    this.#checklist[this.#method][this.#name].message = value
+    const checks = this.#checklist[this.#method][this.#name]
+    if (checks && checks.length > 0) {
+      checks[checks.length - 1].message = value
+    }
     return this
   }
 
@@ -62,127 +66,136 @@ class Validator {
   async #validate() {
     for (const method of Object.keys(this.#checklist)) {
       for (const key of Object.keys(this.#checklist[method])) {
-        let error = false
-        let rules = this.#checklist[method][key].rules
-        let value = await this.#request.request(key, method)
-        if (typeof rules === 'boolean') {
-          error = rules === false
-        } else {
-          for (const rule of rules.includes('|') ? rules.split('|') : [rules]) {
-            let vars = rule.split(':')
-            let inverse = vars[0].startsWith('!')
-            if (!error && !this.#message[this.#name]) {
-              switch (inverse ? vars[0].substr(1) : vars[0]) {
-                case 'required':
-                  error = value === undefined || value === '' || value === null
-                  break
-                case 'accepted':
-                  error = !value || (value !== 1 && value !== 'on' && value !== 'yes' && value !== true)
-                  break
-                case 'numeric':
-                  error = value && value !== '' && !Candy.Var(value).is('numeric')
-                  break
-                case 'alpha':
-                  error = value && value !== '' && !Candy.Var(value).is('alpha')
-                  break
-                case 'alphaspace':
-                  error = value && value !== '' && !Candy.Var(value).is('alphaspace')
-                  break
-                case 'alphanumeric':
-                  error = value && value !== '' && !Candy.Var(value).is('alphanumeric')
-                  break
-                case 'alphanumericspace':
-                  error = value && value !== '' && !Candy.Var(value).is('alphanumericspace')
-                  break
-                case 'email':
-                  error = value && value !== '' && !Candy.Var(value).is('email')
-                  break
-                case 'ip':
-                  error = value && value !== '' && !Candy.Var(value).is('ip')
-                  break
-                case 'float':
-                  error = value && value !== '' && !Candy.Var(value).is('float')
-                  break
-                case 'mac':
-                  error = value && value !== '' && !Candy.Var(value).is('mac')
-                  break
-                case 'domain':
-                  error = value && value !== '' && !Candy.Var(value).is('domain')
-                  break
-                case 'url':
-                  error = value && value !== '' && !Candy.Var(value).is('url')
-                  break
-                case 'username':
-                  error = value && value !== '' && !/^[a-zA-Z0-9]+$/.test(value)
-                  break
-                case 'xss':
-                  error = value && value !== '' && /<[^>]*>/g.test(value)
-                  break
-                case 'usercheck':
-                  error = value && !Candy.Auth.check()
-                  break
-                case 'array':
-                  error = value && !Array.isArray(value)
-                  break
-                case 'date':
-                  error = value && value !== '' && (isNaN(Date.parse(value)) || new Date(value).getTime() <= 0)
-                  break
-                case 'min':
-                  error = value && value !== '' && vars[1] && value < vars[1]
-                  break
-                case 'max':
-                  error = value && value !== '' && vars[1] && value > vars[1]
-                  break
-                case 'len':
-                  error = value && value !== '' && vars[1] && String(value).length !== parseInt(vars[1])
-                  break
-                case 'minlen':
-                  error = value && value !== '' && vars[1] && String(value).length < parseInt(vars[1])
-                  break
-                case 'maxlen':
-                  error = value && value !== '' && vars[1] && String(value).length > parseInt(vars[1])
-                  break
-                case 'mindate':
-                  error = value && value !== '' && vars[1] && new Date(value).getTime() < new Date(vars[1]).getTime()
-                  break
-                case 'maxdate':
-                  error = value && value !== '' && vars[1] && new Date(value).getTime() > new Date(vars[1]).getTime()
-                  break
-                case 'same':
-                  error = value && this.#method[vars[1]] && value !== this.#method[vars[1]]
-                  break
-                case 'different':
-                  error = value && this.#method[vars[1]] && value === this.#method[vars[1]]
-                  break
-                case 'equal':
-                  error = value && vars[1] && value !== vars[1]
-                  break
-                case 'notin':
-                  error = value && value !== '' && vars[1] && String(value).includes(vars[1])
-                  break
-                case 'in':
-                  error = value && value !== '' && vars[1] && !String(value).includes(vars[1])
-                  break
-                case 'not':
-                  error = value && vars[1] && value === vars[1]
-                  break
-                case 'regex':
-                  error = value && value !== '' && vars[1] && !new RegExp(vars[1]).test(value)
-                  break
-                case 'user': {
-                  let user_data = Candy.Auth.user(vars[1])
-                  if (Candy.string(user_data).is('bcrypt')) error = value && (!Candy.Auth.check() || !Candy.hash(value, user_data))
-                  // else if (Candy.string(user_data).is('md5'))
-                  // error = value && (!Candy.Auth.check() || !md5(value) === user_data)
-                  else error = value && (!Candy.Auth.check() || value !== Candy.Auth.user(vars[1]))
-                  break
+        const checks = this.#checklist[method][key]
+        const value = await this.#request.request(key, method)
+
+        for (const checkItem of checks) {
+          let error = false
+          let rules = checkItem.rules
+
+          if (this.#message[key]) break
+
+          if (typeof rules === 'boolean') {
+            error = rules === false
+          } else {
+            for (const rule of rules.includes('|') ? rules.split('|') : [rules]) {
+              let vars = rule.split(':')
+              let inverse = vars[0].startsWith('!')
+              if (!error) {
+                switch (inverse ? vars[0].substr(1) : vars[0]) {
+                  case 'required':
+                    error = value === undefined || value === '' || value === null
+                    break
+                  case 'accepted':
+                    error = !value || (value !== 1 && value !== 'on' && value !== 'yes' && value !== true)
+                    break
+                  case 'numeric':
+                    error = value && value !== '' && !Candy.Var(value).is('numeric')
+                    break
+                  case 'alpha':
+                    error = value && value !== '' && !Candy.Var(value).is('alpha')
+                    break
+                  case 'alphaspace':
+                    error = value && value !== '' && !Candy.Var(value).is('alphaspace')
+                    break
+                  case 'alphanumeric':
+                    error = value && value !== '' && !Candy.Var(value).is('alphanumeric')
+                    break
+                  case 'alphanumericspace':
+                    error = value && value !== '' && !Candy.Var(value).is('alphanumericspace')
+                    break
+                  case 'email':
+                    error = value && value !== '' && !Candy.Var(value).is('email')
+                    break
+                  case 'ip':
+                    error = value && value !== '' && !Candy.Var(value).is('ip')
+                    break
+                  case 'float':
+                    error = value && value !== '' && !Candy.Var(value).is('float')
+                    break
+                  case 'mac':
+                    error = value && value !== '' && !Candy.Var(value).is('mac')
+                    break
+                  case 'domain':
+                    error = value && value !== '' && !Candy.Var(value).is('domain')
+                    break
+                  case 'url':
+                    error = value && value !== '' && !Candy.Var(value).is('url')
+                    break
+                  case 'username':
+                    error = value && value !== '' && !/^[a-zA-Z0-9]+$/.test(value)
+                    break
+                  case 'xss':
+                    error = value && value !== '' && /<[^>]*>/g.test(value)
+                    break
+                  case 'usercheck':
+                    error = value && !Candy.Auth.check()
+                    break
+                  case 'array':
+                    error = value && !Array.isArray(value)
+                    break
+                  case 'date':
+                    error = value && value !== '' && (isNaN(Date.parse(value)) || new Date(value).getTime() <= 0)
+                    break
+                  case 'min':
+                    error = value && value !== '' && vars[1] && value < vars[1]
+                    break
+                  case 'max':
+                    error = value && value !== '' && vars[1] && value > vars[1]
+                    break
+                  case 'len':
+                    error = value && value !== '' && vars[1] && String(value).length !== parseInt(vars[1])
+                    break
+                  case 'minlen':
+                    error = value && value !== '' && vars[1] && String(value).length < parseInt(vars[1])
+                    break
+                  case 'maxlen':
+                    error = value && value !== '' && vars[1] && String(value).length > parseInt(vars[1])
+                    break
+                  case 'mindate':
+                    error = value && value !== '' && vars[1] && new Date(value).getTime() < new Date(vars[1]).getTime()
+                    break
+                  case 'maxdate':
+                    error = value && value !== '' && vars[1] && new Date(value).getTime() > new Date(vars[1]).getTime()
+                    break
+                  case 'same':
+                    error = value && this.#method[vars[1]] && value !== this.#method[vars[1]]
+                    break
+                  case 'different':
+                    error = value && this.#method[vars[1]] && value === this.#method[vars[1]]
+                    break
+                  case 'equal':
+                    error = value && vars[1] && value !== vars[1]
+                    break
+                  case 'notin':
+                    error = value && value !== '' && vars[1] && String(value).includes(vars[1])
+                    break
+                  case 'in':
+                    error = value && value !== '' && vars[1] && !String(value).includes(vars[1])
+                    break
+                  case 'not':
+                    error = value && vars[1] && value === vars[1]
+                    break
+                  case 'regex':
+                    error = value && value !== '' && vars[1] && !new RegExp(vars[1]).test(value)
+                    break
+                  case 'user': {
+                    let user_data = Candy.Auth.user(vars[1])
+                    if (Candy.string(user_data).is('bcrypt')) error = value && (!Candy.Auth.check() || !Candy.hash(value, user_data))
+                    else error = value && (!Candy.Auth.check() || value !== Candy.Auth.user(vars[1]))
+                    break
+                  }
                 }
+                if (inverse) error = !error
               }
-              if (inverse) error = !error
             }
           }
+
+          if (error) {
+            this.#message[key] = checkItem.message
+            break
+          }
         }
-        if (error) this.#message[key] = this.#checklist[method][key].message
       }
     }
     this.#completed = true
@@ -193,7 +206,8 @@ class Validator {
     this.#method = 'VAR'
     this.#name = name
     if (!this.#checklist[this.#method]) this.#checklist[this.#method] = {}
-    this.#checklist[this.#method][name] = {value: value === null ? name : value}
+    if (!this.#checklist[this.#method][name]) this.#checklist[this.#method][name] = []
+    this.#checklist[this.#method][name].customValue = value === null ? name : value
     return this
   }
 
