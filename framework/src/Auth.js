@@ -32,7 +32,7 @@ class Auth {
     } else if (this.#user) {
       return true
     } else {
-      let check_table = await Candy.Mysql.run('SHOW TABLES LIKE "' + this.#table + '"', true)
+      let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', true, [this.#table])
       if (check_table.length == 0) return false
       let candy_x = this.#request.cookie('candy_x')
       let candy_y = this.#request.cookie('candy_y')
@@ -53,7 +53,7 @@ class Auth {
     if (!user) return false
     let key = Candy.Config.auth.key
     let token = Candy.Config.auth.token
-    let check_table = await Candy.Mysql.run('SHOW TABLES LIKE "' + token + '"')
+    let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', [token])
     if (check_table.length == 0)
       await Candy.Mysql.run(
         'CREATE TABLE ' +
@@ -88,7 +88,7 @@ class Auth {
     const passwordField = options.passwordField || 'password'
     const uniqueFields = options.uniqueFields || ['email']
 
-    const checkTable = await Candy.Mysql.run('SHOW TABLES LIKE "' + this.#table + '"', true)
+    const checkTable = await Candy.Mysql.run('SHOW TABLES LIKE ?', true, [this.#table])
     if (checkTable.length === 0) {
       throw new Error('Auth table does not exist')
     }
