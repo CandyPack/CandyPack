@@ -78,36 +78,77 @@ class Auth {
     return sql !== false
   }
 
-  //   public static function register($vars){
-  //     self::$user = false;
-  //     switch ($GLOBALS['_candy']['auth']['storage']) {
-  //       case 'mysql':
-  //         if($GLOBALS['_candy']['auth']['db']) Mysql::connect($GLOBALS['_candy']['auth']['db']);
-  //         else Mysql::connect();
-  //         $add = Mysql::table($GLOBALS['_candy']['auth']['table'])
-  //                     ->add($vars);
-  //         if($add === false) return false;
-  //         $primary = $GLOBALS['_candy']['auth']['key'];
-  //         self::login([$primary => $add->$primary]);
-  //         return true;
-  //         break;
+  async register(data, options = {}) {
+    if (!Candy.Config.auth.table) {
+      throw new Error('Auth table not configured')
+    }
 
-  //       default:
-  //         return false;
-  //         break;
-  //     }
-  //   }
+    this.#table = Candy.Config.auth.table
+    const primaryKey = Candy.Config.auth.key || 'id'
+    const passwordField = options.passwordField || 'password'
+    const uniqueFields = options.uniqueFields || ['email']
 
-  //   public static function logout(){
-  //     self::$user = false;
-  //     Mysql::table($GLOBALS['_candy']['auth']['token'])->where(
-  //       ['token1',  $_COOKIE['token1']],
-  //       ['token2',  $_COOKIE['token2']],
-  //       ['browser', $_SERVER['HTTP_USER_AGENT']]
-  //     )->delete();
-  //     setcookie("token1", "", time() - 3600);
-  //     setcookie("token2", "", time() - 3600);
-  //   }
+    const checkTable = await Candy.Mysql.run('SHOW TABLES LIKE "' + this.#table + '"', true)
+    if (checkTable.length === 0) {
+      throw new Error('Auth table does not exist')
+    }
+
+    if (!data || typeof data !== 'object') {
+      return {success: false, error: 'Invalid data provided'}
+    }
+
+    if (data[passwordField] && !Candy.Var(data[passwordField]).is('bcrypt')) {
+      data[passwordField] = Candy.Var(data[passwordField]).hash()
+    }
+
+    for (const field of uniqueFields) {
+      if (data[field]) {
+        const existing = await Candy.Mysql.table(this.#table).where(field, data[field]).first()
+        if (existing) {
+          return {success: false, error: `${field} already exists`, field}
+        }
+      }
+    }
+
+    try {
+      const result = await Candy.Mysql.table(this.#table).insert(data)
+      if (!result) {
+        return {success: false, error: 'Failed to create user'}
+      }
+
+      if (options.autoLogin !== false) {
+        const loginData = {}
+        loginData[primaryKey] = result.insertId || result[primaryKey]
+        const loginSuccess = await this.login(loginData)
+
+        if (!loginSuccess) {
+          return {success: true, user: result, autoLogin: false, message: 'User created but auto-login failed'}
+        }
+      }
+
+      return {success: true, user: result}
+    } catch (error) {
+      return {success: false, error: error.message || 'Registration failed'}
+    }
+  }
+
+  async logout() {
+    if (!this.#user) return false
+
+    const token = Candy.Config.auth.token
+    const candyX = this.#request.cookie('candy_x')
+    const browser = this.#request.header('user-agent')
+
+    if (candyX && browser) {
+      await Candy.Mysql.table(token).where(['token_x', candyX], ['browser', browser]).delete()
+    }
+
+    this.#request.cookie('candy_x', '', {maxAge: -1})
+    this.#request.cookie('candy_y', '', {maxAge: -1})
+
+    this.#user = null
+    return true
+  }
 
   user(col) {
     if (!this.#user) return false
