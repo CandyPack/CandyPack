@@ -192,9 +192,16 @@ class Validator {
                     error = value && value !== '' && vars[1] && !new RegExp(vars[1]).test(value)
                     break
                   case 'user': {
-                    let user_data = Candy.Auth.user(vars[1])
-                    if (Candy.string(user_data).is('bcrypt')) error = value && (!Candy.Auth.check() || !Candy.hash(value, user_data))
-                    else error = value && (!Candy.Auth.check() || value !== Candy.Auth.user(vars[1]))
+                    if (!(await Candy.Auth.check())) {
+                      error = true
+                    } else {
+                      const userData = Candy.Auth.user(vars[1])
+                      if (Candy.Var(userData).is('bcrypt')) {
+                        error = !Candy.Var(userData).hashCheck(value)
+                      } else {
+                        error = value !== userData
+                      }
+                    }
                     break
                   }
                 }
