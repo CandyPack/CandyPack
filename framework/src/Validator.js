@@ -166,12 +166,16 @@ class Validator {
                   case 'maxdate':
                     error = value && value !== '' && vars[1] && new Date(value).getTime() > new Date(vars[1]).getTime()
                     break
-                  case 'same':
-                    error = value && this.#method[vars[1]] && value !== this.#method[vars[1]]
+                  case 'same': {
+                    const otherValue = await this.#request.request(vars[1], method)
+                    error = value !== otherValue
                     break
-                  case 'different':
-                    error = value && this.#method[vars[1]] && value === this.#method[vars[1]]
+                  }
+                  case 'different': {
+                    const otherValue = await this.#request.request(vars[1], method)
+                    error = value === otherValue
                     break
+                  }
                   case 'equal':
                     error = value && vars[1] && value !== vars[1]
                     break
