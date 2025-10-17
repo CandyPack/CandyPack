@@ -122,6 +122,7 @@ Make sure your `config.json` has the auth configuration:
 ## Security Notes
 
 - Passwords are automatically hashed with bcrypt before storage
+- The system automatically detects already-hashed passwords (bcrypt pattern) to prevent double-hashing
 - Never store plain text passwords
 - Use HTTPS in production to protect credentials in transit
 - Consider adding rate limiting to prevent brute force attacks
