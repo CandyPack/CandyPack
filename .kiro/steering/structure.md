@@ -68,6 +68,10 @@
 - **Index File**: `docs/index.json` contains the navigation structure for all documentation
 - **Adding New Docs**: When creating new documentation files, they MUST be added to `docs/index.json`
 - **Language**: All documentation content must be written in English
-- **Structure**: Documentation is organized into "server", "backend", and "frontend" sections
+- **Structure**: Documentation is organized into THREE sections only:
+  - `docs/server/` - Server infrastructure documentation (CLI, DNS, SSL, Mail)
+  - `docs/backend/` - Backend framework documentation (Controllers, Routing, Auth, Database)
+  - `docs/frontend/` - Frontend documentation (candy.js, AJAX navigation, Forms)
+- **IMPORTANT**: There is NO `docs/framework/` directory - backend docs go in `docs/backend/`
 - **File Organization**: Each section has folders with numbered prefixes (01-overview, 02-structure, etc.)
 - **Navigation**: The index.json file defines the title and hierarchy shown in documentation site

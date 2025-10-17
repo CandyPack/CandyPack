@@ -1,14 +1,12 @@
 # User Registration
 
-The `register()` method provides a secure and user-friendly way to create new user accounts with automatic password hashing, duplicate checking, and optional auto-login.
+The `Candy.Auth.register()` method provides a secure and user-friendly way to create new user accounts with automatic password hashing, duplicate checking, and optional auto-login.
 
 ## Basic Usage
 
 ```javascript
 module.exports = async function (Candy) {
-  const auth = Candy.framework('Auth')
-  
-  const result = await auth.register({
+  const result = await Candy.Auth.register({
     email: 'user@example.com',
     username: 'johndoe',
     password: 'securePassword123',
@@ -26,7 +24,7 @@ module.exports = async function (Candy) {
 ## Advanced Options
 
 ```javascript
-const result = await auth.register(
+const result = await Candy.Auth.register(
   {
     email: 'user@example.com',
     username: 'johndoe',
@@ -80,13 +78,11 @@ const result = await auth.register(
 
 ```javascript
 module.exports = async function (Candy) {
-  const auth = Candy.framework('Auth')
-  
   // Get form data
-  const email = Candy.request.post('email')
-  const username = Candy.request.post('username')
-  const password = Candy.request.post('password')
-  const name = Candy.request.post('name')
+  const email = await Candy.request('email')
+  const username = await Candy.request('username')
+  const password = await Candy.request('password')
+  const name = await Candy.request('name')
   
   // Validate input
   if (!email || !password) {
@@ -94,14 +90,14 @@ module.exports = async function (Candy) {
   }
   
   // Register user
-  const result = await auth.register(
+  const result = await Candy.Auth.register(
     {email, username, password, name},
     {uniqueFields: ['email', 'username']}
   )
   
   if (result.success) {
     // User is now registered and logged in
-    return Candy.redirect('/dashboard')
+    return Candy.direct('/dashboard')
   } else {
     // Show error message
     return {error: result.error}

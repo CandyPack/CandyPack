@@ -259,7 +259,31 @@
       ]
     },
     {
-      "file": "03-authentication",
+      "file": "08-database",
+      "title": "Database",
+      "children": [
+        {
+          "file": "01-database-connection.md",
+          "title": "Database Connection"
+        },
+        {
+          "file": "02-using-mysql.md",
+          "title": "Using MySQL"
+        }
+      ]
+    },
+    {
+      "file": "09-validation",
+      "title": "Validation",
+      "children": [
+        {
+          "file": "01-the-validator-service.md",
+          "title": "Validator Service"
+        }
+      ]
+    },
+    {
+      "file": "10-authentication",
       "title": "Authentication & Security",
       "children": [
         {
@@ -277,36 +301,12 @@
       ]
     },
     {
-      "file": "09-database",
-      "title": "Database",
-      "children": [
-        {
-          "file": "01-database-connection.md",
-          "title": "Database Connection"
-        },
-        {
-          "file": "02-using-mysql.md",
-          "title": "Using MySQL"
-        }
-      ]
-    },
-    {
-      "file": "10-mail",
+      "file": "11-mail",
       "title": "Email",
       "children": [
         {
           "file": "01-the-mail-service.md",
           "title": "Mail Service"
-        }
-      ]
-    },
-    {
-      "file": "11-validation",
-      "title": "Validation",
-      "children": [
-        {
-          "file": "01-the-validator-service.md",
-          "title": "Validator Service"
         }
       ]
     }
@@ -357,16 +357,6 @@
         {
           "file": "01-get-post.md",
           "title": "GET & POST Requests"
-        }
-      ]
-    },
-    {
-      "file": "05-ajax-loading",
-      "title": "AJAX Page Loading",
-      "children": [
-        {
-          "file": "01-overview.md",
-          "title": "Overview & Quick Start"
         }
       ]
     }
