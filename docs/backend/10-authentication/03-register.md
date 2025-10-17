@@ -78,16 +78,22 @@ const result = await Candy.Auth.register(
 
 ```javascript
 module.exports = async function (Candy) {
-  // Get form data
+  const validator = Candy.Validator
+
+  // Validate input
+  validator.post('email').check('required|email').message('A valid email is required')
+  validator.post('username').check('required|minlen:4').message('Username must be at least 4 characters')
+  validator.post('password').check('required|minlen:8').message('Password must be at least 8 characters')
+
+  if (await validator.error()) {
+    return validator.result('Please fix the errors below')
+  }
+
+  // Get validated data
   const email = await Candy.request('email')
   const username = await Candy.request('username')
   const password = await Candy.request('password')
   const name = await Candy.request('name')
-  
-  // Validate input
-  if (!email || !password) {
-    return {error: 'Email and password are required'}
-  }
   
   // Register user
   const result = await Candy.Auth.register(
