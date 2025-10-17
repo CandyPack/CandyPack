@@ -78,10 +78,10 @@ class Validator {
         }
 
         for (const checkItem of checks) {
+          if (this.#message[key]) break
+
           let error = false
           let rules = checkItem.rules
-
-          if (this.#message[key]) break
 
           if (typeof rules === 'boolean') {
             error = rules === false
