@@ -113,10 +113,10 @@ class Validator {
                   error = value && value !== '' && !Candy.Var(value).is('url')
                   break
                 case 'username':
-                  // error = value && !ctype_alnum(value)
+                  error = value && value !== '' && !/^[a-zA-Z0-9]+$/.test(value)
                   break
                 case 'xss':
-                  // error = value && strip_tags(value) !== value
+                  error = value && value !== '' && /<[^>]*>/g.test(value)
                   break
                 case 'usercheck':
                   error = value && !Candy.Auth.check()
@@ -125,7 +125,7 @@ class Validator {
                   error = value && !Array.isArray(value)
                   break
                 case 'date':
-                  // error = value && (strtotime(value) === false || !(strtotime(value) > strtotime(0)))
+                  error = value && value !== '' && (isNaN(Date.parse(value)) || new Date(value).getTime() <= 0)
                   break
                 case 'min':
                   error = value && value !== '' && vars[1] && value < vars[1]
@@ -134,19 +134,19 @@ class Validator {
                   error = value && value !== '' && vars[1] && value > vars[1]
                   break
                 case 'len':
-                  // error = value && value !== '' && vars[1] && strlen(value) !== vars[1]
+                  error = value && value !== '' && vars[1] && String(value).length !== parseInt(vars[1])
                   break
                 case 'minlen':
-                  // error = value && value !== '' && vars[1] && strlen(value) < vars[1]
+                  error = value && value !== '' && vars[1] && String(value).length < parseInt(vars[1])
                   break
                 case 'maxlen':
-                  // error = value && value !== '' && vars[1] && strlen(value) > vars[1]
+                  error = value && value !== '' && vars[1] && String(value).length > parseInt(vars[1])
                   break
                 case 'mindate':
-                  // error = value && value !== '' && vars[1] && strtotime(value) < strtotime(vars[1])
+                  error = value && value !== '' && vars[1] && new Date(value).getTime() < new Date(vars[1]).getTime()
                   break
                 case 'maxdate':
-                  // error = value && value !== '' && vars[1] && strtotime(value) > strtotime(vars[1])
+                  error = value && value !== '' && vars[1] && new Date(value).getTime() > new Date(vars[1]).getTime()
                   break
                 case 'same':
                   error = value && this.#method[vars[1]] && value !== this.#method[vars[1]]
@@ -158,16 +158,16 @@ class Validator {
                   error = value && vars[1] && value !== vars[1]
                   break
                 case 'notin':
-                  // error = value && vars[1] && strpos(value, vars[1]) !== false
+                  error = value && value !== '' && vars[1] && String(value).includes(vars[1])
                   break
                 case 'in':
-                  // error = value && vars[1] && !(strpos(value, vars[1]) !== false)
+                  error = value && value !== '' && vars[1] && !String(value).includes(vars[1])
                   break
                 case 'not':
                   error = value && vars[1] && value === vars[1]
                   break
                 case 'regex':
-                  // error = value && vars[1] && empty(preg_match('/' + vars[1] + '/', value))
+                  error = value && value !== '' && vars[1] && !new RegExp(vars[1]).test(value)
                   break
                 case 'user': {
                   let user_data = Candy.Auth.user(vars[1])
@@ -188,41 +188,49 @@ class Validator {
     this.#completed = true
   }
 
-  // function var($n,$v=null){
-  //     $this->_method = [$n => ($v === null ? $n : $v)];
-  //     $this->_name = $n;
-  //     $this->_error = false;
-  //     $this->_type = $n;
-  //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
-  // }
+  var(name, value = null) {
+    if (this.#completed) this.#completed = false
+    this.#method = 'VAR'
+    this.#name = name
+    if (!this.#checklist[this.#method]) this.#checklist[this.#method] = {}
+    this.#checklist[this.#method][name] = {value: value === null ? name : value}
+    return this
+  }
 
-  // function file($n){
-  //     $this->_method=$_FILES;
-  //     $this->_name=$n;
-  //     $this->_error = false;
-  //     $this->_type = 'FILES';
-  //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
-  // }
+  file(name) {
+    if (this.#completed) this.#completed = false
+    this.#method = 'FILES'
+    this.#name = name
+    return this
+  }
 
-  // function brute($try=5){
-  //     $ip = $_SERVER['REMOTE_ADDR'];
-  //     $now = substr(date('YmdHi'),0,-1);
-  //     $page = PAGE;
-  //     $storage = Candy::storage('sys')->get('validation');
-  //     $this->_name='_candy_form';
-  //     if(count($this->_message) > 0){
-  //     $storage->brute                   = isset($storage->brute)                   ? $storage->brute : new \stdClass;
-  //     $storage->brute->$now             = isset($storage->brute->$now)             ? $storage->brute->$now : new \stdClass;
-  //     $storage->brute->$now->$page      = isset($storage->brute->$now->$page)      ? $storage->brute->$now->$page : new \stdClass;
-  //     $storage->brute->$now->$page->$ip = isset($storage->brute->$now->$page->$ip) ? ($storage->brute->$now->$page->$ip + 1) : 1;
-  //     $this->_error = $storage->brute->$now->$page->$ip >= $try;
-  //     }else{
-  //     $this->_error = isset($storage->$now->$ip) ? $storage->$now->$ip >= $try : false;
-  //     }
+  async brute(maxAttempts = 5) {
+    const ip = this.#request.ip()
+    const now = new Date().toISOString().slice(0, 13).replace(/[-:T]/g, '')
+    const page = this.#request.path()
+    const storage = Candy.storage('sys')
+    const validation = storage.get('validation') || {}
 
-  //     Candy::storage('sys')->set('validation',$storage);
-  //     return new static($this->_name,$this->_request,$this->_error,$this->_message,$this->_method,$this->_type);
-  // }
+    this.#name = '_candy_form'
+
+    if (Object.keys(this.#message).length > 0) {
+      if (!validation.brute) validation.brute = {}
+      if (!validation.brute[now]) validation.brute[now] = {}
+      if (!validation.brute[now][page]) validation.brute[now][page] = {}
+      if (!validation.brute[now][page][ip]) validation.brute[now][page][ip] = 0
+
+      validation.brute[now][page][ip]++
+
+      if (validation.brute[now][page][ip] >= maxAttempts) {
+        this.#message['_candy_form'] = Candy.Lang
+          ? Candy.Lang.get('Too many failed attempts. Please try again later.')
+          : 'Too many failed attempts. Please try again later.'
+      }
+    }
+
+    storage.set('validation', validation)
+    return this
+  }
 }
 
 module.exports = Validator

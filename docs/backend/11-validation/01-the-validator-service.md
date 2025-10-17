@@ -1,66 +1,162 @@
 ## ✅ The `Validator` Service
 
-To start validating, just grab a new validator instance by calling the `Candy.validator()` helper function.
+The Validator service provides a fluent, chainable API for validating user input. It's automatically available in your controllers through `Candy.Validator`.
 
-#### The 3-Step Validation Dance
+#### Basic Usage
 
-1.  **Get a validator**: `const validator = Candy.validator()`
-2.  **Check your data**: `validator.check(data, rules)`
-3.  **Ask if it failed**: `validator.fails()`
-
-The `check` method is the star of the show. It takes:
-*   `data`: The object you want to check (usually `Candy.Request.post`).
-*   `rules`: An object where you define the rules for each piece of data. You can even chain rules together with a pipe (`|`).
-
-#### Rules of the Game
-
-Here are some of the rules you can use:
-
-*   `required`: The field can't be empty.
-*   `email`: Must be a valid-looking email address.
-*   `numeric`: Must be a number.
-*   `min:X`: Must be at least `X` characters long (for text) or `X` in value (for numbers).
-*   `max:X`: Must be no more than `X` characters long (for text) or `X` in value (for numbers).
-*   `equals:fieldName`: The field must have the same value as another field (great for password confirmation!).
-
-#### Handling Errors
-
-If the validation doesn't pass, you can get an array of all the error messages with `validator.getErrors()`.
-
-#### Example: A User Signup Form
-
-Let's see how you'd validate a typical user registration form.
+The validator uses a method-chaining pattern:
 
 ```javascript
-module.exports = function (Candy) {
-    // 1. Get a new validator
-    const validator = Candy.validator();
-    const userInput = Candy.Request.post;
+const validator = Candy.Validator
+validator.post('email').check('required|email').message('Valid email required')
+validator.post('password').check('required|minlen:8').message('Password must be at least 8 characters')
 
-    // 2. Define the rules for our dream user
-    const rules = {
-        username: 'required|min:4',
-        email: 'required|email',
-        password: 'required|min:8',
-        password_confirm: 'required|equals:password'
-    };
+if (await validator.error()) {
+  return validator.result('Validation failed')
+}
+```
 
-    // 3. Check the user's input against our rules
-    validator.check(userInput, rules);
+#### Available Methods
 
-    // 4. Did it fail?
-    if (validator.fails()) {
-        // If so, send back an error response with the messages
-        return Candy.return({
-            error: 'Houston, we have a validation problem!',
-            messages: validator.getErrors()
-        }).status(400); // 400 means "Bad Request"
-    }
+- `post(key)` - Validate a POST field
+- `get(key)` - Validate a GET field
+- `var(name, value)` - Validate a custom variable
+- `file(name)` - Validate a file upload
+- `check(rules)` - Define validation rules (pipe-separated)
+- `message(text)` - Set custom error message
+- `error()` - Returns true if validation failed (async)
+- `result(message, data)` - Returns formatted result object (async)
+- `success(callback)` - Returns success result with data
+- `brute(maxAttempts)` - Enable brute force protection (default: 5 attempts)
 
-    // If we get here, the data is valid and clean!
-    // Now you can safely create the new user.
-    // ...
+#### Validation Rules
 
-    return { success: true, message: 'Welcome aboard! User created.' };
+**Type Validation:**
+- `required` - Field cannot be empty
+- `accepted` - Must be 1, 'on', 'yes', or true
+- `numeric` - Must be a number
+- `alpha` - Only alphabetic characters
+- `alphaspace` - Alphabetic characters and spaces
+- `alphanumeric` - Alphanumeric characters only
+- `alphanumericspace` - Alphanumeric characters and spaces
+- `username` - Alphanumeric username (no spaces or special chars)
+- `email` - Valid email address
+- `ip` - Valid IP address
+- `float` - Floating point number
+- `mac` - Valid MAC address
+- `domain` - Valid domain name
+- `url` - Valid URL
+- `array` - Must be an array
+- `date` - Valid date format
+
+**Length Validation:**
+- `len:X` - Exact length must be X
+- `minlen:X` - Minimum length of X characters
+- `maxlen:X` - Maximum length of X characters
+
+**Value Validation:**
+- `min:X` - Minimum value of X
+- `max:X` - Maximum value of X
+- `equal:value` - Must equal specific value
+- `not:value` - Must not equal specific value
+- `same:field` - Must match another field
+- `different:field` - Must differ from another field
+
+**Date Validation:**
+- `mindate:date` - Must be after specified date
+- `maxdate:date` - Must be before specified date
+
+**String Validation:**
+- `in:substring` - Must contain substring
+- `notin:substring` - Must not contain substring
+- `regex:pattern` - Must match regex pattern
+
+**Security:**
+- `xss` - Check for HTML tags (XSS protection)
+- `usercheck` - User must be authenticated
+- `user:field` - Must match authenticated user's field value
+
+**Inverse Rules:**
+Use `!` prefix to invert any rule: `!required`, `!email`, etc.
+
+#### Example: User Registration
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+
+  validator.post('username').check('required|username|minlen:4|maxlen:20').message('Username must be 4-20 alphanumeric characters')
+  validator.post('email').check('required|email').message('Valid email address required')
+  validator.post('password').check('required|minlen:8').message('Password must be at least 8 characters')
+  validator.post('password_confirm').check('required|same:password').message('Passwords must match')
+
+  if (await validator.error()) {
+    return validator.result('Validation failed')
+  }
+
+  return validator.success('User registered successfully')
+}
+```
+
+#### Example: Login with Brute Force Protection
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+
+  validator.post('email').check('required|email').message('Email required')
+  validator.post('password').check('required').message('Password required')
+  validator.brute(5)
+
+  if (await validator.error()) {
+    return validator.result('Login failed')
+  }
+
+  return validator.success({token: 'abc123'})
+}
+```
+
+#### Example: Custom Variable Validation
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+  const customValue = calculateSomething()
+
+  validator.var('calculated_value', customValue).check('numeric|min:100|max:1000').message('Value must be between 100 and 1000')
+
+  if (await validator.error()) {
+    return validator.result('Invalid calculation')
+  }
+
+  return validator.success('Calculation valid')
+}
+```
+
+#### Response Format
+
+The `result()` method returns a standardized response:
+
+**Success:**
+```json
+{
+  "result": {
+    "success": true,
+    "message": "Operation successful"
+  },
+  "data": null
+}
+```
+
+**Error:**
+```json
+{
+  "result": {
+    "success": false
+  },
+  "errors": {
+    "email": "Valid email address required",
+    "password": "Password must be at least 8 characters"
+  }
 }
 ```
