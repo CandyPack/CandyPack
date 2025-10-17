@@ -260,6 +260,141 @@ module.exports = async function (Candy) {
 }
 ```
 
+#### Example: User Authentication Validation
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+
+  validator
+    .post('current_password')
+    .check('required').message('Current password is required')
+    .check('user:password').message('Current password is incorrect')
+
+  validator
+    .post('new_password')
+    .check('required').message('New password is required')
+    .check('minlen:8').message('New password must be at least 8 characters')
+    .check('different:current_password').message('New password must be different from current')
+
+  if (await validator.error()) {
+    return validator.result('Password change failed')
+  }
+
+  return validator.success('Password changed successfully')
+}
+```
+
+#### Example: Boolean Function Results
+
+You can use boolean values directly in `check()` for custom validation logic:
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+  const userId = await Candy.request('user_id')
+  
+  const isOwner = await checkIfUserOwnsResource(userId)
+  const hasPermission = await checkUserPermission('edit')
+  const isWithinLimit = await checkDailyLimit(userId)
+
+  validator.post('title').check('required').message('Title is required')
+  
+  validator
+    .var('ownership', null)
+    .check(isOwner).message('You do not own this resource')
+  
+  validator
+    .var('permission', null)
+    .check(hasPermission).message('You do not have permission to edit')
+  
+  validator
+    .var('limit', null)
+    .check(isWithinLimit).message('You have reached your daily edit limit')
+
+  if (await validator.error()) {
+    return validator.result('Validation failed')
+  }
+
+  return validator.success('Resource updated')
+}
+```
+
+#### Example: Chained Validation (Single Statement)
+
+```javascript
+module.exports = async function (Candy) {
+  return await Candy.Validator
+    .post('email').check('required').message('Email required').check('email').message('Invalid email')
+    .post('password').check('required').message('Password required').check('minlen:8').message('Min 8 chars')
+    .post('age').check('required').message('Age required').check('numeric').message('Must be number').check('min:18').message('Must be 18+')
+    .success('Registration successful')
+}
+```
+
+#### Example: Admin-Only Action with User Check
+
+```javascript
+module.exports = async function (Candy) {
+  const validator = Candy.Validator
+
+  validator
+    .var('auth_check', null)
+    .check('usercheck').message('You must be logged in')
+
+  validator
+    .var('admin_role', null)
+    .check('user:role').message('Admin access required')
+    .check('equal:admin').message('Only admins can perform this action')
+
+  validator.post('action').check('required').message('Action is required')
+
+  if (await validator.error()) {
+    return validator.result('Access denied')
+  }
+
+  return validator.success('Action completed')
+}
+```
+
+#### Frontend Integration
+
+When using `Candy.form()` on the frontend, validation errors are automatically displayed:
+
+**Automatic Error Display:**
+- Each field's error message appears below the input with attribute `[candy-form-error="fieldname"]`
+- Invalid inputs get the `_candy_error` CSS class automatically
+- Errors fade out when the user focuses on the input
+
+**Success Messages:**
+- Success messages appear in elements with `[candy-form-success]` attribute
+- Automatically fades in when validation passes
+
+**Auto-Redirect:**
+- If you pass a URL as the second parameter to `Candy.form()`, successful submissions automatically redirect:
+  ```javascript
+  Candy.form('myForm', '/dashboard') // Redirects to /dashboard on success
+  ```
+
+**Example HTML:**
+```html
+<form candy-form="register" action="/api/register" method="POST">
+  <input type="email" name="email" placeholder="Email">
+  <span candy-form-error="email"></span>
+  
+  <input type="password" name="password" placeholder="Password">
+  <span candy-form-error="password"></span>
+  
+  <button type="submit">Register</button>
+  
+  <span candy-form-success></span>
+</form>
+
+<script>
+  Candy.form('register', '/dashboard') // Auto-redirect on success
+</script>
+```
+
 #### Response Format
 
 The `result()` method returns a standardized response:
