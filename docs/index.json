@@ -259,7 +259,7 @@
       ]
     },
     {
-      "file": "08-authentication",
+      "file": "03-authentication",
       "title": "Authentication & Security",
       "children": [
         {
@@ -269,6 +269,10 @@
         {
           "file": "02-foiling-villains-with-csrf-protection.md",
           "title": "CSRF Protection"
+        },
+        {
+          "file": "03-register.md",
+          "title": "User Registration"
         }
       ]
     },
