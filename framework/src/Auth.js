@@ -111,22 +111,31 @@ class Auth {
     }
 
     try {
-      const result = await Candy.Mysql.table(this.#table).insert(data)
-      if (!result) {
+      const insertResult = await Candy.Mysql.table(this.#table).insert(data)
+      if (!insertResult || !insertResult.affectedRows) {
         return {success: false, error: 'Failed to create user'}
       }
 
+      const userId = insertResult.insertId
+      const newUser = await Candy.Mysql.table(this.#table).where(primaryKey, userId).first()
+
+      if (!newUser) {
+        return {success: false, error: 'User created but could not be retrieved'}
+      }
+
+      delete newUser[passwordField]
+
       if (options.autoLogin !== false) {
         const loginData = {}
-        loginData[primaryKey] = result.insertId || result[primaryKey]
+        loginData[primaryKey] = userId
         const loginSuccess = await this.login(loginData)
 
         if (!loginSuccess) {
-          return {success: true, user: result, autoLogin: false, message: 'User created but auto-login failed'}
+          return {success: true, user: newUser, autoLogin: false, message: 'User created but auto-login failed'}
         }
       }
 
-      return {success: true, user: result}
+      return {success: true, user: newUser}
     } catch (error) {
       return {success: false, error: error.message || 'Registration failed'}
     }
