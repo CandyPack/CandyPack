@@ -4,6 +4,23 @@ The `<candy-register>` component provides a zero-configuration way to create sec
 
 ## Quick Start
 
+### 1. Configure Database (config.json)
+
+```json
+{
+  "mysql": {
+    "host": "localhost",
+    "user": "root",
+    "password": "",
+    "database": "your_database"
+  }
+}
+```
+
+That's all you need! The `auth` configuration is optional.
+
+### 2. Create Your Form (view/content/register.html)
+
 ```html
 <candy-register redirect="/dashboard">
   <candy-field name="email" type="email" placeholder="Email" unique>
@@ -22,13 +39,40 @@ The `<candy-register>` component provides a zero-configuration way to create sec
 </candy-register>
 ```
 
-That's it! No JavaScript, no controller code needed. The form automatically:
+That's it! No JavaScript, no controller code, no SQL needed. The form automatically:
+- Creates the database table (if it doesn't exist)
 - Validates input (client-side and server-side)
 - Checks for unique email/username
 - Hashes passwords with bcrypt
 - Creates the user account
 - Logs in the user
 - Redirects to dashboard
+
+### 3. Optional: Customize Auth Configuration
+
+If you want to customize table names or primary key:
+
+```json
+{
+  "mysql": {
+    "host": "localhost",
+    "user": "root",
+    "password": "",
+    "database": "your_database"
+  },
+  "auth": {
+    "table": "users",           // Optional: User table name (default: "users")
+    "key": "id",                // Optional: Primary key (default: "id")
+    "token": "user_tokens"      // Optional: Token table (default: "user_tokens")
+  }
+}
+```
+
+**If you don't specify `auth` config:**
+- Table name defaults to `users`
+- Primary key defaults to `id`
+- Token table defaults to `user_tokens`
+- Table is created automatically based on your form fields
 
 ## Form Attributes
 
@@ -391,18 +435,100 @@ CandyPack automatically adds HTML5 validation attributes for better UX:
 
 This provides instant feedback to users before form submission.
 
-## Configuration
+## Configuration Reference
 
-Make sure your `config.json` has the auth configuration:
+### Required Configuration
+
+Only MySQL configuration is required:
+
+```json
+{
+  "mysql": {
+    "host": "localhost",
+    "user": "root",
+    "password": "",
+    "database": "your_database"
+  }
+}
+```
+
+### Optional Auth Configuration
+
+Customize table names and primary key if needed:
 
 ```json
 {
   "auth": {
-    "table": "users",
-    "key": "id",
-    "token": "user_tokens"
+    "table": "users",           // User table name (default: "users")
+    "key": "id",                // Primary key column (default: "id")
+    "token": "user_tokens"      // Session token table (default: "user_tokens")
   }
 }
+```
+
+**Default Values:**
+- If `auth` is not specified, defaults are used
+- Table: `users`
+- Primary key: `id`
+- Token table: `user_tokens`
+- All tables are created automatically if they don't exist
+
+### Database Schema
+
+**Auto-Creation (Recommended):**
+
+The users table is created automatically on first registration! CandyPack analyzes your form fields and creates the appropriate table structure:
+
+- Fields with `unique` attribute → `VARCHAR(255) NOT NULL UNIQUE`
+- Password field → `VARCHAR(255) NOT NULL` (for bcrypt hashes)
+- Number fields → `INT` or `BIGINT`
+- Text fields → `VARCHAR(255)` or `TEXT` (if > 255 chars)
+- Boolean fields → `TINYINT(1)`
+- Timestamps → `created_at` and `updated_at` added automatically
+
+**Manual Creation (Optional):**
+
+If you prefer to create the table manually:
+
+```sql
+CREATE TABLE `users` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `email` VARCHAR(255) NOT NULL UNIQUE,
+  `username` VARCHAR(255) NOT NULL UNIQUE,
+  `password` VARCHAR(255) NOT NULL,
+  `name` VARCHAR(255) NULL,
+  `role` VARCHAR(50) DEFAULT 'user',
+  `status` VARCHAR(50) DEFAULT 'active',
+  `registered_at` INT NULL,
+  `ip_address` VARCHAR(45) NULL,
+  `user_agent` TEXT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+**Important:**
+- Password field must be `VARCHAR(255)` to store bcrypt hashes (60 chars + future-proofing)
+- Fields marked with `unique` attribute should have `UNIQUE` constraint
+- Auto-creation uses `utf8mb4_unicode_ci` collation for full Unicode support
+
+### Token Table
+
+The token table is created automatically on first login, but you can create it manually:
+
+```sql
+CREATE TABLE `user_tokens` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `user` INT NOT NULL,
+  `token_x` VARCHAR(255) NOT NULL,
+  `token_y` VARCHAR(255) NOT NULL,
+  `browser` VARCHAR(255) NOT NULL,
+  `ip` VARCHAR(255) NOT NULL,
+  `date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `active` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Error Handling

@@ -8,7 +8,8 @@ class Auth {
   }
 
   async check(where) {
-    if (Candy.Config.auth.table) this.#table = Candy.Config.auth.table
+    if (!Candy.Config.auth) Candy.Config.auth = {}
+    this.#table = Candy.Config.auth.table || 'users'
     if (!this.#table) return false
     if (where) {
       let sql = Candy.Mysql.table(this.#table)
@@ -38,10 +39,12 @@ class Auth {
       let candy_y = this.#request.cookie('candy_y')
       let browser = this.#request.header('user-agent')
       if (!candy_x || !candy_y || !browser) return false
-      let sql_token = await Candy.Mysql.table(Candy.Config.auth.token).where(['token_x', candy_x], ['browser', browser]).get()
+      const tokenTable = Candy.Config.auth.token || 'user_tokens'
+      const primaryKey = Candy.Config.auth.key || 'id'
+      let sql_token = await Candy.Mysql.table(tokenTable).where(['token_x', candy_x], ['browser', browser]).get()
       if (sql_token.length !== 1) return false
       if (!Candy.Var(sql_token[0].token_y).hashCheck(candy_y)) return false
-      this.#user = await Candy.Mysql.table(this.#table).where(Candy.Config.auth.key, sql_token[0].user).first()
+      this.#user = await Candy.Mysql.table(this.#table).where(primaryKey, sql_token[0].user).first()
       // Candy.Mysql.table(Candy.Config.auth.token).where(sql_token[0].id).set({'ip': this.#request.ip,'active': Date.now()});
       return true
     }
@@ -51,8 +54,9 @@ class Auth {
     this.#user = null
     let user = await this.check(where)
     if (!user) return false
-    let key = Candy.Config.auth.key
-    let token = Candy.Config.auth.token
+    if (!Candy.Config.auth) Candy.Config.auth = {}
+    let key = Candy.Config.auth.key || 'id'
+    let token = Candy.Config.auth.token || 'user_tokens'
     let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', [token])
     if (check_table.length == 0)
       await Candy.Mysql.run(
@@ -79,18 +83,18 @@ class Auth {
   }
 
   async register(data, options = {}) {
-    if (!Candy.Config.auth.table) {
-      throw new Error('Auth table not configured')
+    if (!Candy.Config.auth) {
+      Candy.Config.auth = {}
     }
 
-    this.#table = Candy.Config.auth.table
+    this.#table = Candy.Config.auth.table || 'users'
     const primaryKey = Candy.Config.auth.key || 'id'
     const passwordField = options.passwordField || 'password'
     const uniqueFields = options.uniqueFields || ['email']
 
     const checkTable = await Candy.Mysql.run('SHOW TABLES LIKE ?', true, [this.#table])
     if (checkTable.length === 0) {
-      throw new Error('Auth table does not exist')
+      await this.#createUserTable(this.#table, primaryKey, passwordField, uniqueFields, data)
     }
 
     if (!data || typeof data !== 'object') {
@@ -144,7 +148,8 @@ class Auth {
   async logout() {
     if (!this.#user) return false
 
-    const token = Candy.Config.auth.token
+    if (!Candy.Config.auth) Candy.Config.auth = {}
+    const token = Candy.Config.auth.token || 'user_tokens'
     const candyX = this.#request.cookie('candy_x')
     const browser = this.#request.header('user-agent')
 
@@ -157,6 +162,51 @@ class Auth {
 
     this.#user = null
     return true
+  }
+
+  async #createUserTable(tableName, primaryKey, passwordField, uniqueFields, sampleData) {
+    const columns = []
+
+    columns.push(`\`${primaryKey}\` INT NOT NULL AUTO_INCREMENT`)
+
+    for (const field of uniqueFields) {
+      if (field !== primaryKey) {
+        columns.push(`\`${field}\` VARCHAR(255) NOT NULL UNIQUE`)
+      }
+    }
+
+    if (!uniqueFields.includes(passwordField) && passwordField !== primaryKey) {
+      columns.push(`\`${passwordField}\` VARCHAR(255) NOT NULL`)
+    }
+
+    for (const key in sampleData) {
+      if (key === primaryKey || uniqueFields.includes(key) || key === passwordField) continue
+
+      const value = sampleData[key]
+      let columnType = 'VARCHAR(255)'
+
+      if (typeof value === 'number') {
+        if (Number.isInteger(value)) {
+          columnType = value > 2147483647 ? 'BIGINT' : 'INT'
+        } else {
+          columnType = 'DECIMAL(10,2)'
+        }
+      } else if (typeof value === 'boolean') {
+        columnType = 'TINYINT(1)'
+      } else if (value && value.length > 255) {
+        columnType = 'TEXT'
+      }
+
+      columns.push(`\`${key}\` ${columnType} NULL`)
+    }
+
+    columns.push(`\`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP`)
+    columns.push(`\`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+    columns.push(`PRIMARY KEY (\`${primaryKey}\`)`)
+
+    const sql = `CREATE TABLE \`${tableName}\` (${columns.join(', ')}) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+
+    await Candy.Mysql.run(sql)
   }
 
   user(col) {

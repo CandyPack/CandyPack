@@ -596,3 +596,10 @@ class candy {
 }
 
 window.Candy = new candy()
+
+document.addEventListener('DOMContentLoaded', () => {
+  const registerForms = document.querySelectorAll('form.candy-register-form[data-candy-register]')
+  registerForms.forEach(form => {
+    window.Candy.form({form: 'form[data-candy-register="' + form.dataset.candyRegister + '"]'})
+  })
+})

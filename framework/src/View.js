@@ -1,5 +1,6 @@
 const nodeCrypto = require('crypto')
 const fs = require('fs')
+const Form = require('./View/Form')
 
 const CACHE_DIR = './storage/.cache'
 
@@ -177,6 +178,9 @@ class View {
     let mtime = fs.statSync(file).mtimeMs
     if (this.#cache[file]?.mtime !== mtime) {
       let content = fs.readFileSync(file, 'utf8')
+
+      content = Form.parseRegister(content)
+
       let result = 'html += `\n' + content + '\n`'
       content = content.split('\n')
       for (let key in this.#functions) {

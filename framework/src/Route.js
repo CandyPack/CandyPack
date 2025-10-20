@@ -1,6 +1,7 @@
 const fs = require('fs')
 
 const Cron = require('./Route/Cron.js')
+const Internal = require('./Route/Internal.js')
 
 var routes2 = {}
 const mime = {
@@ -246,9 +247,16 @@ class Route {
 
   init() {
     this.#init()
+    this.#registerInternalRoutes()
     setInterval(() => {
       this.#init()
     }, 1000)
+  }
+
+  #registerInternalRoutes() {
+    this.set('POST', '/_candy/register', async Candy => {
+      return await Internal.register(Candy)
+    })
   }
 
   async request(req, res) {
