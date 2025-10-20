@@ -296,7 +296,11 @@
         },
         {
           "file": "03-register.md",
-          "title": "User Registration"
+          "title": "User Registration (Programmatic)"
+        },
+        {
+          "file": "04-candy-register-forms.md",
+          "title": "Candy Register Forms (Zero-Config)"
         }
       ]
     },
