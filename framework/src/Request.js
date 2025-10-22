@@ -142,7 +142,7 @@ class CandyRequest {
   end(data) {
     if (data instanceof Promise) return data.then(result => this.end(result))
     if (this.res.finished) return
-    if (typeof data === 'object' && data.type !== 'Buffer') {
+    if (typeof data === 'object' && data !== null && data.type !== 'Buffer') {
       let json = JSON.stringify(data)
       if (json.length > 0 && JSON.parse(json).type !== 'Buffer') {
         data = json
