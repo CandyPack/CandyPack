@@ -83,17 +83,6 @@ When your translation contains HTML tags that should be preserved:
      Result: "Hello, <br /> I'm <span>Emre</span>" -->
 ```
 
-**Practical Example:**
-
-```html
-<!-- Your original code -->
-{!! __('Selam, <br /> Ben <span>%s</span>', 'Emre') !!}<span class="span">!</span>
-
-<!-- New syntax equivalent -->
-<candy translate raw>Selam, <br /> Ben <span><candy>Emre</candy></span></candy>
-<span class="span">!</span>
-```
-
 **Use Cases for Raw Translation:**
 - Translation strings with formatting tags (`<br>`, `<strong>`, `<em>`)
 - Links in translations: `<candy translate raw>Click <a href="/help">here</a></candy>`
