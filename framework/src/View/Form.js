@@ -70,8 +70,10 @@ class Form {
   }
 
   static parseField(html) {
-    const fieldTag = html.match(/<candy-field([^>]*)>/)[0]
+    const fieldTagMatch = html.match(/<candy-field([^>]*)>/)
+    if (!fieldTagMatch) return null
 
+    const fieldTag = fieldTagMatch[0]
     const nameMatch = fieldTag.match(/name=["']([^"']+)["']/)
     if (!nameMatch) return null
 
