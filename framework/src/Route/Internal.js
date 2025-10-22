@@ -83,9 +83,11 @@ class Internal {
     })
 
     if (!registerResult.success) {
+      const errorField = registerResult.field || '_candy_form'
+      const errors = {[errorField]: registerResult.error}
       return Candy.return({
         result: {success: false},
-        errors: {_candy_form: registerResult.error}
+        errors: errors
       })
     }
 
