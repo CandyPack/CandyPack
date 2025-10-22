@@ -137,7 +137,7 @@ class Validator {
                     error = value && value !== '' && /<[^>]*>/g.test(value)
                     break
                   case 'usercheck':
-                    error = value && !Candy.Auth.check()
+                    error = !(await Candy.Auth.check())
                     break
                   case 'array':
                     error = value && !Array.isArray(value)
