@@ -2,7 +2,7 @@ const nodeCrypto = require('crypto')
 
 class Form {
   static parseRegister(content) {
-    const registerMatches = content.match(/<candy-register[\s\S]*?<\/candy-register>/g)
+    const registerMatches = content.match(/<candy:register[\s\S]*?<\/candy:register>/g)
     if (!registerMatches) return content
 
     for (const match of registerMatches) {
@@ -29,7 +29,7 @@ class Form {
       sets: []
     }
 
-    const registerMatch = html.match(/<candy-register([^>]*)>/)
+    const registerMatch = html.match(/<candy:register([^>]*)>/)
     if (!registerMatch) return config
 
     const registerTag = registerMatch[0]
@@ -39,7 +39,7 @@ class Form {
     if (redirectMatch) config.redirect = redirectMatch[1]
     if (autologinMatch) config.autologin = autologinMatch[1] !== 'false'
 
-    const submitMatch = html.match(/<candy-submit([^>/]*)(?:\/?>|>(.*?)<\/candy-submit>)/)
+    const submitMatch = html.match(/<candy:submit([^>/]*)(?:\/?>|>(.*?)<\/candy:submit>)/)
     if (submitMatch) {
       const textMatch = submitMatch[1].match(/text=["']([^"']+)["']/)
       const loadingMatch = submitMatch[1].match(/loading=["']([^"']+)["']/)
@@ -50,7 +50,7 @@ class Form {
       if (loadingMatch) config.submitLoading = loadingMatch[1]
     }
 
-    const fieldMatches = html.match(/<candy-field[\s\S]*?<\/candy-field>/g)
+    const fieldMatches = html.match(/<candy:field[\s\S]*?<\/candy:field>/g)
     if (fieldMatches) {
       for (const fieldHtml of fieldMatches) {
         const field = this.parseField(fieldHtml)
@@ -58,7 +58,7 @@ class Form {
       }
     }
 
-    const setMatches = html.match(/<candy-set[^>]*\/?>/g)
+    const setMatches = html.match(/<candy:set[^>]*\/?>/g)
     if (setMatches) {
       for (const setTag of setMatches) {
         const set = this.parseSet(setTag)
@@ -70,7 +70,7 @@ class Form {
   }
 
   static parseField(html) {
-    const fieldTagMatch = html.match(/<candy-field([^>]*)>/)
+    const fieldTagMatch = html.match(/<candy:field([^>]*)>/)
     if (!fieldTagMatch) return null
 
     const fieldTag = fieldTagMatch[0]
@@ -96,7 +96,7 @@ class Form {
     if (labelMatch) field.label = labelMatch[1]
     if (uniqueMatch) field.unique = uniqueMatch[1] !== 'false'
 
-    const validateMatches = html.match(/<candy-validate[^>]*>/g)
+    const validateMatches = html.match(/<candy:validate[^>]*>/g)
     if (validateMatches) {
       for (const validateTag of validateMatches) {
         const ruleMatch = validateTag.match(/rule=["']([^"']+)["']/)
