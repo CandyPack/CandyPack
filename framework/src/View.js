@@ -187,11 +187,11 @@ class View {
       attributes = attributes.trim()
 
       const attrs = {}
-      const attrMatches = attributes.match(/(\w+)(?:="([^"]*)")?/g) || []
+      const attrMatches = attributes.match(/(\w+)(?:=["']([^"']*)["'])?/g) || []
       for (const attr of attrMatches) {
         const parts = attr.split('=')
         const key = parts[0].trim()
-        const value = parts[1] ? parts[1].replace(/"/g, '').trim() : true
+        const value = parts[1] ? parts[1].replace(/["']/g, '').trim() : true
         attrs[key] = value
       }
 
@@ -216,11 +216,11 @@ class View {
         innerContent = innerContent.trim()
 
         const attrs = {}
-        const attrMatches = attributes.match(/(\w+)(?:="([^"]*)")?/g) || []
+        const attrMatches = attributes.match(/(\w+)(?:=["']([^"']*)["'])?/g) || []
         for (const attr of attrMatches) {
           const parts = attr.split('=')
           const key = parts[0].trim()
-          const value = parts[1] ? parts[1].replace(/"/g, '').trim() : true
+          const value = parts[1] ? parts[1].replace(/["']/g, '').trim() : true
           attrs[key] = value
         }
 
@@ -284,14 +284,14 @@ class View {
           : result.match(new RegExp(`<candy:${key}.*?>`, 'g'))
         if (!matches) continue
         for (let match of matches) {
-          let args = match.match(/(?:\w+)=["].*?["]/g)
+          let args = match.match(/(\w+)(?:=["']([^"']*)["'])?/g) || []
           if (!func.close) match = match.replace(/<candy:|>/g, '')
           let vars = {}
           if (func.arguments)
             for (let arg of args) {
-              let [key, value] = arg.split('=')
-              key = key.trim()
-              value = value.replace(/"/g, '').trim()
+              const parts = arg.split('=')
+              const key = parts[0].trim()
+              const value = parts[1] ? parts[1].replace(/["']/g, '').trim() : true
               if (func.arguments[key] === undefined) {
                 att += `${key}="${value}"`
                 continue
