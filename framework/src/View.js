@@ -270,7 +270,7 @@ class View {
     if (this.#cache[file]?.mtime !== mtime) {
       let content = fs.readFileSync(file, 'utf8')
 
-      content = Form.parseRegister(content)
+      content = Form.parseRegister(content, this.#candy)
 
       content = this.#parseCandyTag(content)
 

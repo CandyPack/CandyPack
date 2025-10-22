@@ -254,9 +254,18 @@ class Route {
   }
 
   #registerInternalRoutes() {
-    this.set('POST', '/_candy/register', async Candy => {
-      return await Internal.register(Candy)
-    })
+    this.set(
+      'POST',
+      '/_candy/register',
+      async Candy => {
+        const csrfToken = await Candy.request('_token')
+        if (!csrfToken || !Candy.token(csrfToken)) {
+          return Candy.Request.abort(401)
+        }
+        return await Internal.register(Candy)
+      },
+      {token: true}
+    )
   }
 
   async request(req, res) {
