@@ -29,7 +29,10 @@ class Form {
       sets: []
     }
 
-    const registerTag = html.match(/<candy-register([^>]*)>/)[0]
+    const registerMatch = html.match(/<candy-register([^>]*)>/)
+    if (!registerMatch) return config
+
+    const registerTag = registerMatch[0]
     const redirectMatch = registerTag.match(/redirect=["']([^"']+)["']/)
     const autologinMatch = registerTag.match(/autologin=["']([^"']+)["']/)
 
