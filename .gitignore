@@ -48,3 +48,5 @@ jest-*
 
 # Kiro
 .kiro/specs/*
+
+.secret/
