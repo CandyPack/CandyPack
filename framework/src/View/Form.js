@@ -50,7 +50,7 @@ class Form {
       if (loadingMatch) config.submitLoading = loadingMatch[1]
     }
 
-    const fieldMatches = html.match(/<candy:field[\s\S]*?(?:<\/candy:field>|\/?>)/g)
+    const fieldMatches = html.match(/<candy:field[\s\S]*?<\/candy:field>/g)
     if (fieldMatches) {
       for (const fieldHtml of fieldMatches) {
         const field = this.parseField(fieldHtml)
@@ -168,7 +168,7 @@ class Form {
 
     let innerContent = originalHtml.replace(/<candy:register[^>]*>/, '').replace(/<\/candy:register>/, '')
 
-    innerContent = innerContent.replace(/<candy:field[\s\S]*?(?:<\/candy:field>|\/?>)/g, fieldMatch => {
+    innerContent = innerContent.replace(/<candy:field[\s\S]*?<\/candy:field>/g, fieldMatch => {
       const field = this.parseField(fieldMatch)
       if (!field) return fieldMatch
       return this.generateFieldHtml(field)
@@ -182,9 +182,8 @@ class Form {
 
     innerContent = innerContent.replace(/<candy:set[^>]*\/?>/g, '')
 
-    let html = `<form class="candy-register-form" data-candy-register="${formToken}" method="POST" action="/_candy/register">\n`
+    let html = `<form class="candy-register-form" data-candy-register="${formToken}" method="POST" action="/_candy/register" novalidate>\n`
     html += `  <input type="hidden" name="_candy_register_token" value="${formToken}">\n`
-    html += `  <input type="hidden" name="_token" value="{{ Candy.token() }}">\n`
     html += innerContent
     html += `\n  <span class="candy-form-success" style="display:none;"></span>\n`
     html += `</form>`
@@ -221,8 +220,6 @@ class Form {
       html += `<input type="${field.type}"${idAttr} name="${field.name}" placeholder="${field.placeholder}"${classAttr}${attrs}>\n`
     }
 
-    html += `<span class="candy-form-error" candy-form-error="${field.name}" style="display:none;"></span>`
-
     return html
   }
 
@@ -236,6 +233,7 @@ class Form {
       max: null,
       pattern: null
     }
+    const errorMessages = {}
 
     for (const validation of field.validations) {
       const rules = validation.rule.split('|')
@@ -245,12 +243,19 @@ class Form {
         switch (ruleName) {
           case 'required':
             html5Rules.required = true
+            if (validation.message) errorMessages.required = validation.message
             break
           case 'minlen':
-            if (field.type !== 'number') html5Rules.minlength = ruleValue
+            if (field.type !== 'number') {
+              html5Rules.minlength = ruleValue
+              if (validation.message) errorMessages.minlength = validation.message
+            }
             break
           case 'maxlen':
-            if (field.type !== 'number') html5Rules.maxlength = ruleValue
+            if (field.type !== 'number') {
+              html5Rules.maxlength = ruleValue
+              if (validation.message) errorMessages.maxlength = validation.message
+            }
             break
           case 'min':
             if (field.type === 'number') html5Rules.min = ruleValue
@@ -259,20 +264,33 @@ class Form {
             if (field.type === 'number') html5Rules.max = ruleValue
             break
           case 'email':
+            if (validation.message) errorMessages.email = validation.message
             break
           case 'url':
             break
           case 'numeric':
-            if (field.type === 'text') html5Rules.pattern = '[0-9]+'
+            if (field.type === 'text') {
+              html5Rules.pattern = '[0-9]+'
+              if (validation.message) errorMessages.pattern = validation.message
+            }
             break
           case 'alpha':
-            if (field.type === 'text') html5Rules.pattern = '[a-zA-Z]+'
+            if (field.type === 'text') {
+              html5Rules.pattern = '[a-zA-Z]+'
+              if (validation.message) errorMessages.pattern = validation.message
+            }
             break
           case 'alphanumeric':
-            if (field.type === 'text') html5Rules.pattern = '[a-zA-Z0-9]+'
+            if (field.type === 'text') {
+              html5Rules.pattern = '[a-zA-Z0-9]+'
+              if (validation.message) errorMessages.pattern = validation.message
+            }
             break
           case 'accepted':
-            if (field.type === 'checkbox') html5Rules.required = true
+            if (field.type === 'checkbox') {
+              html5Rules.required = true
+              if (validation.message) errorMessages.required = validation.message
+            }
             break
         }
       }
@@ -284,6 +302,12 @@ class Form {
     if (html5Rules.min) attrs += ` min="${html5Rules.min}"`
     if (html5Rules.max) attrs += ` max="${html5Rules.max}"`
     if (html5Rules.pattern) attrs += ` pattern="${html5Rules.pattern}"`
+
+    if (errorMessages.required) attrs += ` data-error-required="${errorMessages.required.replace(/"/g, '&quot;')}"`
+    if (errorMessages.minlength) attrs += ` data-error-minlength="${errorMessages.minlength.replace(/"/g, '&quot;')}"`
+    if (errorMessages.maxlength) attrs += ` data-error-maxlength="${errorMessages.maxlength.replace(/"/g, '&quot;')}"`
+    if (errorMessages.pattern) attrs += ` data-error-pattern="${errorMessages.pattern.replace(/"/g, '&quot;')}"`
+    if (errorMessages.email) attrs += ` data-error-email="${errorMessages.email.replace(/"/g, '&quot;')}"`
 
     return attrs
   }

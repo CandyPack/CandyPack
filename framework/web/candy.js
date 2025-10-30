@@ -270,6 +270,85 @@ class candy {
 
       e.preventDefault()
 
+      const inputs = formElement.querySelectorAll('input:not([type="hidden"]), textarea, select')
+      let isValid = true
+      let firstInvalidInput = null
+
+      const showError = (input, errorType) => {
+        isValid = false
+        firstInvalidInput = input
+
+        if (input.type !== 'checkbox' && input.type !== 'radio') {
+          input.style.borderColor = '#dc3545'
+        }
+
+        const customMessage = input.getAttribute(`data-error-${errorType}`)
+        if (customMessage) {
+          let errorSpan = formElement.querySelector(`[candy-form-error="${input.name}"]`)
+
+          if (!errorSpan) {
+            errorSpan = document.createElement('span')
+            errorSpan.setAttribute('candy-form-error', input.name)
+
+            if ((input.type === 'checkbox' || input.type === 'radio') && input.id) {
+              const label = formElement.querySelector(`label[for="${input.id}"]`)
+              if (label) {
+                label.parentNode.insertBefore(errorSpan, label.nextSibling)
+              } else {
+                input.parentNode.insertBefore(errorSpan, input.nextSibling)
+              }
+            } else {
+              input.parentNode.insertBefore(errorSpan, input.nextSibling)
+            }
+          }
+
+          errorSpan.textContent = customMessage
+          errorSpan.style.cssText = 'display:block;color:#dc3545;font-size:0.875rem;margin-top:0.25rem'
+        }
+      }
+
+      for (const input of inputs) {
+        input.style.borderColor = ''
+        const errorSpan = formElement.querySelector(`[candy-form-error="${input.name}"]`)
+        if (errorSpan) {
+          errorSpan.style.display = 'none'
+          errorSpan.textContent = ''
+        }
+
+        if (input.hasAttribute('required')) {
+          const isEmpty = input.type === 'checkbox' || input.type === 'radio' ? !input.checked : !input.value.trim()
+          if (isEmpty) {
+            showError(input, 'required')
+            break
+          }
+        }
+
+        if (input.hasAttribute('minlength') && input.value.length < parseInt(input.getAttribute('minlength'))) {
+          showError(input, 'minlength')
+          break
+        }
+
+        if (input.hasAttribute('maxlength') && input.value.length > parseInt(input.getAttribute('maxlength'))) {
+          showError(input, 'maxlength')
+          break
+        }
+
+        if (input.hasAttribute('pattern') && input.value && !new RegExp(input.getAttribute('pattern')).test(input.value)) {
+          showError(input, 'pattern')
+          break
+        }
+
+        if (input.type === 'email' && input.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value)) {
+          showError(input, 'email')
+          break
+        }
+      }
+
+      if (!isValid) {
+        if (firstInvalidInput) firstInvalidInput.focus()
+        return
+      }
+
       formElement.querySelectorAll('button, input[type="button"], input[type="submit"]').forEach(el => (el.disabled = true))
 
       let actions = this.actions
@@ -329,34 +408,47 @@ class candy {
                 formElement.insertAdjacentHTML('beforeend', `<span candy-form-success="${obj.form}">${data.result.message}</span>`)
               }
             } else {
-              var invalid_input_class = '_candy_error'
-              var invalid_span_class = '_candy_form_info'
-              var invalid_span_style = ''
-
               Object.entries(data.errors).forEach(([name, message]) => {
                 if (message) {
-                  const errorEl = formElement.querySelector(`[candy-form-error="${name}"]`)
+                  let errorEl = formElement.querySelector(`[candy-form-error="${name}"]`)
                   if (errorEl) {
-                    errorEl.innerHTML = message
-                    this.#fadeIn(errorEl)
+                    errorEl.textContent = message
+                    errorEl.style.cssText = 'display:block;color:#dc3545;font-size:0.875rem;margin-top:0.25rem'
                   } else {
                     const inputEl = formElement.querySelector(`*[name="${name}"]`)
-                    if (inputEl)
-                      inputEl.insertAdjacentHTML(
-                        'afterend',
-                        `<span candy-form-error="${name}" class="${invalid_span_class}" style="${invalid_span_style}">${message}</span>`
-                      )
+                    if (inputEl) {
+                      errorEl = document.createElement('span')
+                      errorEl.setAttribute('candy-form-error', name)
+                      errorEl.textContent = message
+                      errorEl.style.cssText = 'display:block;color:#dc3545;font-size:0.875rem;margin-top:0.25rem'
+
+                      if ((inputEl.type === 'checkbox' || inputEl.type === 'radio') && inputEl.id) {
+                        const label = formElement.querySelector(`label[for="${inputEl.id}"]`)
+                        if (label) {
+                          label.parentNode.insertBefore(errorEl, label.nextSibling)
+                        } else {
+                          inputEl.parentNode.insertBefore(errorEl, inputEl.nextSibling)
+                        }
+                      } else {
+                        inputEl.parentNode.insertBefore(errorEl, inputEl.nextSibling)
+                      }
+                    }
                   }
                 }
                 const inputEl = formElement.querySelector(`*[name="${name}"]`)
                 if (inputEl) {
-                  inputEl.classList.add(invalid_input_class)
+                  if (inputEl.type !== 'checkbox' && inputEl.type !== 'radio') {
+                    inputEl.style.borderColor = '#dc3545'
+                  }
                   inputEl.addEventListener(
                     'focus',
                     function handler() {
-                      inputEl.classList.remove(invalid_input_class)
+                      inputEl.style.borderColor = ''
                       const errorEl = formElement.querySelector(`[candy-form-error="${name}"]`)
-                      if (errorEl) this.#fadeOut(errorEl)
+                      if (errorEl) {
+                        errorEl.style.display = 'none'
+                        errorEl.textContent = ''
+                      }
                       inputEl.removeEventListener('focus', handler)
                     }.bind(this),
                     {once: true}

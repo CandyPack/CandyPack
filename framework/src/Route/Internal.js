@@ -58,7 +58,7 @@ class Internal {
       for (const validation of field.validations) {
         const rules = validation.rule.split('|')
         for (const rule of rules) {
-          validator.post(field.name).check(rule)
+          const validatorChain = validator.post(field.name).check(rule)
           if (validation.message) {
             const message = this.replacePlaceholders(validation.message, {
               value: value,
@@ -66,7 +66,7 @@ class Internal {
               label: field.label || field.placeholder,
               rule: rule
             })
-            validator.message(message)
+            validatorChain.message(message)
           }
         }
       }

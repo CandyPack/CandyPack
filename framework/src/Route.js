@@ -68,6 +68,10 @@ class Route {
   async check(Candy) {
     let url = Candy.Request.url.split('?')[0]
     if (url.substr(-1) === '/') url = url.substr(0, url.length - 1)
+
+    if (url.startsWith('/_candy/')) {
+      Candy.Request.route = '_candy_internal'
+    }
     if (
       Candy.Request.url === '/' &&
       Candy.Request.method === 'get' &&
@@ -254,6 +258,9 @@ class Route {
   }
 
   #registerInternalRoutes() {
+    if (!Candy.Route) Candy.Route = {}
+    Candy.Route.buff = '_candy_internal'
+
     this.set(
       'POST',
       '/_candy/register',
@@ -266,6 +273,8 @@ class Route {
       },
       {token: true}
     )
+
+    delete Candy.Route.buff
   }
 
   async request(req, res) {
@@ -289,29 +298,37 @@ class Route {
     if (!options) options = {}
     if (typeof url !== 'string') url = String(url)
     if (url.length && url.substr(-1) === '/') url = url.substr(0, url.length - 1)
+
+    type = type.toLowerCase()
+
+    const isFunction = typeof file === 'function'
     let path = `${__dir}/route/${Candy.Route.buff}.js`
-    if (typeof file !== 'function') {
+
+    if (!isFunction) {
       path = `${__dir}/controller/${type.replace('#', '')}/${file}.js`
       if (file.includes('.')) {
         let arr = file.split('.')
         path = `${__dir}/controller/${arr[0]}/${type.replace('#', '')}/${arr.slice(1).join('.')}.js`
       }
     }
+
     if (!this.routes[Candy.Route.buff]) this.routes[Candy.Route.buff] = {}
     if (!this.routes[Candy.Route.buff][type]) this.routes[Candy.Route.buff][type] = {}
+
     if (this.routes[Candy.Route.buff][type][url]) {
       this.routes[Candy.Route.buff][type][url].loaded = routes2[Candy.Route.buff]
-      if (this.routes[Candy.Route.buff][type][url].mtime < fs.statSync(path).mtimeMs) {
+      if (!isFunction && this.routes[Candy.Route.buff][type][url].mtime < fs.statSync(path).mtimeMs) {
         delete this.routes[Candy.Route.buff][type][url]
         delete require.cache[require.resolve(path)]
       } else return
     }
-    if (fs.existsSync(path)) {
+
+    if (isFunction || fs.existsSync(path)) {
       if (!this.routes[Candy.Route.buff][type][url]) this.routes[Candy.Route.buff][type][url] = {}
-      this.routes[Candy.Route.buff][type][url].cache = typeof file === 'function' ? file : require(path)
-      this.routes[Candy.Route.buff][type][url].type = typeof file === 'function' ? 'function' : 'controller'
+      this.routes[Candy.Route.buff][type][url].cache = isFunction ? file : require(path)
+      this.routes[Candy.Route.buff][type][url].type = isFunction ? 'function' : 'controller'
       this.routes[Candy.Route.buff][type][url].file = file
-      this.routes[Candy.Route.buff][type][url].mtime = fs.statSync(path).mtimeMs
+      this.routes[Candy.Route.buff][type][url].mtime = isFunction ? Date.now() : fs.statSync(path).mtimeMs
       this.routes[Candy.Route.buff][type][url].path = path
       this.routes[Candy.Route.buff][type][url].loaded = routes2[Candy.Route.buff]
       this.routes[Candy.Route.buff][type][url].token = options.token ?? true
