@@ -407,7 +407,7 @@ class candy {
               } else {
                 formElement.insertAdjacentHTML('beforeend', `<span candy-form-success="${obj.form}">${data.result.message}</span>`)
               }
-            } else {
+            } else if (!data.result.success && data.errors) {
               Object.entries(data.errors).forEach(([name, message]) => {
                 if (message) {
                   let errorEl = formElement.querySelector(`[candy-form-error="${name}"]`)
@@ -432,6 +432,13 @@ class candy {
                       } else {
                         inputEl.parentNode.insertBefore(errorEl, inputEl.nextSibling)
                       }
+                    } else if (name === '_candy_form') {
+                      errorEl = document.createElement('div')
+                      errorEl.setAttribute('candy-form-error', name)
+                      errorEl.textContent = message
+                      errorEl.style.cssText =
+                        'display:block;color:#dc3545;background-color:#f8d7da;border:1px solid #f5c2c7;border-radius:0.375rem;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.875rem'
+                      formElement.insertBefore(errorEl, formElement.firstChild)
                     }
                   }
                 }
@@ -457,7 +464,9 @@ class candy {
               })
             }
           }
-          if (callback !== undefined) {
+          if (data.result.success && data.result.redirect) {
+            window.location.href = data.result.redirect
+          } else if (callback !== undefined) {
             if (typeof callback === 'function') callback(data)
             else if (data.result.success) window.location.replace(callback)
           }
