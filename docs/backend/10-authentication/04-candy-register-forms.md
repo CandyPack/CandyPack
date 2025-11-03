@@ -116,6 +116,7 @@ Defines an input field with validation rules:
 - `placeholder` - Placeholder text
 - `label` - Label text (for checkbox or explicit labels)
 - `unique` - Check if value already exists in database
+- `skip` - Validate field but don't save to database (useful for password confirmation, terms acceptance)
 
 **Supported Input Types:**
 - `text` - Text input
@@ -124,6 +125,34 @@ Defines an input field with validation rules:
 - `number` - Number input
 - `checkbox` - Checkbox input
 - `textarea` - Textarea
+
+### Skip Attribute
+
+Use the `skip` attribute for fields that should be validated but not saved to the database:
+
+```html
+<!-- Password confirmation - validate but don't save -->
+<candy:field name="confirm_password" type="password" placeholder="Confirm Password" skip>
+  <candy:validate rule="required|same:password" message="Passwords must match"/>
+</candy:field>
+
+<!-- Terms acceptance - validate but don't save -->
+<candy:field name="terms" type="checkbox" label="I accept the terms" skip>
+  <candy:validate rule="accepted" message="You must accept the terms"/>
+</candy:field>
+
+<!-- Captcha verification - validate but don't save -->
+<candy:field name="captcha" type="text" placeholder="Enter captcha" skip>
+  <candy:validate rule="required" message="Please complete the captcha"/>
+</candy:field>
+```
+
+**Common Use Cases:**
+- Password confirmation fields
+- Terms and conditions checkboxes
+- Privacy policy acceptance
+- Captcha verification
+- Temporary validation fields
 
 ## Validation Rules
 
@@ -335,7 +364,7 @@ Or use content as button text:
   </candy:field>
   
   <!-- Password Confirmation -->
-  <candy:field name="password_confirm" type="password" placeholder="Confirm Password">
+  <candy:field name="password_confirm" type="password" placeholder="Confirm Password" skip>
     <candy:validate rule="required" message="Please confirm your password"/>
     <candy:validate rule="same:password" message="Passwords do not match"/>
   </candy:field>
@@ -355,7 +384,7 @@ Or use content as button text:
   </candy:field>
   
   <!-- Terms Checkbox -->
-  <candy:field name="terms" type="checkbox" label="I agree to the terms and conditions">
+  <candy:field name="terms" type="checkbox" label="I agree to the terms and conditions" skip>
     <candy:validate rule="accepted" message="You must accept the terms to continue"/>
   </candy:field>
   

@@ -41,13 +41,20 @@ class Form {
 
     const submitMatch = html.match(/<candy:submit([^>/]*)(?:\/?>|>(.*?)<\/candy:submit>)/)
     if (submitMatch) {
-      const textMatch = submitMatch[1].match(/text=["']([^"']+)["']/)
-      const loadingMatch = submitMatch[1].match(/loading=["']([^"']+)["']/)
+      const submitTag = submitMatch[1]
+      const textMatch = submitTag.match(/text=["']([^"']+)["']/)
+      const loadingMatch = submitTag.match(/loading=["']([^"']+)["']/)
+      const classMatch = submitTag.match(/class=["']([^"']+)["']/)
+      const styleMatch = submitTag.match(/style=["']([^"']+)["']/)
+      const idMatch = submitTag.match(/id=["']([^"']+)["']/)
 
       if (textMatch) config.submitText = textMatch[1]
       else if (submitMatch[2]) config.submitText = submitMatch[2].trim()
 
       if (loadingMatch) config.submitLoading = loadingMatch[1]
+      if (classMatch) config.submitClass = classMatch[1]
+      if (styleMatch) config.submitStyle = styleMatch[1]
+      if (idMatch) config.submitId = idMatch[1]
     }
 
     const fieldMatches = html.match(/<candy:field[\s\S]*?<\/candy:field>/g)
@@ -85,6 +92,7 @@ class Form {
       class: '',
       id: null,
       unique: false,
+      skip: false,
       validations: []
     }
 
@@ -94,6 +102,7 @@ class Form {
     const classMatch = fieldTag.match(/class=["']([^"']+)["']/)
     const idMatch = fieldTag.match(/id=["']([^"']+)["']/)
     const uniqueMatch = fieldTag.match(/unique=["']([^"']+)["']/) || fieldTag.match(/\sunique[\s/>]/)
+    const skipMatch = fieldTag.match(/skip=["']([^"']+)["']/) || fieldTag.match(/\sskip[\s/>]/)
 
     if (typeMatch) field.type = typeMatch[1]
     if (placeholderMatch) field.placeholder = placeholderMatch[1]
@@ -101,6 +110,7 @@ class Form {
     if (classMatch) field.class = classMatch[1]
     if (idMatch) field.id = idMatch[1]
     if (uniqueMatch) field.unique = uniqueMatch[1] !== 'false'
+    if (skipMatch) field.skip = skipMatch[1] !== 'false'
 
     const validateMatches = html.match(/<candy:validate[^>]*>/g)
     if (validateMatches) {
@@ -176,7 +186,11 @@ class Form {
 
     const submitMatch = innerContent.match(/<candy:submit[\s\S]*?(?:<\/candy:submit>|\/?>)/)
     if (submitMatch) {
-      const submitButton = `<button type="submit" data-submit-text="${submitText}" data-loading-text="${submitLoading}">${submitText}</button>`
+      let submitAttrs = `type="submit" data-submit-text="${submitText}" data-loading-text="${submitLoading}"`
+      if (config.submitClass) submitAttrs += ` class="${config.submitClass}"`
+      if (config.submitStyle) submitAttrs += ` style="${config.submitStyle}"`
+      if (config.submitId) submitAttrs += ` id="${config.submitId}"`
+      const submitButton = `<button ${submitAttrs}>${submitText}</button>`
       innerContent = innerContent.replace(submitMatch[0], submitButton)
     }
 

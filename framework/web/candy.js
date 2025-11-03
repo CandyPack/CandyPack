@@ -349,8 +349,6 @@ class candy {
         return
       }
 
-      formElement.querySelectorAll('button, input[type="button"], input[type="submit"]').forEach(el => (el.disabled = true))
-
       let actions = this.actions
       if (
         actions.candy &&
@@ -387,6 +385,18 @@ class candy {
         contentType = 'application/x-www-form-urlencoded; charset=UTF-8'
         processData = true
       }
+
+      const submitButtons = formElement.querySelectorAll('button[type="submit"], input[type="submit"]')
+      submitButtons.forEach(btn => {
+        btn.disabled = true
+        const loadingText = btn.getAttribute('data-loading-text')
+        if (loadingText) {
+          btn.setAttribute('data-original-text', btn.textContent)
+          btn.textContent = loadingText
+        }
+      })
+
+      formElement.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(el => (el.disabled = true))
 
       this.#ajax({
         type: formElement.getAttribute('method'),
@@ -489,7 +499,16 @@ class candy {
           console.error('CandyJS:', 'Somethings went wrong...', '\nForm: ' + obj.form + '\nRequest: ' + formElement.getAttribute('action'))
         },
         complete: () => {
-          formElement.querySelectorAll('button, input[type="button"], input[type="submit"]').forEach(el => (el.disabled = false))
+          const submitButtons = formElement.querySelectorAll('button[type="submit"], input[type="submit"]')
+          submitButtons.forEach(btn => {
+            btn.disabled = false
+            const originalText = btn.getAttribute('data-original-text')
+            if (originalText) {
+              btn.textContent = originalText
+              btn.removeAttribute('data-original-text')
+            }
+          })
+          formElement.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(el => (el.disabled = false))
         }
       })
     }

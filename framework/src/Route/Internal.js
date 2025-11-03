@@ -75,7 +75,9 @@ class Internal {
         uniqueFields.push(field.name)
       }
 
-      data[field.name] = value
+      if (!field.skip) {
+        data[field.name] = value
+      }
     }
 
     for (const set of config.sets) {
