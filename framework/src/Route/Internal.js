@@ -101,6 +101,12 @@ class Internal {
     })
 
     if (!registerResult.success) {
+      if (registerResult.error === 'Database connection not configured') {
+        return Candy.return({
+          result: {success: false},
+          errors: {_candy_form: 'Service temporarily unavailable. Please try again later.'}
+        })
+      }
       const errorField = registerResult.field || '_candy_form'
       const errors = {[errorField]: registerResult.error}
       return Candy.return({

@@ -287,7 +287,8 @@ class Mysql {
   run(query, params) {
     return new Promise(resolve => {
       if (!query) return resolve(false)
-      if (!this.#conn || this.#conn.state == 'disconnected') Candy.Mysql.init()
+      if (!this.#conn) return resolve(false)
+      if (this.#conn.state == 'disconnected') Candy.Mysql.init()
       const args = params ? [query, params] : [query]
       args.push((err, result) => {
         if (err) return resolve(this.#error(err, query))
@@ -549,10 +550,20 @@ module.exports = {
           password: db.password,
           database: db.database
         })
-        Candy.Mysql.conn[key].connect()
+        Candy.Mysql.conn[key].connect(err => {
+          if (err) {
+            console.error(`CandyPack Mysql Error: Failed to connect to database '${key}'`)
+            console.error(`Host: ${db.host ?? '127.0.0.1'}`)
+            console.error(`User: ${db.user}`)
+            console.error(`Database: ${db.database}`)
+            console.error(`Error: ${err.message}`)
+            return resolve(false)
+          }
+        })
         Candy.Mysql.conn[key].query('SHOW TABLES', (err, result) => {
           if (err) {
-            console.error('Mysql Connection Error', err)
+            console.error(`CandyPack Mysql Error: Failed to query tables from database '${key}'`)
+            console.error(`Error: ${err.message}`)
             return resolve(false)
           }
           for (let table of result)
@@ -568,12 +579,15 @@ module.exports = {
     })
   },
   database: function (name) {
+    if (!Candy.Mysql.conn[name]) return null
     return new Mysql(name, Candy.Mysql.conn[name])
   },
   run: function (query, params) {
+    if (!Candy.Mysql.conn['default']) return Promise.resolve(false)
     return new Mysql(null, Candy.Mysql.conn['default']).run(query, params)
   },
   table: function (name) {
+    if (!Candy.Mysql.conn['default']) return null
     return new Mysql(name, Candy.Mysql.conn['default'])
   },
   raw: function (query) {

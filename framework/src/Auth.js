@@ -13,6 +13,10 @@ class Auth {
     if (!this.#table) return false
     if (where) {
       let sql = Candy.Mysql.table(this.#table)
+      if (!sql) {
+        console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+        return false
+      }
       for (let key in where) sql = sql.orWhere(key, where[key] instanceof Promise ? await where[key] : where[key])
       if (!sql.rows()) return false
       let get = await sql.get()
@@ -58,6 +62,10 @@ class Auth {
     let key = Candy.Config.auth.key || 'id'
     let token = Candy.Config.auth.token || 'user_tokens'
     let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', [token])
+    if (check_table === false) {
+      console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+      return false
+    }
     if (check_table.length == 0)
       await Candy.Mysql.run(
         'CREATE TABLE ' +
@@ -78,7 +86,12 @@ class Auth {
       sameSite: 'Strict'
     })
     this.#request.cookie('candy_y', token_y, {httpOnly: true, secure: true, sameSite: 'Strict'})
-    let sql = Candy.Mysql.table(token).insert(cookie)
+    let mysqlTable = Candy.Mysql.table(token)
+    if (!mysqlTable) {
+      console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+      return false
+    }
+    let sql = await mysqlTable.insert(cookie)
     return sql !== false
   }
 
@@ -93,6 +106,10 @@ class Auth {
     const uniqueFields = options.uniqueFields || ['email']
 
     const checkTable = await Candy.Mysql.run('SHOW TABLES LIKE ?', [this.#table])
+    if (checkTable === false) {
+      console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+      return {success: false, error: 'Database connection not configured'}
+    }
     if (checkTable.length === 0) {
       await this.#createUserTable(this.#table, primaryKey, passwordField, uniqueFields, data)
     }
@@ -107,7 +124,12 @@ class Auth {
 
     for (const field of uniqueFields) {
       if (data[field]) {
-        const existing = await Candy.Mysql.table(this.#table).where(field, data[field]).first()
+        const mysqlTable = Candy.Mysql.table(this.#table)
+        if (!mysqlTable) {
+          console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+          return {success: false, error: 'Database connection not configured'}
+        }
+        const existing = await mysqlTable.where(field, data[field]).first()
         if (existing) {
           return {success: false, error: `${field} already exists`, field}
         }
@@ -115,8 +137,16 @@ class Auth {
     }
 
     try {
-      const insertResult = await Candy.Mysql.table(this.#table).insert(data)
+      const mysqlTable = Candy.Mysql.table(this.#table)
+      if (!mysqlTable) {
+        console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+        return {success: false, error: 'Database connection not configured'}
+      }
+      const insertResult = await mysqlTable.insert(data)
       if (!insertResult || !insertResult.affectedRows) {
+        console.error('CandyPack Auth Error: Failed to insert user into database')
+        console.error('Insert result:', insertResult)
+        console.error('Data attempted to insert:', {...data, [passwordField]: '[REDACTED]'})
         return {success: false, error: 'Failed to create user'}
       }
 
@@ -141,6 +171,9 @@ class Auth {
 
       return {success: true, user: newUser}
     } catch (error) {
+      console.error('CandyPack Auth Error: Registration failed with exception')
+      console.error('Error:', error.message)
+      console.error('Stack:', error.stack)
       return {success: false, error: error.message || 'Registration failed'}
     }
   }
@@ -154,7 +187,10 @@ class Auth {
     const browser = this.#request.header('user-agent')
 
     if (candyX && browser) {
-      await Candy.Mysql.table(token).where(['token_x', candyX], ['browser', browser]).delete()
+      const mysqlTable = Candy.Mysql.table(token)
+      if (mysqlTable) {
+        await mysqlTable.where(['token_x', candyX], ['browser', browser]).delete()
+      }
     }
 
     this.#request.cookie('candy_x', '', {maxAge: -1})
