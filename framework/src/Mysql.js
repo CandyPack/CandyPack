@@ -91,6 +91,7 @@ class Mysql {
   async delete() {
     let query = this.query('delete')
     let run = await this.run(query)
+    if (run === false) return false
     this.affected = run.affectedRows
     //       if($this->affected > 0) self::clearcache();
     return this
@@ -219,8 +220,7 @@ class Mysql {
     this.#arr['values'] = ext['values']
     let query = this.query('insert')
     let run = await this.run(query)
-    //   if($sql === false) return $this->error();
-    //   $this->success = $sql;
+    if (run === false) return false
     this.id = run.insertId
     this.affected = run.affectedRows
     // if(this.affected > 0) this.clearcache();
@@ -256,6 +256,7 @@ class Mysql {
     this.#arr['values'] = ext['values']
     let query = this.query('replace')
     let run = await this.run(query)
+    if (run === false) return false
     this.id = run.insertId
     this.affected = run.affectedRows
     //       if($sql === false) return $this->error();

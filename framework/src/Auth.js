@@ -143,14 +143,19 @@ class Auth {
         return {success: false, error: 'Database connection not configured'}
       }
       const insertResult = await mysqlTable.insert(data)
-      if (!insertResult || !insertResult.affectedRows) {
-        console.error('CandyPack Auth Error: Failed to insert user into database')
+      if (insertResult === false) {
+        console.error('CandyPack Auth Error: Failed to insert user into database - query failed')
+        console.error('Data attempted to insert:', {...data, [passwordField]: '[REDACTED]'})
+        return {success: false, error: 'Failed to create user'}
+      }
+      if (!insertResult.affected || insertResult.affected === 0) {
+        console.error('CandyPack Auth Error: Insert query succeeded but no rows were affected')
         console.error('Insert result:', insertResult)
         console.error('Data attempted to insert:', {...data, [passwordField]: '[REDACTED]'})
         return {success: false, error: 'Failed to create user'}
       }
 
-      const userId = insertResult.insertId
+      const userId = insertResult.id
       const newUser = await Candy.Mysql.table(this.#table).where(primaryKey, userId).first()
 
       if (!newUser) {
