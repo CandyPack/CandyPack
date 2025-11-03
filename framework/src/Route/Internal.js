@@ -122,8 +122,7 @@ class Internal {
         success: true,
         message: 'Registration successful',
         redirect: config.redirect
-      },
-      data: registerResult.user
+      }
     })
   }
 
