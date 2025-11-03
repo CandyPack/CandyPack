@@ -284,14 +284,16 @@ class Mysql {
     return rows
   }
 
-  run(query) {
+  run(query, params) {
     return new Promise(resolve => {
-      if (!query) return false
-      if (this.#conn.state == 'disconnected') Candy.Mysql.init()
-      this.#conn.query(query, (err, result) => {
+      if (!query) return resolve(false)
+      if (!this.#conn || this.#conn.state == 'disconnected') Candy.Mysql.init()
+      const args = params ? [query, params] : [query]
+      args.push((err, result) => {
         if (err) return resolve(this.#error(err, query))
         return resolve(result)
       })
+      this.#conn.query(...args)
     })
   }
 
@@ -568,8 +570,8 @@ module.exports = {
   database: function (name) {
     return new Mysql(name, Candy.Mysql.conn[name])
   },
-  run: function (query) {
-    return new Mysql(null, Candy.Mysql.conn['default']).run(query)
+  run: function (query, params) {
+    return new Mysql(null, Candy.Mysql.conn['default']).run(query, params)
   },
   table: function (name) {
     return new Mysql(name, Candy.Mysql.conn['default'])

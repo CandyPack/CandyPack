@@ -92,7 +92,7 @@ class Auth {
     const passwordField = options.passwordField || 'password'
     const uniqueFields = options.uniqueFields || ['email']
 
-    const checkTable = await Candy.Mysql.run('SHOW TABLES LIKE ?', true, [this.#table])
+    const checkTable = await Candy.Mysql.run('SHOW TABLES LIKE ?', [this.#table])
     if (checkTable.length === 0) {
       await this.#createUserTable(this.#table, primaryKey, passwordField, uniqueFields, data)
     }
