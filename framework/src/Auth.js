@@ -48,8 +48,27 @@ class Auth {
       let sql_token = await Candy.Mysql.table(tokenTable).where(['token_x', candy_x], ['browser', browser]).get()
       if (sql_token.length !== 1) return false
       if (!Candy.Var(sql_token[0].token_y).hashCheck(candy_y)) return false
+
+      const maxAge = Candy.Config.auth?.maxAge || 30 * 24 * 60 * 60 * 1000
+      const updateAge = Candy.Config.auth?.updateAge || 24 * 60 * 60 * 1000
+      const now = Date.now()
+      const lastActive = new Date(sql_token[0].active).getTime()
+      const inactiveAge = now - lastActive
+
+      if (inactiveAge > maxAge) {
+        await Candy.Mysql.table(tokenTable).where('id', sql_token[0].id).delete()
+        return false
+      }
+
       this.#user = await Candy.Mysql.table(this.#table).where(primaryKey, sql_token[0].user).first()
-      // Candy.Mysql.table(Candy.Config.auth.token).where(sql_token[0].id).set({'ip': this.#request.ip,'active': Date.now()});
+
+      if (inactiveAge > updateAge) {
+        Candy.Mysql.table(tokenTable)
+          .where('id', sql_token[0].id)
+          .set({active: new Date()})
+          .catch(() => {})
+      }
+
       return true
     }
   }
@@ -72,7 +91,10 @@ class Auth {
       await Candy.Mysql.run(
         `CREATE TABLE ${safeTokenTable} (id INT NOT NULL AUTO_INCREMENT, user INT NOT NULL, token_x VARCHAR(255) NOT NULL, token_y VARCHAR(255) NOT NULL, browser VARCHAR(255) NOT NULL, ip VARCHAR(255) NOT NULL, \`date\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, \`active\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))`
       )
-    let token_y = Candy.Var(this.#request.id + this.#request.ip).md5()
+
+    this.#cleanupExpiredTokens(token)
+
+    let token_y = Candy.Var(Math.random().toString() + Date.now().toString() + this.#request.id + this.#request.ip).md5()
     let cookie = {
       user: user[key],
       token_x: Candy.Var(Math.random().toString() + Date.now().toString()).md5(),
@@ -93,6 +115,16 @@ class Auth {
     }
     let sql = await mysqlTable.insert(cookie)
     return sql !== false
+  }
+
+  async #cleanupExpiredTokens(tokenTable) {
+    const maxAge = Candy.Config.auth?.maxAge || 30 * 24 * 60 * 60 * 1000
+    const cutoffDate = new Date(Date.now() - maxAge)
+
+    Candy.Mysql.table(tokenTable)
+      .where('active', '<', cutoffDate)
+      .delete()
+      .catch(() => {})
   }
 
   async register(data, options = {}) {

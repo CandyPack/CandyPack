@@ -115,6 +115,43 @@ const nodeEnv = process.env.NODE_ENV
 - Commit `.env.example` with dummy values
 - Never commit `.env` with real credentials
 
+### Common Configuration Options
+
+**Request timeout:**
+```json
+{
+  "request": {
+    "timeout": 30000
+  }
+}
+```
+
+**Database connection:**
+```json
+{
+  "database": {
+    "host": "localhost",
+    "user": "root",
+    "password": "${MYSQL_PASSWORD}",
+    "database": "myapp"
+  }
+}
+```
+
+**Authentication sessions:**
+```json
+{
+  "auth": {
+    "table": "users",
+    "token": "user_tokens",
+    "maxAge": 2592000000,
+    "updateAge": 86400000
+  }
+}
+```
+
+See individual documentation sections for detailed configuration options.
+
 ### Example Setup
 
 **config.json** (committed to git):
@@ -128,6 +165,10 @@ const nodeEnv = process.env.NODE_ENV
     "user": "${MYSQL_USER}",
     "password": "${MYSQL_PASSWORD}",
     "database": "myapp"
+  },
+  "auth": {
+    "maxAge": 2592000000,
+    "updateAge": 86400000
   },
   "mail": {
     "from": "${MAIL_FROM}"

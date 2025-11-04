@@ -301,6 +301,10 @@
         {
           "file": "04-candy-register-forms.md",
           "title": "Candy Register Forms (Zero-Config)"
+        },
+        {
+          "file": "05-session-management.md",
+          "title": "Session Management"
         }
       ]
     },
