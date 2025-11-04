@@ -61,6 +61,8 @@ class Auth {
     if (!Candy.Config.auth) Candy.Config.auth = {}
     let key = Candy.Config.auth.key || 'id'
     let token = Candy.Config.auth.token || 'user_tokens'
+    const mysql = require('mysql2')
+    const safeTokenTable = mysql.escapeId(token)
     let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', [token])
     if (check_table === false) {
       console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
@@ -68,9 +70,7 @@ class Auth {
     }
     if (check_table.length == 0)
       await Candy.Mysql.run(
-        'CREATE TABLE ' +
-          token +
-          ' (id INT NOT NULL AUTO_INCREMENT, user INT NOT NULL, token_x VARCHAR(255) NOT NULL, token_y VARCHAR(255) NOT NULL, browser VARCHAR(255) NOT NULL, ip VARCHAR(255) NOT NULL, `date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, `active` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))'
+        `CREATE TABLE ${safeTokenTable} (id INT NOT NULL AUTO_INCREMENT, user INT NOT NULL, token_x VARCHAR(255) NOT NULL, token_y VARCHAR(255) NOT NULL, browser VARCHAR(255) NOT NULL, ip VARCHAR(255) NOT NULL, \`date\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, \`active\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))`
       )
     let token_y = Candy.Var(this.#request.id + this.#request.ip).md5()
     let cookie = {
@@ -206,18 +206,22 @@ class Auth {
   }
 
   async #createUserTable(tableName, primaryKey, passwordField, uniqueFields, sampleData) {
+    const mysql = require('mysql2')
     const columns = []
 
-    columns.push(`\`${primaryKey}\` INT NOT NULL AUTO_INCREMENT`)
+    const safePrimaryKey = mysql.escapeId(primaryKey)
+    columns.push(`${safePrimaryKey} INT NOT NULL AUTO_INCREMENT`)
 
     for (const field of uniqueFields) {
       if (field !== primaryKey) {
-        columns.push(`\`${field}\` VARCHAR(255) NOT NULL UNIQUE`)
+        const safeField = mysql.escapeId(field)
+        columns.push(`${safeField} VARCHAR(255) NOT NULL UNIQUE`)
       }
     }
 
     if (!uniqueFields.includes(passwordField) && passwordField !== primaryKey) {
-      columns.push(`\`${passwordField}\` VARCHAR(255) NOT NULL`)
+      const safePasswordField = mysql.escapeId(passwordField)
+      columns.push(`${safePasswordField} VARCHAR(255) NOT NULL`)
     }
 
     for (const key in sampleData) {
@@ -238,14 +242,16 @@ class Auth {
         columnType = 'TEXT'
       }
 
-      columns.push(`\`${key}\` ${columnType} NULL`)
+      const safeKey = mysql.escapeId(key)
+      columns.push(`${safeKey} ${columnType} NULL`)
     }
 
     columns.push(`\`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP`)
     columns.push(`\`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
-    columns.push(`PRIMARY KEY (\`${primaryKey}\`)`)
+    columns.push(`PRIMARY KEY (${safePrimaryKey})`)
 
-    const sql = `CREATE TABLE \`${tableName}\` (${columns.join(', ')}) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    const safeTableName = mysql.escapeId(tableName)
+    const sql = `CREATE TABLE ${safeTableName} (${columns.join(', ')}) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
 
     await Candy.Mysql.run(sql)
   }

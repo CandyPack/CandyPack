@@ -123,48 +123,22 @@ class Mysql {
           ') '
         )
       return `${mysql.escape(v)}`
-    } else if (type == 'table') {
+    } else if (type == 'table' || type == 'col') {
       let as = ''
       if (typeof v === 'object') {
         as = Object.values(v)[0]
         v = Object.keys(v)[0]
-        as = ' `' + as + '` '
+        as = type == 'col' ? ` AS ${mysql.escapeId(as)} ` : ` ${mysql.escapeId(as)} `
       }
-      if (v.includes('.'))
+      if (v.includes('.')) {
         return (
-          ' `' +
           v
             .split('.')
-            .map(val => {
-              val = mysql.escape(val)
-              return val.substring(1, val.length - 1)
-            })
-            .join('`.`') +
-          '` ' +
-          as
+            .map(val => mysql.escapeId(val))
+            .join('.') + as
         )
-      return '`' + mysql.escape(v).replace(/'/g, '') + '`' + as
-    } else if (type == 'col') {
-      let as = ''
-      if (typeof v === 'object') {
-        as = Object.values(v)[0]
-        v = Object.keys(v)[0]
-        as = 'AS "' + as + '" '
       }
-      if (v.includes('.'))
-        return (
-          ' `' +
-          v
-            .split('.')
-            .map(val => {
-              val = mysql.escape(val)
-              return val.substring(1, val.length - 1)
-            })
-            .join('`.`') +
-          '` ' +
-          as
-        )
-      return '`' + mysql.escape(v).replace(/'/g, '') + '`' + as
+      return mysql.escapeId(v) + as
     } else if (type == 'statement' || type == 'st') {
       return this.#statements.includes(v.toUpperCase()) ? v.toUpperCase() : '='
     }
@@ -592,6 +566,9 @@ module.exports = {
     return new Mysql(name, Candy.Mysql.conn['default'])
   },
   raw: function (query) {
+    if (typeof query !== 'string') {
+      throw new Error('Mysql.raw() requires a string parameter')
+    }
     return new Raw(query)
   }
 }
