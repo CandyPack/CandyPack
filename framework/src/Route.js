@@ -361,16 +361,16 @@ class Route {
     if (file === undefined) {
       return {
         view: (...args) => {
-          if (authFile)
-            this.set('#page', path, _candy => {
-              _candy.View.set(...args)
-              return
-            })
-          else
+          this.set('#page', path, _candy => {
+            _candy.View.set(...args)
+            return
+          })
+          if (authFile) {
             this.set('page', path, _candy => {
-              _candy.View.set(...args)
+              _candy.View.set(authFile)
               return
             })
+          }
         }
       }
     }
