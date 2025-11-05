@@ -483,7 +483,7 @@ class Mysql {
     let state = '='
     let last = 0
     for (const key of arr) {
-      if (key && Array.isArray(key) && state != 'IN' && state != 'NOT IN' && !(key instanceof Raw)) {
+      if (key && !(key instanceof Raw) && Array.isArray(key) && state != 'IN' && state != 'NOT IN') {
         q += last == 1 ? ' AND ' + this.#whereExtract(key) : this.#whereExtract(key)
         in_arr = true
         last = 1
