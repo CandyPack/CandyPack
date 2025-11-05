@@ -19,13 +19,15 @@ class Lang {
     let str = this.#data[args[0]]
 
     // Support both %s (sequential) and %s1, %s2 (numbered) placeholders
-    for (let i = 1; i < args.length; i++) {
-      // Try numbered placeholder first (%s1, %s2, etc.)
-      const numberedPattern = new RegExp(`%s${i}`, 'g')
-      if (str.includes(`%s${i}`)) {
+    const hasNumberedPlaceholders = /%s\d+/.test(str)
+
+    if (hasNumberedPlaceholders) {
+      for (let i = 1; i < args.length; i++) {
+        const numberedPattern = new RegExp(`%s${i}`, 'g')
         str = str.replace(numberedPattern, args[i])
-      } else {
-        // Fall back to sequential %s replacement
+      }
+    } else {
+      for (let i = 1; i < args.length; i++) {
         str = str.replace('%s', args[i])
       }
     }
