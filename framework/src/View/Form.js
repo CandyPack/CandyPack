@@ -1,21 +1,55 @@
 const nodeCrypto = require('crypto')
 
 class Form {
-  static parseRegister(content, Candy) {
-    const registerMatches = content.match(/<candy:register[\s\S]*?<\/candy:register>/g)
-    if (!registerMatches) return content
+  static FORM_TYPES = ['register', 'login']
 
-    for (const match of registerMatches) {
+  static parse(content, Candy) {
+    for (const type of this.FORM_TYPES) {
+      content = this.parseFormType(content, Candy, type)
+    }
+    return content
+  }
+
+  static parseFormType(content, Candy, type) {
+    const regex = new RegExp(`<candy:${type}[\\s\\S]*?<\\/candy:${type}>`, 'g')
+    const matches = content.match(regex)
+    if (!matches) return content
+
+    for (const match of matches) {
       const formToken = nodeCrypto.randomBytes(32).toString('hex')
-      const formConfig = this.extractRegisterConfig(match, formToken)
+      const formConfig = this.extractConfig(match, formToken, type)
 
-      this.storeRegisterConfig(formToken, formConfig, Candy)
+      this.storeConfig(formToken, formConfig, Candy, type)
 
-      const generatedForm = this.generateRegisterForm(match, formConfig, formToken)
+      const generatedForm = this.generateForm(match, formConfig, formToken, type)
       content = content.replace(match, generatedForm)
     }
 
     return content
+  }
+
+  static extractConfig(html, formToken, type) {
+    if (type === 'register') {
+      return this.extractRegisterConfig(html, formToken)
+    } else if (type === 'login') {
+      return this.extractLoginConfig(html, formToken)
+    }
+  }
+
+  static storeConfig(token, config, Candy, type) {
+    if (type === 'register') {
+      this.storeRegisterConfig(token, config, Candy)
+    } else if (type === 'login') {
+      this.storeLoginConfig(token, config, Candy)
+    }
+  }
+
+  static generateForm(originalHtml, config, formToken, type) {
+    if (type === 'register') {
+      return this.generateRegisterForm(originalHtml, config, formToken)
+    } else if (type === 'login') {
+      return this.generateLoginForm(originalHtml, config, formToken)
+    }
   }
 
   static extractRegisterConfig(html, formToken) {
@@ -324,6 +358,100 @@ class Form {
     if (errorMessages.email) attrs += ` data-error-email="${errorMessages.email.replace(/"/g, '&quot;')}"`
 
     return attrs
+  }
+
+  static extractLoginConfig(html, formToken) {
+    const config = {
+      token: formToken,
+      redirect: null,
+      submitText: 'Login',
+      submitLoading: 'Logging in...',
+      fields: []
+    }
+
+    const loginMatch = html.match(/<candy:login([^>]*)>/)
+    if (!loginMatch) return config
+
+    const loginTag = loginMatch[0]
+    const redirectMatch = loginTag.match(/redirect=["']([^"']+)["']/)
+
+    if (redirectMatch) config.redirect = redirectMatch[1]
+
+    const submitMatch = html.match(/<candy:submit([^>/]*)(?:\/?>|>(.*?)<\/candy:submit>)/)
+    if (submitMatch) {
+      const submitTag = submitMatch[1]
+      const textMatch = submitTag.match(/text=["']([^"']+)["']/)
+      const loadingMatch = submitTag.match(/loading=["']([^"']+)["']/)
+      const classMatch = submitTag.match(/class=["']([^"']+)["']/)
+      const styleMatch = submitTag.match(/style=["']([^"']+)["']/)
+      const idMatch = submitTag.match(/id=["']([^"']+)["']/)
+
+      if (textMatch) config.submitText = textMatch[1]
+      else if (submitMatch[2]) config.submitText = submitMatch[2].trim()
+
+      if (loadingMatch) config.submitLoading = loadingMatch[1]
+      if (classMatch) config.submitClass = classMatch[1]
+      if (styleMatch) config.submitStyle = styleMatch[1]
+      if (idMatch) config.submitId = idMatch[1]
+    }
+
+    const fieldMatches = html.match(/<candy:field[\s\S]*?<\/candy:field>/g)
+    if (fieldMatches) {
+      for (const fieldHtml of fieldMatches) {
+        const field = this.parseField(fieldHtml)
+        if (field) config.fields.push(field)
+      }
+    }
+
+    return config
+  }
+
+  static storeLoginConfig(token, config, Candy) {
+    if (!Candy.View) Candy.View = {}
+    if (!Candy.View.loginForms) Candy.View.loginForms = {}
+
+    const formData = {
+      config: config,
+      created: Date.now(),
+      expires: Date.now() + 30 * 60 * 1000,
+      sessionId: Candy.Request.session('_client'),
+      userAgent: Candy.Request.header('user-agent'),
+      ip: Candy.Request.ip
+    }
+
+    Candy.View.loginForms[token] = formData
+    Candy.Request.session(`_login_form_${token}`, formData)
+  }
+
+  static generateLoginForm(originalHtml, config, formToken) {
+    const submitText = config.submitText || 'Login'
+    const submitLoading = config.submitLoading || 'Logging in...'
+
+    let innerContent = originalHtml.replace(/<candy:login[^>]*>/, '').replace(/<\/candy:login>/, '')
+
+    innerContent = innerContent.replace(/<candy:field[\s\S]*?<\/candy:field>/g, fieldMatch => {
+      const field = this.parseField(fieldMatch)
+      if (!field) return fieldMatch
+      return this.generateFieldHtml(field)
+    })
+
+    const submitMatch = innerContent.match(/<candy:submit[\s\S]*?(?:<\/candy:submit>|\/?>)/)
+    if (submitMatch) {
+      let submitAttrs = `type="submit" data-submit-text="${submitText}" data-loading-text="${submitLoading}"`
+      if (config.submitClass) submitAttrs += ` class="${config.submitClass}"`
+      if (config.submitStyle) submitAttrs += ` style="${config.submitStyle}"`
+      if (config.submitId) submitAttrs += ` id="${config.submitId}"`
+      const submitButton = `<button ${submitAttrs}>${submitText}</button>`
+      innerContent = innerContent.replace(submitMatch[0], submitButton)
+    }
+
+    let html = `<form class="candy-login-form" data-candy-login="${formToken}" method="POST" action="/_candy/login" novalidate>\n`
+    html += `  <input type="hidden" name="_candy_login_token" value="${formToken}">\n`
+    html += innerContent
+    html += `\n  <span class="candy-form-success" style="display:none;"></span>\n`
+    html += `</form>`
+
+    return html
   }
 }
 

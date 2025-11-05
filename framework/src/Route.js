@@ -274,6 +274,19 @@ class Route {
       {token: true}
     )
 
+    this.set(
+      'POST',
+      '/_candy/login',
+      async Candy => {
+        const csrfToken = await Candy.request('_token')
+        if (!csrfToken || !Candy.token(csrfToken)) {
+          return Candy.Request.abort(401)
+        }
+        return await Internal.login(Candy)
+      },
+      {token: true}
+    )
+
     delete Candy.Route.buff
   }
 

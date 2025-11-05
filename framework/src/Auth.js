@@ -43,7 +43,7 @@ class Auth {
       let candy_y = this.#request.cookie('candy_y')
       let browser = this.#request.header('user-agent')
       if (!candy_x || !candy_y || !browser) return false
-      const tokenTable = Candy.Config.auth.token || 'user_tokens'
+      const tokenTable = Candy.Config.auth.token || 'candy_auth'
       const primaryKey = Candy.Config.auth.key || 'id'
       let sql_token = await Candy.Mysql.table(tokenTable).where(['token_x', candy_x], ['browser', browser]).get()
       if (sql_token.length !== 1) return false
@@ -79,7 +79,7 @@ class Auth {
     if (!user) return false
     if (!Candy.Config.auth) Candy.Config.auth = {}
     let key = Candy.Config.auth.key || 'id'
-    let token = Candy.Config.auth.token || 'user_tokens'
+    let token = Candy.Config.auth.token || 'candy_auth'
     const mysql = require('mysql2')
     const safeTokenTable = mysql.escapeId(token)
     let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', [token])

@@ -63,7 +63,7 @@ If you want to customize table names or primary key:
   "auth": {
     "table": "users",           // Optional: User table name (default: "users")
     "key": "id",                // Optional: Primary key (default: "id")
-    "token": "user_tokens"      // Optional: Token table (default: "user_tokens")
+    "token": "candy_auth"       // Optional: Token table (default: "candy_auth")
   }
 }
 ```
@@ -71,7 +71,7 @@ If you want to customize table names or primary key:
 **If you don't specify `auth` config:**
 - Table name defaults to `users`
 - Primary key defaults to `id`
-- Token table defaults to `user_tokens`
+- Token table defaults to `candy_auth`
 - Table is created automatically based on your form fields
 
 ## Form Attributes
@@ -490,7 +490,7 @@ Customize table names and primary key if needed:
   "auth": {
     "table": "users",           // User table name (default: "users")
     "key": "id",                // Primary key column (default: "id")
-    "token": "user_tokens"      // Session token table (default: "user_tokens")
+    "token": "candy_auth"       // Session token table (default: "candy_auth")
   }
 }
 ```
@@ -499,7 +499,7 @@ Customize table names and primary key if needed:
 - If `auth` is not specified, defaults are used
 - Table: `users`
 - Primary key: `id`
-- Token table: `user_tokens`
+- Token table: `candy_auth`
 - All tables are created automatically if they don't exist
 
 ### Database Schema
@@ -547,7 +547,7 @@ CREATE TABLE `users` (
 The token table is created automatically on first login, but you can create it manually:
 
 ```sql
-CREATE TABLE `user_tokens` (
+CREATE TABLE `candy_auth` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `user` INT NOT NULL,
   `token_x` VARCHAR(255) NOT NULL,

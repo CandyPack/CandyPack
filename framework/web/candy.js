@@ -323,12 +323,12 @@ class candy {
           }
         }
 
-        if (input.hasAttribute('minlength') && input.value.length < parseInt(input.getAttribute('minlength'))) {
+        if (input.hasAttribute('minlength') && input.value && input.value.length < parseInt(input.getAttribute('minlength'))) {
           showError(input, 'minlength')
           break
         }
 
-        if (input.hasAttribute('maxlength') && input.value.length > parseInt(input.getAttribute('maxlength'))) {
+        if (input.hasAttribute('maxlength') && input.value && input.value.length > parseInt(input.getAttribute('maxlength'))) {
           showError(input, 'maxlength')
           break
         }
@@ -718,8 +718,13 @@ class candy {
 window.Candy = new candy()
 
 document.addEventListener('DOMContentLoaded', () => {
-  const registerForms = document.querySelectorAll('form.candy-register-form[data-candy-register]')
-  registerForms.forEach(form => {
-    window.Candy.form({form: 'form[data-candy-register="' + form.dataset.candyRegister + '"]'})
+  const formTypes = ['register', 'login']
+
+  formTypes.forEach(type => {
+    const forms = document.querySelectorAll(`form.candy-${type}-form[data-candy-${type}]`)
+    forms.forEach(form => {
+      const token = form.getAttribute(`data-candy-${type}`)
+      window.Candy.form({form: `form[data-candy-${type}="${token}"]`})
+    })
   })
 })

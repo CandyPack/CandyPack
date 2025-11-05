@@ -174,6 +174,111 @@ class Internal {
         return null
     }
   }
+
+  static async login(Candy) {
+    const token = await Candy.request('_candy_login_token')
+    if (!token) {
+      return Candy.return({
+        result: {success: false},
+        errors: {_candy_form: 'Invalid request'}
+      })
+    }
+
+    const formData = Candy.Request.session(`_login_form_${token}`)
+
+    if (!formData) {
+      return Candy.return({
+        result: {success: false},
+        errors: {_candy_form: 'Form session expired. Please refresh the page.'}
+      })
+    }
+
+    if (formData.expires < Date.now()) {
+      Candy.Request.session(`_login_form_${token}`, null)
+      return Candy.return({
+        result: {success: false},
+        errors: {_candy_form: 'Form session expired. Please refresh the page.'}
+      })
+    }
+
+    if (formData.sessionId !== Candy.Request.session('_client')) {
+      return Candy.return({
+        result: {success: false},
+        errors: {_candy_form: 'Invalid session'}
+      })
+    }
+
+    if (formData.userAgent !== Candy.Request.header('user-agent')) {
+      return Candy.return({
+        result: {success: false},
+        errors: {_candy_form: 'Invalid request'}
+      })
+    }
+
+    if (formData.ip !== Candy.Request.ip) {
+      return Candy.return({
+        result: {success: false},
+        errors: {_candy_form: 'Invalid request'}
+      })
+    }
+
+    const config = formData.config
+    const validator = Candy.validator()
+    const credentials = {}
+
+    for (const field of config.fields) {
+      const value = await Candy.request(field.name)
+
+      for (const validation of field.validations) {
+        const rules = validation.rule.split('|')
+        for (const rule of rules) {
+          const validatorChain = validator.post(field.name).check(rule)
+          if (validation.message) {
+            const message = this.replacePlaceholders(validation.message, {
+              value: value,
+              field: field.name,
+              label: field.label || field.placeholder,
+              rule: rule
+            })
+            validatorChain.message(message)
+          }
+        }
+      }
+
+      credentials[field.name] = value
+    }
+
+    if (await validator.error()) {
+      return validator.result()
+    }
+
+    const loginResult = await Candy.Auth.login(credentials)
+
+    if (!loginResult.success) {
+      if (loginResult.error === 'Database connection not configured') {
+        return Candy.return({
+          result: {success: false},
+          errors: {_candy_form: 'Service temporarily unavailable. Please try again later.'}
+        })
+      }
+      const errorField = loginResult.field || '_candy_form'
+      const errors = {[errorField]: loginResult.error}
+      return Candy.return({
+        result: {success: false},
+        errors: errors
+      })
+    }
+
+    Candy.Request.session(`_login_form_${token}`, null)
+
+    return Candy.return({
+      result: {
+        success: true,
+        message: 'Login successful',
+        redirect: config.redirect
+      }
+    })
+  }
 }
 
 module.exports = Internal
