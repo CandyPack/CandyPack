@@ -349,15 +349,12 @@ class Route {
   }
 
   page(path, file) {
-    if (file === undefined) {
-      return {
-        view: (...args) => {
-          this.set('page', path, _candy => {
-            _candy.View.set(...args)
-            return
-          })
-        }
-      }
+    if (typeof file === 'object' && !Array.isArray(file)) {
+      this.set('page', path, _candy => {
+        _candy.View.set(file)
+        return
+      })
+      return
     }
     this.set('page', path, file)
   }
@@ -371,21 +368,18 @@ class Route {
   }
 
   authPage(path, authFile, file) {
-    if (file === undefined) {
-      return {
-        view: (...args) => {
-          this.set('#page', path, _candy => {
-            _candy.View.set(...args)
-            return
-          })
-          if (authFile) {
-            this.set('page', path, _candy => {
-              _candy.View.set(authFile)
-              return
-            })
-          }
-        }
+    if (typeof authFile === 'object' && !Array.isArray(authFile)) {
+      this.set('#page', path, _candy => {
+        _candy.View.set(authFile)
+        return
+      })
+      if (typeof file === 'object' && !Array.isArray(file)) {
+        this.set('page', path, _candy => {
+          _candy.View.set(file)
+          return
+        })
       }
+      return
     }
     if (authFile) this.set('#page', path, authFile)
     if (file) this.page(path, file)
