@@ -95,7 +95,7 @@ class Validator {
                     error = value === undefined || value === '' || value === null
                     break
                   case 'accepted':
-                    error = !value || (value !== 1 && value !== 'on' && value !== 'yes' && value !== true)
+                    error = !value || (value !== 1 && value !== '1' && value !== 'on' && value !== 'yes' && value !== true)
                     break
                   case 'numeric':
                     error = value && value !== '' && !Candy.Var(value).is('numeric')

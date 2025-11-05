@@ -109,8 +109,8 @@ class CandyRequest {
           let data = body.split('&')
           for (let i = 0; i < data.length; i++) {
             if (data[i].indexOf('=') === -1) continue
-            let key = data[i].split('=')[0]
-            let val = data[i].split('=')[1]
+            let key = decodeURIComponent(data[i].split('=')[0])
+            let val = decodeURIComponent(data[i].split('=')[1] || '')
             this.data.post[key] = val
           }
         }
@@ -128,8 +128,8 @@ class CandyRequest {
         let data = body.split('&')
         for (let i = 0; i < data.length; i++) {
           if (data[i].indexOf('=') === -1) continue
-          let key = data[i].split('=')[0]
-          let val = data[i].split('=')[1]
+          let key = decodeURIComponent(data[i].split('=')[0])
+          let val = decodeURIComponent(data[i].split('=')[1] || '')
           this.data.post[key] = val
         }
       }
@@ -209,21 +209,48 @@ class CandyRequest {
   // - SESSION
   session(key, value) {
     if (!Candy.Request.session) Candy.Request.session = {}
+    if (!Candy.Request.sessionLocks) Candy.Request.sessionLocks = {}
+
     let pri = nodeCrypto
       .createHash('md5')
       .update(this.req.headers['user-agent'] ?? '.')
       .digest('hex')
     let pub = this.cookie('candy_session')
+
     if (!pub || !Candy.Request.session[pub + '-' + pri]) {
-      do {
-        pub = nodeCrypto
-          .createHash('md5')
-          .update(this.ip + this.id + Date.now().toString() + Math.random().toString())
-          .digest('hex')
-      } while (Candy.Request.session[`${pub}-${pri}`])
-      Candy.Request.session[`${pub}-${pri}`] = {}
-      this.cookie('candy_session', `${pub}`)
+      const lockKey = `${this.ip}-${pri}`
+      const now = Date.now()
+
+      if (Candy.Request.sessionLocks[lockKey]) {
+        const lock = Candy.Request.sessionLocks[lockKey]
+        if (now - lock.timestamp < 5000 && Candy.Request.session[`${lock.sessionId}-${pri}`]) {
+          pub = lock.sessionId
+        } else {
+          delete Candy.Request.sessionLocks[lockKey]
+        }
+      }
+
+      if (!pub) {
+        const activeSessions = new Set(Object.values(Candy.Request.sessionLocks).map(l => l.sessionId))
+        do {
+          pub = nodeCrypto
+            .createHash('md5')
+            .update(this.ip + this.id + Date.now().toString() + Math.random().toString())
+            .digest('hex')
+        } while (Candy.Request.session[`${pub}-${pri}`] || activeSessions.has(pub))
+
+        Candy.Request.sessionLocks[lockKey] = {sessionId: pub, timestamp: now}
+        Candy.Request.session[`${pub}-${pri}`] = {}
+        this.cookie('candy_session', `${pub}`)
+
+        setTimeout(() => {
+          if (Candy.Request.sessionLocks[lockKey]?.timestamp === now) {
+            delete Candy.Request.sessionLocks[lockKey]
+          }
+        }, 5000)
+      }
     }
+
     if (!Candy.Request.session[pub + '-' + pri]) Candy.Request.session[pub + '-' + pri] = {}
     if (value === undefined) return Candy.Request.session[pub + '-' + pri][key] ?? null
     else if (value === null) delete Candy.Request.session[pub + '-' + pri][key]

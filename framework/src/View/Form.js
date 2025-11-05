@@ -1,17 +1,17 @@
 const nodeCrypto = require('crypto')
 
 class Form {
-  static parseRegister(content) {
-    const registerMatches = content.match(/<candy-register[\s\S]*?<\/candy-register>/g)
+  static parseRegister(content, Candy) {
+    const registerMatches = content.match(/<candy:register[\s\S]*?<\/candy:register>/g)
     if (!registerMatches) return content
 
     for (const match of registerMatches) {
       const formToken = nodeCrypto.randomBytes(32).toString('hex')
       const formConfig = this.extractRegisterConfig(match, formToken)
 
-      this.storeRegisterConfig(formToken, formConfig)
+      this.storeRegisterConfig(formToken, formConfig, Candy)
 
-      const generatedForm = this.generateRegisterForm(formConfig, formToken)
+      const generatedForm = this.generateRegisterForm(match, formConfig, formToken)
       content = content.replace(match, generatedForm)
     }
 
@@ -29,7 +29,7 @@ class Form {
       sets: []
     }
 
-    const registerMatch = html.match(/<candy-register([^>]*)>/)
+    const registerMatch = html.match(/<candy:register([^>]*)>/)
     if (!registerMatch) return config
 
     const registerTag = registerMatch[0]
@@ -39,18 +39,25 @@ class Form {
     if (redirectMatch) config.redirect = redirectMatch[1]
     if (autologinMatch) config.autologin = autologinMatch[1] !== 'false'
 
-    const submitMatch = html.match(/<candy-submit([^>/]*)(?:\/?>|>(.*?)<\/candy-submit>)/)
+    const submitMatch = html.match(/<candy:submit([^>/]*)(?:\/?>|>(.*?)<\/candy:submit>)/)
     if (submitMatch) {
-      const textMatch = submitMatch[1].match(/text=["']([^"']+)["']/)
-      const loadingMatch = submitMatch[1].match(/loading=["']([^"']+)["']/)
+      const submitTag = submitMatch[1]
+      const textMatch = submitTag.match(/text=["']([^"']+)["']/)
+      const loadingMatch = submitTag.match(/loading=["']([^"']+)["']/)
+      const classMatch = submitTag.match(/class=["']([^"']+)["']/)
+      const styleMatch = submitTag.match(/style=["']([^"']+)["']/)
+      const idMatch = submitTag.match(/id=["']([^"']+)["']/)
 
       if (textMatch) config.submitText = textMatch[1]
       else if (submitMatch[2]) config.submitText = submitMatch[2].trim()
 
       if (loadingMatch) config.submitLoading = loadingMatch[1]
+      if (classMatch) config.submitClass = classMatch[1]
+      if (styleMatch) config.submitStyle = styleMatch[1]
+      if (idMatch) config.submitId = idMatch[1]
     }
 
-    const fieldMatches = html.match(/<candy-field[\s\S]*?<\/candy-field>/g)
+    const fieldMatches = html.match(/<candy:field[\s\S]*?<\/candy:field>/g)
     if (fieldMatches) {
       for (const fieldHtml of fieldMatches) {
         const field = this.parseField(fieldHtml)
@@ -58,7 +65,7 @@ class Form {
       }
     }
 
-    const setMatches = html.match(/<candy-set[^>]*\/?>/g)
+    const setMatches = html.match(/<candy:set[^>]*\/?>/g)
     if (setMatches) {
       for (const setTag of setMatches) {
         const set = this.parseSet(setTag)
@@ -70,7 +77,7 @@ class Form {
   }
 
   static parseField(html) {
-    const fieldTagMatch = html.match(/<candy-field([^>]*)>/)
+    const fieldTagMatch = html.match(/<candy:field([^>]*?)(?:\/>|>)/)
     if (!fieldTagMatch) return null
 
     const fieldTag = fieldTagMatch[0]
@@ -82,21 +89,30 @@ class Form {
       type: 'text',
       placeholder: '',
       label: null,
+      class: '',
+      id: null,
       unique: false,
+      skip: false,
       validations: []
     }
 
     const typeMatch = fieldTag.match(/type=["']([^"']+)["']/)
     const placeholderMatch = fieldTag.match(/placeholder=["']([^"']+)["']/)
     const labelMatch = fieldTag.match(/label=["']([^"']+)["']/)
-    const uniqueMatch = fieldTag.match(/unique=["']([^"']+)["']/) || fieldTag.match(/\sunique[\s>]/)
+    const classMatch = fieldTag.match(/class=["']([^"']+)["']/)
+    const idMatch = fieldTag.match(/id=["']([^"']+)["']/)
+    const uniqueMatch = fieldTag.match(/unique=["']([^"']+)["']/) || fieldTag.match(/\sunique[\s/>]/)
+    const skipMatch = fieldTag.match(/skip=["']([^"']+)["']/) || fieldTag.match(/\sskip[\s/>]/)
 
     if (typeMatch) field.type = typeMatch[1]
     if (placeholderMatch) field.placeholder = placeholderMatch[1]
     if (labelMatch) field.label = labelMatch[1]
+    if (classMatch) field.class = classMatch[1]
+    if (idMatch) field.id = idMatch[1]
     if (uniqueMatch) field.unique = uniqueMatch[1] !== 'false'
+    if (skipMatch) field.skip = skipMatch[1] !== 'false'
 
-    const validateMatches = html.match(/<candy-validate[^>]*>/g)
+    const validateMatches = html.match(/<candy:validate[^>]*>/g)
     if (validateMatches) {
       for (const validateTag of validateMatches) {
         const ruleMatch = validateTag.match(/rule=["']([^"']+)["']/)
@@ -139,62 +155,84 @@ class Form {
     return set
   }
 
-  static storeRegisterConfig(token, config) {
+  static storeRegisterConfig(token, config, Candy) {
     if (!Candy.View) Candy.View = {}
     if (!Candy.View.registerForms) Candy.View.registerForms = {}
-    Candy.View.registerForms[token] = config
 
-    const storage = Candy.storage('sys')
-    let registerForms = storage.get('registerForms') || {}
-    registerForms[token] = {
+    const formData = {
       config: config,
       created: Date.now(),
-      expires: Date.now() + 30 * 60 * 1000
+      expires: Date.now() + 30 * 60 * 1000,
+      sessionId: Candy.Request.session('_client'),
+      userAgent: Candy.Request.header('user-agent'),
+      ip: Candy.Request.ip
     }
-    storage.set('registerForms', registerForms)
+
+    Candy.View.registerForms[token] = formData
+    Candy.Request.session(`_register_form_${token}`, formData)
   }
 
-  static generateRegisterForm(config, formToken) {
+  static generateRegisterForm(originalHtml, config, formToken) {
     const submitText = config.submitText || 'Register'
     const submitLoading = config.submitLoading || 'Processing...'
 
-    let html = `<form class="candy-register-form" data-candy-register="${formToken}" method="POST" action="/_candy/register">\n`
-    html += `  <input type="hidden" name="_candy_register_token" value="${formToken}">\n`
+    let innerContent = originalHtml.replace(/<candy:register[^>]*>/, '').replace(/<\/candy:register>/, '')
 
-    for (const field of config.fields) {
-      html += this.generateFieldHtml(field)
+    innerContent = innerContent.replace(/<candy:field[\s\S]*?<\/candy:field>/g, fieldMatch => {
+      const field = this.parseField(fieldMatch)
+      if (!field) return fieldMatch
+      return this.generateFieldHtml(field)
+    })
+
+    const submitMatch = innerContent.match(/<candy:submit[\s\S]*?(?:<\/candy:submit>|\/?>)/)
+    if (submitMatch) {
+      let submitAttrs = `type="submit" data-submit-text="${submitText}" data-loading-text="${submitLoading}"`
+      if (config.submitClass) submitAttrs += ` class="${config.submitClass}"`
+      if (config.submitStyle) submitAttrs += ` style="${config.submitStyle}"`
+      if (config.submitId) submitAttrs += ` id="${config.submitId}"`
+      const submitButton = `<button ${submitAttrs}>${submitText}</button>`
+      innerContent = innerContent.replace(submitMatch[0], submitButton)
     }
 
-    html += `  <button type="submit" data-submit-text="${submitText}" data-loading-text="${submitLoading}">${submitText}</button>\n`
-    html += `  <span class="candy-form-success" style="display:none;"></span>\n`
+    innerContent = innerContent.replace(/<candy:set[^>]*\/?>/g, '')
+
+    let html = `<form class="candy-register-form" data-candy-register="${formToken}" method="POST" action="/_candy/register" novalidate>\n`
+    html += `  <input type="hidden" name="_candy_register_token" value="${formToken}">\n`
+    html += innerContent
+    html += `\n  <span class="candy-form-success" style="display:none;"></span>\n`
     html += `</form>`
 
     return html
   }
 
   static generateFieldHtml(field) {
-    let html = `  <div class="candy-field candy-field-${field.name}">\n`
+    let html = ''
 
     if (field.label && field.type !== 'checkbox') {
-      html += `    <label for="candy-${field.name}">${field.label}</label>\n`
+      const fieldId = field.id || `candy-${field.name}`
+      html += `<label for="${fieldId}">${field.label}</label>\n`
     }
+
+    const classAttr = field.class ? ` class="${field.class}"` : ''
+    const idAttr = field.id ? ` id="${field.id}"` : ` id="candy-${field.name}"`
 
     if (field.type === 'checkbox') {
       const attrs = this.buildHtml5Attributes(field)
-      html += `    <label>\n`
-      html += `      <input type="checkbox" id="candy-${field.name}" name="${field.name}" value="1"${attrs}>\n`
-      html += `      ${field.label || field.placeholder}\n`
-      html += `    </label>\n`
+      if (field.label) {
+        html += `<label>\n`
+        html += `  <input type="checkbox"${idAttr} name="${field.name}" value="1"${classAttr}${attrs}>\n`
+        html += `  ${field.label}\n`
+        html += `</label>\n`
+      } else {
+        html += `<input type="checkbox"${idAttr} name="${field.name}" value="1"${classAttr}${attrs}>\n`
+      }
     } else if (field.type === 'textarea') {
       const attrs = this.buildHtml5Attributes(field)
-      html += `    <textarea id="candy-${field.name}" name="${field.name}" placeholder="${field.placeholder}"${attrs}></textarea>\n`
+      html += `<textarea${idAttr} name="${field.name}" placeholder="${field.placeholder}"${classAttr}${attrs}></textarea>\n`
     } else {
       const attrs = this.buildHtml5Attributes(field)
-      html += `    <input type="${field.type}" id="candy-${field.name}" name="${field.name}" placeholder="${field.placeholder}"${attrs}>\n`
+      html += `<input type="${field.type}"${idAttr} name="${field.name}" placeholder="${field.placeholder}"${classAttr}${attrs}>\n`
     }
-
-    html += `    <span class="candy-form-error" candy-form-error="${field.name}" style="display:none;"></span>\n`
-    html += `  </div>\n`
 
     return html
   }
@@ -209,6 +247,7 @@ class Form {
       max: null,
       pattern: null
     }
+    const errorMessages = {}
 
     for (const validation of field.validations) {
       const rules = validation.rule.split('|')
@@ -218,12 +257,19 @@ class Form {
         switch (ruleName) {
           case 'required':
             html5Rules.required = true
+            if (validation.message) errorMessages.required = validation.message
             break
           case 'minlen':
-            if (field.type !== 'number') html5Rules.minlength = ruleValue
+            if (field.type !== 'number') {
+              html5Rules.minlength = ruleValue
+              if (validation.message) errorMessages.minlength = validation.message
+            }
             break
           case 'maxlen':
-            if (field.type !== 'number') html5Rules.maxlength = ruleValue
+            if (field.type !== 'number') {
+              html5Rules.maxlength = ruleValue
+              if (validation.message) errorMessages.maxlength = validation.message
+            }
             break
           case 'min':
             if (field.type === 'number') html5Rules.min = ruleValue
@@ -232,20 +278,33 @@ class Form {
             if (field.type === 'number') html5Rules.max = ruleValue
             break
           case 'email':
+            if (validation.message) errorMessages.email = validation.message
             break
           case 'url':
             break
           case 'numeric':
-            if (field.type === 'text') html5Rules.pattern = '[0-9]+'
+            if (field.type === 'text') {
+              html5Rules.pattern = '[0-9]+'
+              if (validation.message) errorMessages.pattern = validation.message
+            }
             break
           case 'alpha':
-            if (field.type === 'text') html5Rules.pattern = '[a-zA-Z]+'
+            if (field.type === 'text') {
+              html5Rules.pattern = '[a-zA-Z]+'
+              if (validation.message) errorMessages.pattern = validation.message
+            }
             break
           case 'alphanumeric':
-            if (field.type === 'text') html5Rules.pattern = '[a-zA-Z0-9]+'
+            if (field.type === 'text') {
+              html5Rules.pattern = '[a-zA-Z0-9]+'
+              if (validation.message) errorMessages.pattern = validation.message
+            }
             break
           case 'accepted':
-            if (field.type === 'checkbox') html5Rules.required = true
+            if (field.type === 'checkbox') {
+              html5Rules.required = true
+              if (validation.message) errorMessages.required = validation.message
+            }
             break
         }
       }
@@ -257,6 +316,12 @@ class Form {
     if (html5Rules.min) attrs += ` min="${html5Rules.min}"`
     if (html5Rules.max) attrs += ` max="${html5Rules.max}"`
     if (html5Rules.pattern) attrs += ` pattern="${html5Rules.pattern}"`
+
+    if (errorMessages.required) attrs += ` data-error-required="${errorMessages.required.replace(/"/g, '&quot;')}"`
+    if (errorMessages.minlength) attrs += ` data-error-minlength="${errorMessages.minlength.replace(/"/g, '&quot;')}"`
+    if (errorMessages.maxlength) attrs += ` data-error-maxlength="${errorMessages.maxlength.replace(/"/g, '&quot;')}"`
+    if (errorMessages.pattern) attrs += ` data-error-pattern="${errorMessages.pattern.replace(/"/g, '&quot;')}"`
+    if (errorMessages.email) attrs += ` data-error-email="${errorMessages.email.replace(/"/g, '&quot;')}"`
 
     return attrs
   }

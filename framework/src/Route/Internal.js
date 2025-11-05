@@ -8,9 +8,7 @@ class Internal {
       })
     }
 
-    const storage = Candy.storage('sys')
-    const registerForms = storage.get('registerForms') || {}
-    const formData = registerForms[token]
+    const formData = Candy.Request.session(`_register_form_${token}`)
 
     if (!formData) {
       return Candy.return({
@@ -20,11 +18,31 @@ class Internal {
     }
 
     if (formData.expires < Date.now()) {
-      delete registerForms[token]
-      storage.set('registerForms', registerForms)
+      Candy.Request.session(`_register_form_${token}`, null)
       return Candy.return({
         result: {success: false},
         errors: {_candy_form: 'Form session expired. Please refresh the page.'}
+      })
+    }
+
+    if (formData.sessionId !== Candy.Request.session('_client')) {
+      return Candy.return({
+        result: {success: false},
+        errors: {_candy_form: 'Invalid session'}
+      })
+    }
+
+    if (formData.userAgent !== Candy.Request.header('user-agent')) {
+      return Candy.return({
+        result: {success: false},
+        errors: {_candy_form: 'Invalid request'}
+      })
+    }
+
+    if (formData.ip !== Candy.Request.ip) {
+      return Candy.return({
+        result: {success: false},
+        errors: {_candy_form: 'Invalid request'}
       })
     }
 
@@ -40,7 +58,7 @@ class Internal {
       for (const validation of field.validations) {
         const rules = validation.rule.split('|')
         for (const rule of rules) {
-          validator.post(field.name).check(rule)
+          const validatorChain = validator.post(field.name).check(rule)
           if (validation.message) {
             const message = this.replacePlaceholders(validation.message, {
               value: value,
@@ -48,7 +66,7 @@ class Internal {
               label: field.label || field.placeholder,
               rule: rule
             })
-            validator.message(message)
+            validatorChain.message(message)
           }
         }
       }
@@ -57,7 +75,9 @@ class Internal {
         uniqueFields.push(field.name)
       }
 
-      data[field.name] = value
+      if (!field.skip) {
+        data[field.name] = value
+      }
     }
 
     for (const set of config.sets) {
@@ -83,6 +103,12 @@ class Internal {
     })
 
     if (!registerResult.success) {
+      if (registerResult.error === 'Database connection not configured') {
+        return Candy.return({
+          result: {success: false},
+          errors: {_candy_form: 'Service temporarily unavailable. Please try again later.'}
+        })
+      }
       const errorField = registerResult.field || '_candy_form'
       const errors = {[errorField]: registerResult.error}
       return Candy.return({
@@ -91,16 +117,14 @@ class Internal {
       })
     }
 
-    delete registerForms[token]
-    storage.set('registerForms', registerForms)
+    Candy.Request.session(`_register_form_${token}`, null)
 
     return Candy.return({
       result: {
         success: true,
         message: 'Registration successful',
         redirect: config.redirect
-      },
-      data: registerResult.user
+      }
     })
   }
 

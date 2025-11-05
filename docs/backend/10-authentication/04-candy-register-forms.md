@@ -1,6 +1,6 @@
 # Candy Register Forms
 
-The `<candy-register>` component provides a zero-configuration way to create secure registration forms. Simply write HTML, and CandyPack handles validation, security, database operations, and auto-login automatically.
+The `<candy:register>` component provides a zero-configuration way to create secure registration forms. Simply write HTML, and CandyPack handles validation, security, database operations, and auto-login automatically.
 
 ## Quick Start
 
@@ -22,21 +22,21 @@ That's all you need! The `auth` configuration is optional.
 ### 2. Create Your Form (view/content/register.html)
 
 ```html
-<candy-register redirect="/dashboard">
-  <candy-field name="email" type="email" placeholder="Email" unique>
-    <candy-validate rule="required|email" message="Please enter a valid email"/>
-  </candy-field>
+<candy:register redirect="/dashboard">
+  <candy:field name="email" type="email" placeholder="Email" unique>
+    <candy:validate rule="required|email" message="Please enter a valid email"/>
+  </candy:field>
   
-  <candy-field name="username" type="text" placeholder="Username" unique>
-    <candy-validate rule="required|minlen:4" message="Username must be at least 4 characters"/>
-  </candy-field>
+  <candy:field name="username" type="text" placeholder="Username" unique>
+    <candy:validate rule="required|minlen:4" message="Username must be at least 4 characters"/>
+  </candy:field>
   
-  <candy-field name="password" type="password" placeholder="Password">
-    <candy-validate rule="required|minlen:8" message="Password must be at least 8 characters"/>
-  </candy-field>
+  <candy:field name="password" type="password" placeholder="Password">
+    <candy:validate rule="required|minlen:8" message="Password must be at least 8 characters"/>
+  </candy:field>
   
-  <candy-submit>Create Account</candy-submit>
-</candy-register>
+  <candy:submit>Create Account</candy:submit>
+</candy:register>
 ```
 
 That's it! No JavaScript, no controller code, no SQL needed. The form automatically:
@@ -76,16 +76,16 @@ If you want to customize table names or primary key:
 
 ## Form Attributes
 
-### `<candy-register>`
+### `<candy:register>`
 
 Main form container with configuration options:
 
 ```html
-<candy-register 
+<candy:register 
   redirect="/dashboard"    <!-- Redirect URL after successful registration -->
   autologin="true">        <!-- Auto-login after registration (default: true) -->
   <!-- fields here -->
-</candy-register>
+</candy:register>
 ```
 
 **Attributes:**
@@ -94,20 +94,20 @@ Main form container with configuration options:
 
 ## Field Types
 
-### `<candy-field>`
+### `<candy:field>`
 
 Defines an input field with validation rules:
 
 ```html
-<candy-field 
+<candy:field 
   name="email"              <!-- Field name (required) -->
   type="email"              <!-- Input type (default: text) -->
   placeholder="Email"       <!-- Placeholder text -->
   label="Email Address"     <!-- Label text (optional) -->
   unique>                   <!-- Check uniqueness in database -->
   
-  <candy-validate rule="required|email" message="Valid email required"/>
-</candy-field>
+  <candy:validate rule="required|email" message="Valid email required"/>
+</candy:field>
 ```
 
 **Attributes:**
@@ -116,6 +116,7 @@ Defines an input field with validation rules:
 - `placeholder` - Placeholder text
 - `label` - Label text (for checkbox or explicit labels)
 - `unique` - Check if value already exists in database
+- `skip` - Validate field but don't save to database (useful for password confirmation, terms acceptance)
 
 **Supported Input Types:**
 - `text` - Text input
@@ -125,14 +126,42 @@ Defines an input field with validation rules:
 - `checkbox` - Checkbox input
 - `textarea` - Textarea
 
+### Skip Attribute
+
+Use the `skip` attribute for fields that should be validated but not saved to the database:
+
+```html
+<!-- Password confirmation - validate but don't save -->
+<candy:field name="confirm_password" type="password" placeholder="Confirm Password" skip>
+  <candy:validate rule="required|same:password" message="Passwords must match"/>
+</candy:field>
+
+<!-- Terms acceptance - validate but don't save -->
+<candy:field name="terms" type="checkbox" label="I accept the terms" skip>
+  <candy:validate rule="accepted" message="You must accept the terms"/>
+</candy:field>
+
+<!-- Captcha verification - validate but don't save -->
+<candy:field name="captcha" type="text" placeholder="Enter captcha" skip>
+  <candy:validate rule="required" message="Please complete the captcha"/>
+</candy:field>
+```
+
+**Common Use Cases:**
+- Password confirmation fields
+- Terms and conditions checkboxes
+- Privacy policy acceptance
+- Captcha verification
+- Temporary validation fields
+
 ## Validation Rules
 
-### `<candy-validate>`
+### `<candy:validate>`
 
 Defines validation rules for a field:
 
 ```html
-<candy-validate 
+<candy:validate 
   rule="required|minlen:4|alphanumeric"
   message="Username must be 4+ alphanumeric characters"/>
 ```
@@ -181,27 +210,27 @@ Defines validation rules for a field:
 
 ### Multiple Validation Rules
 
-You can add multiple `<candy-validate>` tags for different error messages:
+You can add multiple `<candy:validate>` tags for different error messages:
 
 ```html
-<candy-field name="username" type="text" unique>
-  <candy-validate rule="required" message="Username is required"/>
-  <candy-validate rule="minlen:4" message="Username must be at least {min} characters"/>
-  <candy-validate rule="maxlen:20" message="Username cannot exceed {max} characters"/>
-  <candy-validate rule="alphanumeric" message="Username can only contain letters and numbers"/>
-  <candy-validate rule="unique" message="Username '{value}' is already taken"/>
-</candy-field>
+<candy:field name="username" type="text" unique>
+  <candy:validate rule="required" message="Username is required"/>
+  <candy:validate rule="minlen:4" message="Username must be at least {min} characters"/>
+  <candy:validate rule="maxlen:20" message="Username cannot exceed {max} characters"/>
+  <candy:validate rule="alphanumeric" message="Username can only contain letters and numbers"/>
+  <candy:validate rule="unique" message="Username '{value}' is already taken"/>
+</candy:field>
 ```
 
 Or combine rules in a single tag:
 
 ```html
-<candy-field name="username" type="text" unique>
-  <candy-validate 
+<candy:field name="username" type="text" unique>
+  <candy:validate 
     rule="required|minlen:4|maxlen:20|alphanumeric" 
     message="Username must be 4-20 alphanumeric characters"/>
-  <candy-validate rule="unique" message="Username '{value}' is already taken"/>
-</candy-field>
+  <candy:validate rule="unique" message="Username '{value}' is already taken"/>
+</candy:field>
 ```
 
 ## Message Placeholders
@@ -209,17 +238,17 @@ Or combine rules in a single tag:
 Use placeholders in error messages for dynamic values:
 
 ```html
-<candy-field name="username" type="text">
-  <candy-validate 
+<candy:field name="username" type="text">
+  <candy:validate 
     rule="minlen:4" 
     message="Username '{value}' is too short. Minimum {min} characters required"/>
-</candy-field>
+</candy:field>
 
-<candy-field name="age" type="number">
-  <candy-validate 
+<candy:field name="age" type="number">
+  <candy:validate 
     rule="min:18|max:120" 
     message="Age must be between {min} and {max} years"/>
-</candy-field>
+</candy:field>
 ```
 
 **Available Placeholders:**
@@ -233,25 +262,25 @@ Use placeholders in error messages for dynamic values:
 
 ## Backend-Only Values
 
-### `<candy-set>`
+### `<candy:set>`
 
 Set values that are processed only on the backend (not visible in HTML):
 
 ```html
-<candy-register redirect="/dashboard">
+<candy:register redirect="/dashboard">
   <!-- User input fields -->
-  <candy-field name="email" type="email" unique>
-    <candy-validate rule="required|email"/>
-  </candy-field>
+  <candy:field name="email" type="email" unique>
+    <candy:validate rule="required|email"/>
+  </candy:field>
   
   <!-- Backend-only values -->
-  <candy-set name="role" value="user"/>
-  <candy-set name="status" value="pending"/>
-  <candy-set name="registered_at" compute="now"/>
-  <candy-set name="ip_address" compute="ip"/>
+  <candy:set name="role" value="user"/>
+  <candy:set name="status" value="pending"/>
+  <candy:set name="registered_at" compute="now"/>
+  <candy:set name="ip_address" compute="ip"/>
   
-  <candy-submit>Register</candy-submit>
-</candy-register>
+  <candy:submit>Register</candy:submit>
+</candy:register>
 ```
 
 **Attributes:**
@@ -266,13 +295,13 @@ Set values that are processed only on the backend (not visible in HTML):
 Use `compute` attribute for dynamic values:
 
 ```html
-<candy-set name="registered_at" compute="now"/>        <!-- Unix timestamp -->
-<candy-set name="date" compute="date"/>                <!-- 2025-01-20 -->
-<candy-set name="datetime" compute="datetime"/>        <!-- ISO 8601 -->
-<candy-set name="timestamp" compute="timestamp"/>      <!-- Milliseconds -->
-<candy-set name="ip_address" compute="ip"/>            <!-- User's IP -->
-<candy-set name="user_agent" compute="user_agent"/>    <!-- Browser info -->
-<candy-set name="uuid" compute="uuid"/>                <!-- UUID v4 -->
+<candy:set name="registered_at" compute="now"/>        <!-- Unix timestamp -->
+<candy:set name="date" compute="date"/>                <!-- 2025-01-20 -->
+<candy:set name="datetime" compute="datetime"/>        <!-- ISO 8601 -->
+<candy:set name="timestamp" compute="timestamp"/>      <!-- Milliseconds -->
+<candy:set name="ip_address" compute="ip"/>            <!-- User's IP -->
+<candy:set name="user_agent" compute="user_agent"/>    <!-- Browser info -->
+<candy:set name="uuid" compute="uuid"/>                <!-- UUID v4 -->
 ```
 
 ### Conditional Values
@@ -280,96 +309,96 @@ Use `compute` attribute for dynamic values:
 Use `if-empty` to set a default only if the user didn't provide a value:
 
 ```html
-<candy-field name="country" type="text" placeholder="Country (optional)">
+<candy:field name="country" type="text" placeholder="Country (optional)">
   <!-- User can optionally fill this -->
-</candy-field>
+</candy:field>
 
-<candy-set name="country" value="TR" if-empty/>
+<candy:set name="country" value="TR" if-empty/>
 <!-- If user leaves it empty, set to "TR" -->
 ```
 
 ## Submit Button
 
-### `<candy-submit>`
+### `<candy:submit>`
 
 Defines the submit button:
 
 ```html
-<candy-submit 
+<candy:submit 
   text="Create Account"           <!-- Button text -->
   loading="Creating account...">  <!-- Loading state text -->
-</candy-submit>
+</candy:submit>
 ```
 
 Or use content as button text:
 
 ```html
-<candy-submit>Create Account</candy-submit>
+<candy:submit>Create Account</candy:submit>
 ```
 
 ## Complete Example
 
 ```html
-<candy-register redirect="/dashboard" autologin="true">
+<candy:register redirect="/dashboard" autologin="true">
   
   <!-- Email Field -->
-  <candy-field name="email" type="email" placeholder="Email Address" unique>
-    <candy-validate rule="required" message="Email is required"/>
-    <candy-validate rule="email" message="Please enter a valid email address"/>
-    <candy-validate rule="unique" message="The email '{value}' is already registered"/>
-  </candy-field>
+  <candy:field name="email" type="email" placeholder="Email Address" unique>
+    <candy:validate rule="required" message="Email is required"/>
+    <candy:validate rule="email" message="Please enter a valid email address"/>
+    <candy:validate rule="unique" message="The email '{value}' is already registered"/>
+  </candy:field>
   
   <!-- Username Field -->
-  <candy-field name="username" type="text" placeholder="Username" unique>
-    <candy-validate rule="required" message="Username is required"/>
-    <candy-validate rule="minlen:4" message="Username must be at least {min} characters"/>
-    <candy-validate rule="maxlen:20" message="Username cannot exceed {max} characters"/>
-    <candy-validate rule="alphanumeric" message="Only letters and numbers allowed"/>
-    <candy-validate rule="unique" message="Username '{value}' is already taken"/>
-  </candy-field>
+  <candy:field name="username" type="text" placeholder="Username" unique>
+    <candy:validate rule="required" message="Username is required"/>
+    <candy:validate rule="minlen:4" message="Username must be at least {min} characters"/>
+    <candy:validate rule="maxlen:20" message="Username cannot exceed {max} characters"/>
+    <candy:validate rule="alphanumeric" message="Only letters and numbers allowed"/>
+    <candy:validate rule="unique" message="Username '{value}' is already taken"/>
+  </candy:field>
   
   <!-- Password Field -->
-  <candy-field name="password" type="password" placeholder="Password">
-    <candy-validate rule="required" message="Password is required"/>
-    <candy-validate rule="minlen:8" message="Password must be at least {min} characters"/>
-  </candy-field>
+  <candy:field name="password" type="password" placeholder="Password">
+    <candy:validate rule="required" message="Password is required"/>
+    <candy:validate rule="minlen:8" message="Password must be at least {min} characters"/>
+  </candy:field>
   
   <!-- Password Confirmation -->
-  <candy-field name="password_confirm" type="password" placeholder="Confirm Password">
-    <candy-validate rule="required" message="Please confirm your password"/>
-    <candy-validate rule="same:password" message="Passwords do not match"/>
-  </candy-field>
+  <candy:field name="password_confirm" type="password" placeholder="Confirm Password" skip>
+    <candy:validate rule="required" message="Please confirm your password"/>
+    <candy:validate rule="same:password" message="Passwords do not match"/>
+  </candy:field>
   
   <!-- Full Name -->
-  <candy-field name="name" type="text" placeholder="Full Name">
-    <candy-validate rule="required" message="Name is required"/>
-    <candy-validate rule="alphaspace" message="Name can only contain letters and spaces"/>
-    <candy-validate rule="minlen:3" message="Name must be at least {min} characters"/>
-  </candy-field>
+  <candy:field name="name" type="text" placeholder="Full Name">
+    <candy:validate rule="required" message="Name is required"/>
+    <candy:validate rule="alphaspace" message="Name can only contain letters and spaces"/>
+    <candy:validate rule="minlen:3" message="Name must be at least {min} characters"/>
+  </candy:field>
   
   <!-- Age -->
-  <candy-field name="age" type="number" placeholder="Age">
-    <candy-validate rule="required" message="Age is required"/>
-    <candy-validate rule="min:18" message="You must be at least {min} years old"/>
-    <candy-validate rule="max:120" message="Please enter a valid age"/>
-  </candy-field>
+  <candy:field name="age" type="number" placeholder="Age">
+    <candy:validate rule="required" message="Age is required"/>
+    <candy:validate rule="min:18" message="You must be at least {min} years old"/>
+    <candy:validate rule="max:120" message="Please enter a valid age"/>
+  </candy:field>
   
   <!-- Terms Checkbox -->
-  <candy-field name="terms" type="checkbox" label="I agree to the terms and conditions">
-    <candy-validate rule="accepted" message="You must accept the terms to continue"/>
-  </candy-field>
+  <candy:field name="terms" type="checkbox" label="I agree to the terms and conditions" skip>
+    <candy:validate rule="accepted" message="You must accept the terms to continue"/>
+  </candy:field>
   
   <!-- Backend-only values -->
-  <candy-set name="role" value="user"/>
-  <candy-set name="status" value="active"/>
-  <candy-set name="registered_at" compute="now"/>
-  <candy-set name="ip_address" compute="ip"/>
-  <candy-set name="user_agent" compute="user_agent"/>
+  <candy:set name="role" value="user"/>
+  <candy:set name="status" value="active"/>
+  <candy:set name="registered_at" compute="now"/>
+  <candy:set name="ip_address" compute="ip"/>
+  <candy:set name="user_agent" compute="user_agent"/>
   
   <!-- Submit Button -->
-  <candy-submit text="Create Account" loading="Creating your account..."/>
+  <candy:submit text="Create Account" loading="Creating your account..."/>
   
-</candy-register>
+</candy:register>
 ```
 
 ## Security Features
@@ -391,16 +420,16 @@ Each form gets a unique token when rendered:
 - Token is stored server-side with field whitelist
 - Token expires after 30 minutes
 - Only fields defined in the view are accepted
-- Backend-only values (`<candy-set>`) are never exposed to HTML
+- Backend-only values (`<candy:set>`) are never exposed to HTML
 
 ### Unique Field Checking
 
 Fields marked with `unique` attribute are checked against the database:
 
 ```html
-<candy-field name="email" type="email" unique>
-  <candy-validate rule="unique" message="Email already exists"/>
-</candy-field>
+<candy:field name="email" type="email" unique>
+  <candy:validate rule="unique" message="Email already exists"/>
+</candy:field>
 ```
 
 The system automatically queries the auth table to check for duplicates.
@@ -411,9 +440,9 @@ CandyPack automatically adds HTML5 validation attributes for better UX:
 
 ```html
 <!-- This field -->
-<candy-field name="username" type="text">
-  <candy-validate rule="required|minlen:4|maxlen:20|alphanumeric"/>
-</candy-field>
+<candy:field name="username" type="text">
+  <candy:validate rule="required|minlen:4|maxlen:20|alphanumeric"/>
+</candy:field>
 
 <!-- Generates this HTML -->
 <input 
@@ -594,7 +623,7 @@ Candy.fn.generateReferralCode = async (Candy) => {
 ```
 
 ```html
-<candy-set name="referral_code" callback="generateReferralCode"/>
+<candy:set name="referral_code" callback="generateReferralCode"/>
 ```
 
 ### Conditional Registration
@@ -602,9 +631,9 @@ Candy.fn.generateReferralCode = async (Candy) => {
 Disable auto-login and handle redirect manually:
 
 ```html
-<candy-register autologin="false">
+<candy:register autologin="false">
   <!-- fields -->
-</candy-register>
+</candy:register>
 ```
 
 Then handle the response in JavaScript if needed (though not required for basic usage).
@@ -616,7 +645,7 @@ Then handle the response in JavaScript if needed (though not required for basic 
 3. **Set minimum password length** - Use `minlen:8` or higher
 4. **Use password confirmation** - Add a `password_confirm` field with `same:password` rule
 5. **Add terms checkbox** - Use `accepted` rule for legal compliance
-6. **Use backend-only values** - Store metadata with `<candy-set>`
+6. **Use backend-only values** - Store metadata with `<candy:set>`
 7. **Provide clear error messages** - Use placeholders for dynamic values
 8. **Test form expiration** - Forms expire after 30 minutes
 
@@ -631,7 +660,7 @@ Then handle the response in JavaScript if needed (though not required for basic 
 ### Validation Not Working
 
 - Ensure validation rules are spelled correctly
-- Check that field names match between `<candy-field>` and validation
+- Check that field names match between `<candy:field>` and validation
 - Verify HTML5 validation isn't blocking submission
 
 ### Unique Check Failing

@@ -190,9 +190,49 @@ const users = await Candy.Mysql.table('users')
   .select('id', 'name', Candy.Mysql.raw('COUNT(*) as total'))
   .get()
 
-// Raw query
+// Raw query with parameters (SAFE - recommended)
 const result = await Candy.Mysql.run('SELECT * FROM users WHERE status = ?', ['active'])
 ```
+
+#### ⚠️ Security Warning: Mysql.raw()
+
+**CRITICAL**: `Mysql.raw()` bypasses ALL SQL injection protection. Only use with hardcoded, trusted values.
+
+```javascript
+// ❌ DANGEROUS - Never do this!
+const userInput = await Candy.request('search')
+const users = await Candy.Mysql.table('users')
+  .where('name', Candy.Mysql.raw(userInput))  // SQL INJECTION RISK!
+  .get()
+
+// ✅ SAFE - Use query builder instead
+const userInput = await Candy.request('search')
+const users = await Candy.Mysql.table('users')
+  .where('name', 'LIKE', `%${userInput}%`)  // Automatically escaped
+  .get()
+
+// ✅ SAFE - Use with hardcoded values only
+const users = await Candy.Mysql.table('users')
+  .select('id', 'name', Candy.Mysql.raw('COUNT(*) as total'))  // OK - hardcoded
+  .get()
+
+// ✅ SAFE - Use parameterized queries for dynamic values
+const status = await Candy.request('status')
+const result = await Candy.Mysql.run(
+  'SELECT * FROM users WHERE status = ?',
+  [status]  // Automatically escaped
+)
+```
+
+**When to use raw()**:
+- Aggregate functions: `COUNT(*)`, `SUM(price)`, `AVG(rating)`
+- Database functions: `NOW()`, `CONCAT()`, `DATE_FORMAT()`
+- Complex expressions that can't be built with query builder
+
+**Never use raw() with**:
+- User input from forms, URLs, or cookies
+- Data from external APIs
+- Any untrusted source
 
 ### Group By
 
@@ -248,10 +288,12 @@ module.exports = async function (Candy) {
 ### Best Practices
 
 1. **Always use the query builder** - It protects against SQL injection
-2. **Use async/await** - All database methods are asynchronous
-3. **Handle errors** - Wrap database calls in try/catch blocks
-4. **Limit results** - Use `.limit()` to prevent loading too much data
-5. **Select only needed columns** - Use `.select()` instead of selecting all columns
+2. **Never use Mysql.raw() with user input** - Only use with hardcoded values
+3. **Use parameterized queries** - When using `Mysql.run()`, always pass parameters as array
+4. **Use async/await** - All database methods are asynchronous
+5. **Handle errors** - Wrap database calls in try/catch blocks
+6. **Limit results** - Use `.limit()` to prevent loading too much data
+7. **Select only needed columns** - Use `.select()` instead of selecting all columns
 
 ### Error Handling
 

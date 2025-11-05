@@ -13,6 +13,10 @@ class Auth {
     if (!this.#table) return false
     if (where) {
       let sql = Candy.Mysql.table(this.#table)
+      if (!sql) {
+        console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+        return false
+      }
       for (let key in where) sql = sql.orWhere(key, where[key] instanceof Promise ? await where[key] : where[key])
       if (!sql.rows()) return false
       let get = await sql.get()
@@ -44,8 +48,29 @@ class Auth {
       let sql_token = await Candy.Mysql.table(tokenTable).where(['token_x', candy_x], ['browser', browser]).get()
       if (sql_token.length !== 1) return false
       if (!Candy.Var(sql_token[0].token_y).hashCheck(candy_y)) return false
+
+      const maxAge = Candy.Config.auth?.maxAge || 30 * 24 * 60 * 60 * 1000
+      const updateAge = Candy.Config.auth?.updateAge || 24 * 60 * 60 * 1000
+      const now = Date.now()
+      const lastActive = new Date(sql_token[0].active).getTime()
+      const inactiveAge = now - lastActive
+
+      if (inactiveAge > maxAge) {
+        await Candy.Mysql.table(tokenTable).where('id', sql_token[0].id).delete()
+        return false
+      }
+
       this.#user = await Candy.Mysql.table(this.#table).where(primaryKey, sql_token[0].user).first()
-      // Candy.Mysql.table(Candy.Config.auth.token).where(sql_token[0].id).set({'ip': this.#request.ip,'active': Date.now()});
+
+      if (inactiveAge > updateAge) {
+        Candy.Mysql.table(tokenTable)
+          .where('id', sql_token[0].id)
+          .set({active: new Date()})
+          .catch(err => {
+            console.error('CandyPack Auth: Failed to update session active timestamp.', err)
+          })
+      }
+
       return true
     }
   }
@@ -57,14 +82,21 @@ class Auth {
     if (!Candy.Config.auth) Candy.Config.auth = {}
     let key = Candy.Config.auth.key || 'id'
     let token = Candy.Config.auth.token || 'user_tokens'
+    const mysql = require('mysql2')
+    const safeTokenTable = mysql.escapeId(token)
     let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', [token])
+    if (check_table === false) {
+      console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+      return false
+    }
     if (check_table.length == 0)
       await Candy.Mysql.run(
-        'CREATE TABLE ' +
-          token +
-          ' (id INT NOT NULL AUTO_INCREMENT, user INT NOT NULL, token_x VARCHAR(255) NOT NULL, token_y VARCHAR(255) NOT NULL, browser VARCHAR(255) NOT NULL, ip VARCHAR(255) NOT NULL, `date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, `active` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))'
+        `CREATE TABLE ${safeTokenTable} (id INT NOT NULL AUTO_INCREMENT, user INT NOT NULL, token_x VARCHAR(255) NOT NULL, token_y VARCHAR(255) NOT NULL, browser VARCHAR(255) NOT NULL, ip VARCHAR(255) NOT NULL, \`date\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, \`active\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id))`
       )
-    let token_y = Candy.Var(this.#request.id + this.#request.ip).md5()
+
+    this.#cleanupExpiredTokens(token)
+
+    let token_y = Candy.Var(Math.random().toString() + Date.now().toString() + this.#request.id + this.#request.ip).md5()
     let cookie = {
       user: user[key],
       token_x: Candy.Var(Math.random().toString() + Date.now().toString()).md5(),
@@ -78,8 +110,25 @@ class Auth {
       sameSite: 'Strict'
     })
     this.#request.cookie('candy_y', token_y, {httpOnly: true, secure: true, sameSite: 'Strict'})
-    let sql = Candy.Mysql.table(token).insert(cookie)
+    let mysqlTable = Candy.Mysql.table(token)
+    if (!mysqlTable) {
+      console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+      return false
+    }
+    let sql = await mysqlTable.insert(cookie)
     return sql !== false
+  }
+
+  async #cleanupExpiredTokens(tokenTable) {
+    const maxAge = Candy.Config.auth?.maxAge || 30 * 24 * 60 * 60 * 1000
+    const cutoffDate = new Date(Date.now() - maxAge)
+
+    Candy.Mysql.table(tokenTable)
+      .where('active', '<', cutoffDate)
+      .delete()
+      .catch(err => {
+        console.error('CandyPack Auth: Failed to cleanup expired tokens.', err)
+      })
   }
 
   async register(data, options = {}) {
@@ -92,7 +141,11 @@ class Auth {
     const passwordField = options.passwordField || 'password'
     const uniqueFields = options.uniqueFields || ['email']
 
-    const checkTable = await Candy.Mysql.run('SHOW TABLES LIKE ?', true, [this.#table])
+    const checkTable = await Candy.Mysql.run('SHOW TABLES LIKE ?', [this.#table])
+    if (checkTable === false) {
+      console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+      return {success: false, error: 'Database connection not configured'}
+    }
     if (checkTable.length === 0) {
       await this.#createUserTable(this.#table, primaryKey, passwordField, uniqueFields, data)
     }
@@ -107,7 +160,12 @@ class Auth {
 
     for (const field of uniqueFields) {
       if (data[field]) {
-        const existing = await Candy.Mysql.table(this.#table).where(field, data[field]).first()
+        const mysqlTable = Candy.Mysql.table(this.#table)
+        if (!mysqlTable) {
+          console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+          return {success: false, error: 'Database connection not configured'}
+        }
+        const existing = await mysqlTable.where(field, data[field]).first()
         if (existing) {
           return {success: false, error: `${field} already exists`, field}
         }
@@ -115,12 +173,25 @@ class Auth {
     }
 
     try {
-      const insertResult = await Candy.Mysql.table(this.#table).insert(data)
-      if (!insertResult || !insertResult.affectedRows) {
+      const mysqlTable = Candy.Mysql.table(this.#table)
+      if (!mysqlTable) {
+        console.error('CandyPack Auth Error: MySQL connection not configured. Please add database configuration to your config.json')
+        return {success: false, error: 'Database connection not configured'}
+      }
+      const insertResult = await mysqlTable.insert(data)
+      if (insertResult === false) {
+        console.error('CandyPack Auth Error: Failed to insert user into database - query failed')
+        console.error('Data attempted to insert:', {...data, [passwordField]: '[REDACTED]'})
+        return {success: false, error: 'Failed to create user'}
+      }
+      if (!insertResult.affected || insertResult.affected === 0) {
+        console.error('CandyPack Auth Error: Insert query succeeded but no rows were affected')
+        console.error('Insert result:', insertResult)
+        console.error('Data attempted to insert:', {...data, [passwordField]: '[REDACTED]'})
         return {success: false, error: 'Failed to create user'}
       }
 
-      const userId = insertResult.insertId
+      const userId = insertResult.id
       const newUser = await Candy.Mysql.table(this.#table).where(primaryKey, userId).first()
 
       if (!newUser) {
@@ -141,6 +212,9 @@ class Auth {
 
       return {success: true, user: newUser}
     } catch (error) {
+      console.error('CandyPack Auth Error: Registration failed with exception')
+      console.error('Error:', error.message)
+      console.error('Stack:', error.stack)
       return {success: false, error: error.message || 'Registration failed'}
     }
   }
@@ -154,7 +228,10 @@ class Auth {
     const browser = this.#request.header('user-agent')
 
     if (candyX && browser) {
-      await Candy.Mysql.table(token).where(['token_x', candyX], ['browser', browser]).delete()
+      const mysqlTable = Candy.Mysql.table(token)
+      if (mysqlTable) {
+        await mysqlTable.where(['token_x', candyX], ['browser', browser]).delete()
+      }
     }
 
     this.#request.cookie('candy_x', '', {maxAge: -1})
@@ -165,18 +242,22 @@ class Auth {
   }
 
   async #createUserTable(tableName, primaryKey, passwordField, uniqueFields, sampleData) {
+    const mysql = require('mysql2')
     const columns = []
 
-    columns.push(`\`${primaryKey}\` INT NOT NULL AUTO_INCREMENT`)
+    const safePrimaryKey = mysql.escapeId(primaryKey)
+    columns.push(`${safePrimaryKey} INT NOT NULL AUTO_INCREMENT`)
 
     for (const field of uniqueFields) {
       if (field !== primaryKey) {
-        columns.push(`\`${field}\` VARCHAR(255) NOT NULL UNIQUE`)
+        const safeField = mysql.escapeId(field)
+        columns.push(`${safeField} VARCHAR(255) NOT NULL UNIQUE`)
       }
     }
 
     if (!uniqueFields.includes(passwordField) && passwordField !== primaryKey) {
-      columns.push(`\`${passwordField}\` VARCHAR(255) NOT NULL`)
+      const safePasswordField = mysql.escapeId(passwordField)
+      columns.push(`${safePasswordField} VARCHAR(255) NOT NULL`)
     }
 
     for (const key in sampleData) {
@@ -197,14 +278,16 @@ class Auth {
         columnType = 'TEXT'
       }
 
-      columns.push(`\`${key}\` ${columnType} NULL`)
+      const safeKey = mysql.escapeId(key)
+      columns.push(`${safeKey} ${columnType} NULL`)
     }
 
     columns.push(`\`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP`)
     columns.push(`\`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
-    columns.push(`PRIMARY KEY (\`${primaryKey}\`)`)
+    columns.push(`PRIMARY KEY (${safePrimaryKey})`)
 
-    const sql = `CREATE TABLE \`${tableName}\` (${columns.join(', ')}) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    const safeTableName = mysql.escapeId(tableName)
+    const sql = `CREATE TABLE ${safeTableName} (${columns.join(', ')}) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
 
     await Candy.Mysql.run(sql)
   }

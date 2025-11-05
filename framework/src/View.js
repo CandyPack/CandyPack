@@ -267,11 +267,11 @@ class View {
 
   #render(file) {
     let mtime = fs.statSync(file).mtimeMs
+    let content = fs.readFileSync(file, 'utf8')
+
+    content = Form.parseRegister(content, this.#candy)
+
     if (this.#cache[file]?.mtime !== mtime) {
-      let content = fs.readFileSync(file, 'utf8')
-
-      content = Form.parseRegister(content)
-
       content = this.#parseCandyTag(content)
 
       let result = 'html += `\n' + content + '\n`'
