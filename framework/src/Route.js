@@ -317,7 +317,7 @@ class Route {
     const isFunction = typeof file === 'function'
     let path = `${__dir}/route/${Candy.Route.buff}.js`
 
-    if (!isFunction) {
+    if (!isFunction && file) {
       path = `${__dir}/controller/${type.replace('#', '')}/${file}.js`
       if (file.includes('.')) {
         let arr = file.split('.')
@@ -356,7 +356,7 @@ class Route {
       })
       return
     }
-    this.set('page', path, file)
+    if (file) this.set('page', path, file)
   }
 
   post(path, file, options) {
