@@ -66,7 +66,9 @@ class Auth {
         Candy.Mysql.table(tokenTable)
           .where('id', sql_token[0].id)
           .set({active: new Date()})
-          .catch(() => {})
+          .catch(err => {
+            console.error('CandyPack Auth: Failed to update session active timestamp.', err)
+          })
       }
 
       return true
@@ -124,7 +126,9 @@ class Auth {
     Candy.Mysql.table(tokenTable)
       .where('active', '<', cutoffDate)
       .delete()
-      .catch(() => {})
+      .catch(err => {
+        console.error('CandyPack Auth: Failed to cleanup expired tokens.', err)
+      })
   }
 
   async register(data, options = {}) {
