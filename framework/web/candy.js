@@ -323,12 +323,12 @@ class candy {
           }
         }
 
-        if (input.hasAttribute('minlength') && input.value.length < parseInt(input.getAttribute('minlength'))) {
+        if (input.hasAttribute('minlength') && input.value && input.value.length < parseInt(input.getAttribute('minlength'))) {
           showError(input, 'minlength')
           break
         }
 
-        if (input.hasAttribute('maxlength') && input.value.length > parseInt(input.getAttribute('maxlength'))) {
+        if (input.hasAttribute('maxlength') && input.value && input.value.length > parseInt(input.getAttribute('maxlength'))) {
           showError(input, 'maxlength')
           break
         }
