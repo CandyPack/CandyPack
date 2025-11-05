@@ -37,7 +37,7 @@ class Auth {
     } else if (this.#user) {
       return true
     } else {
-      let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', true, [this.#table])
+      let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', [this.#table])
       if (check_table.length == 0) return false
       let candy_x = this.#request.cookie('candy_x')
       let candy_y = this.#request.cookie('candy_y')
