@@ -328,7 +328,7 @@ class candy {
           break
         }
 
-        if (input.hasAttribute('maxlength') && input.value && input.value.length > parseInt(input.getAttribute('maxlength'))) {
+        if (input.hasAttribute('maxlength') && input.value && input.value.trim().length > parseInt(input.getAttribute('maxlength'))) {
           showError(input, 'maxlength')
           break
         }
