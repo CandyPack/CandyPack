@@ -1,12 +1,12 @@
 ## ⚡ Controller-less View Routes
 
-For simple pages that don't require complex logic in a controller, you can render a view directly from your route file. This is done by chaining the `.view()` method to a `page` route.
+For simple pages that don't require complex logic in a controller, you can render a view directly from your route file by passing a view configuration object as the second parameter.
 
-#### `page(path).view({ ... })`
+#### `page(path, { ... })`
 This defines a page and immediately tells it which view components to render.
 
 ```javascript
-Candy.Route.page("/users").view({
+Candy.Route.page("/users", {
     skeleton: "dashboard",
     header: "dashboard.main",
     sidebar: "dashboard.main",
@@ -16,21 +16,15 @@ Candy.Route.page("/users").view({
 ```
 This example tells CandyPack to render the `/users` page by assembling a view from multiple parts, likely using a main `dashboard` skeleton and filling it with different content blocks.
 
-#### `authPage(path).view({ ... })`
-Similar to `page().view()`, but requires authentication. You can combine it with a regular `page().view()` for the same path to create a fallback for guest users.
+#### `authPage(path, { ... }, { ... })`
+Similar to `page()`, but requires authentication. You can provide two view configurations: one for authenticated users and one for guests.
 
 ```javascript
-// Authenticated users see the dashboard
-Candy.Route.authPage('/').view({
-    skeleton: 'main',
-    content: 'dashboard'
-});
-
-// Guest users see the login page
-Candy.Route.page('/').view({
-    skeleton: 'auth',
-    content: 'auth.login'
-});
+// Authenticated users see the dashboard, guests see the login page
+Candy.Route.authPage('/', 
+    {skeleton: 'main', content: 'dashboard'},
+    {skeleton: 'auth', content: 'auth.login'}
+);
 ```
 
 See [Authentication-Aware Routes](04-authentication-aware-routes.md) for more details.

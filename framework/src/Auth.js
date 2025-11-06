@@ -37,13 +37,13 @@ class Auth {
     } else if (this.#user) {
       return true
     } else {
-      let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', true, [this.#table])
+      let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', [this.#table])
       if (check_table.length == 0) return false
       let candy_x = this.#request.cookie('candy_x')
       let candy_y = this.#request.cookie('candy_y')
       let browser = this.#request.header('user-agent')
       if (!candy_x || !candy_y || !browser) return false
-      const tokenTable = Candy.Config.auth.token || 'user_tokens'
+      const tokenTable = Candy.Config.auth.token || 'candy_auth'
       const primaryKey = Candy.Config.auth.key || 'id'
       let sql_token = await Candy.Mysql.table(tokenTable).where(['token_x', candy_x], ['browser', browser]).get()
       if (sql_token.length !== 1) return false
@@ -66,9 +66,7 @@ class Auth {
         Candy.Mysql.table(tokenTable)
           .where('id', sql_token[0].id)
           .set({active: new Date()})
-          .catch(err => {
-            console.error('CandyPack Auth: Failed to update session active timestamp.', err)
-          })
+          .catch(() => {})
       }
 
       return true
@@ -81,7 +79,7 @@ class Auth {
     if (!user) return false
     if (!Candy.Config.auth) Candy.Config.auth = {}
     let key = Candy.Config.auth.key || 'id'
-    let token = Candy.Config.auth.token || 'user_tokens'
+    let token = Candy.Config.auth.token || 'candy_auth'
     const mysql = require('mysql2')
     const safeTokenTable = mysql.escapeId(token)
     let check_table = await Candy.Mysql.run('SHOW TABLES LIKE ?', [token])
@@ -126,9 +124,7 @@ class Auth {
     Candy.Mysql.table(tokenTable)
       .where('active', '<', cutoffDate)
       .delete()
-      .catch(err => {
-        console.error('CandyPack Auth: Failed to cleanup expired tokens.', err)
-      })
+      .catch(() => {})
   }
 
   async register(data, options = {}) {
@@ -282,8 +278,8 @@ class Auth {
       columns.push(`${safeKey} ${columnType} NULL`)
     }
 
-    columns.push(`\`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP`)
-    columns.push(`\`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+    columns.push(`${mysql.escapeId('created_at')} TIMESTAMP DEFAULT CURRENT_TIMESTAMP`)
+    columns.push(`${mysql.escapeId('updated_at')} TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
     columns.push(`PRIMARY KEY (${safePrimaryKey})`)
 
     const safeTableName = mysql.escapeId(tableName)

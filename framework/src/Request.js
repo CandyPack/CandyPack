@@ -231,7 +231,8 @@ class CandyRequest {
       }
 
       if (!pub) {
-        const activeSessions = new Set(Object.values(Candy.Request.sessionLocks).map(l => l.sessionId))
+        const sessionLockValues = Object.values(Candy.Request.sessionLocks)
+        const activeSessions = new Set(sessionLockValues.map(l => l.sessionId))
         do {
           pub = nodeCrypto
             .createHash('md5')

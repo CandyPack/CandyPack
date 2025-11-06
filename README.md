@@ -22,7 +22,9 @@
 *   🔗 **Custom URLs & Infinite Pages:** Easily create clean, custom URLs and an unlimited number of pages thanks to the powerful routing and skeleton system.
 *   ✨ **No-Code AJAX:** Automatically enable AJAX for form submissions and page transitions without writing any custom JavaScript, providing your users with a seamless single-page application (SPA) experience.
 *   🛡️ **Safe Requests:** Automatically secure all your endpoints against common vulnerabilities like CSRF with built-in token verification for POST and GET requests.
+*   🔐 **Auth Made Easy:** Implement user authentication in minutes with built-in session management, password hashing, and ready-to-use login/register forms.
 *   🌍 **Global Ready:** Reach a worldwide audience with built-in, automatic multi-language support. The Candy Framework simplifies internationalization (i18n).
+*   ⏰ **Built-in Cron Jobs:** Schedule and automate recurring tasks with the integrated cron system, perfect for background jobs, data cleanup, and scheduled operations.
 
 ## 🚀 Quick Start
 

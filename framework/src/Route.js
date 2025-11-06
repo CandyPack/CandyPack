@@ -274,6 +274,19 @@ class Route {
       {token: true}
     )
 
+    this.set(
+      'POST',
+      '/_candy/login',
+      async Candy => {
+        const csrfToken = await Candy.request('_token')
+        if (!csrfToken || !Candy.token(csrfToken)) {
+          return Candy.Request.abort(401)
+        }
+        return await Internal.login(Candy)
+      },
+      {token: true}
+    )
+
     delete Candy.Route.buff
   }
 
@@ -304,7 +317,7 @@ class Route {
     const isFunction = typeof file === 'function'
     let path = `${__dir}/route/${Candy.Route.buff}.js`
 
-    if (!isFunction) {
+    if (!isFunction && file) {
       path = `${__dir}/controller/${type.replace('#', '')}/${file}.js`
       if (file.includes('.')) {
         let arr = file.split('.')
@@ -336,17 +349,14 @@ class Route {
   }
 
   page(path, file) {
-    if (file === undefined) {
-      return {
-        view: (...args) => {
-          this.set('page', path, _candy => {
-            _candy.View.set(...args)
-            return
-          })
-        }
-      }
+    if (typeof file === 'object' && !Array.isArray(file)) {
+      this.set('page', path, _candy => {
+        _candy.View.set(file)
+        return
+      })
+      return
     }
-    this.set('page', path, file)
+    if (file) this.set('page', path, file)
   }
 
   post(path, file, options) {
@@ -358,15 +368,18 @@ class Route {
   }
 
   authPage(path, authFile, file) {
-    if (file === undefined) {
-      return {
-        view: (...args) => {
-          this.set('#page', path, _candy => {
-            _candy.View.set(...args)
-            return
-          })
-        }
+    if (typeof authFile === 'object' && !Array.isArray(authFile)) {
+      this.set('#page', path, _candy => {
+        _candy.View.set(authFile)
+        return
+      })
+      if (typeof file === 'object' && !Array.isArray(file)) {
+        this.set('page', path, _candy => {
+          _candy.View.set(file)
+          return
+        })
       }
+      return
     }
     if (authFile) this.set('#page', path, authFile)
     if (file) this.set('page', path, file)
