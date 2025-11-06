@@ -69,8 +69,8 @@ class WebProxy {
     proxy.web(req, res, {target: 'http://127.0.0.1:' + website.port})
 
     proxy.on('proxyReq', (proxyReq, req) => {
-      proxyReq.setHeader('X-Candy-Connection-RemoteAddress', req.socket.remoteAddress ?? '')
-      proxyReq.setHeader('X-Candy-Connection-SSL', 'true')
+      proxyReq.setHeader('x-candy-connection-remoteaddress', req.socket.remoteAddress ?? '')
+      proxyReq.setHeader('x-candy-connection-ssl', 'true')
     })
 
     proxy.on('error', (err, req, res) => {
