@@ -50,10 +50,15 @@ Candy.listen('/events', (data) => {
 // Server
 Candy.Route.get('/dashboard/stats', async (Candy) => {
   Candy.stream((send) => {
-    setInterval(async () => {
+    const interval = setInterval(async () => {
       const stats = await getServerStats()
       send(stats)
     }, 1000)
+    
+    // Cleanup function
+    return () => {
+      clearInterval(interval)
+    }
   })
 })
 
