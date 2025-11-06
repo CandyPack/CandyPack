@@ -119,7 +119,6 @@ Candy.listen('/build/logs', (log) => {
 **Options:**
 - `onOpen` (function): Called when connection opens
 - `onError` (function): Called on error
-- `onClose` (function): Called when connection closes
 - `autoReconnect` (boolean): Auto-reconnect on disconnect (default: true)
 - `reconnectDelay` (number): Delay before reconnect in ms (default: 3000)
 
