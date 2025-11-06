@@ -323,7 +323,7 @@ class candy {
           }
         }
 
-        if (input.hasAttribute('minlength') && input.value && input.value.length < parseInt(input.getAttribute('minlength'))) {
+        if (input.hasAttribute('minlength') && input.value && input.value.trim().length < parseInt(input.getAttribute('minlength'))) {
           showError(input, 'minlength')
           break
         }
