@@ -19,7 +19,7 @@ class WebProxy {
 
     for (const [key, value] of Object.entries(req.headers)) {
       if (!key.startsWith(':')) {
-        options.headers[key] = value
+        options.headers[key.toLowerCase()] = value
       }
     }
 
