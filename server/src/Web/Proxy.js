@@ -3,9 +3,15 @@ const httpProxy = require('http-proxy')
 
 class WebProxy {
   #log
+  #proxy
 
   constructor(log) {
     this.#log = log
+    this.#proxy = httpProxy.createProxyServer({
+      timeout: 30000,
+      proxyTimeout: 30000,
+      keepAlive: true
+    })
   }
 
   http2(req, res, website, host) {
@@ -60,26 +66,20 @@ class WebProxy {
   }
 
   http1(req, res, website, host) {
-    const proxy = httpProxy.createProxyServer({
-      timeout: 30000,
-      proxyTimeout: 30000,
-      keepAlive: true
-    })
-
-    proxy.web(req, res, {target: 'http://127.0.0.1:' + website.port})
-
-    proxy.on('proxyReq', (proxyReq, req) => {
+    this.#proxy.once('proxyReq', (proxyReq, req) => {
       proxyReq.setHeader('x-candy-connection-remoteaddress', req.socket.remoteAddress ?? '')
       proxyReq.setHeader('x-candy-connection-ssl', 'true')
     })
 
-    proxy.on('error', (err, req, res) => {
+    this.#proxy.once('error', (err, req, res) => {
       this.#log(`Proxy error for ${host}: ${err.message}`)
       if (!res.headersSent) {
         res.statusCode = 502
         res.end('Bad Gateway')
       }
     })
+
+    this.#proxy.web(req, res, {target: 'http://127.0.0.1:' + website.port})
   }
 }
 
