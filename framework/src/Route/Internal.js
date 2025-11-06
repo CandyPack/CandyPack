@@ -1,4 +1,20 @@
 class Internal {
+  static #validateField(validator, field, validation, value) {
+    const rules = validation.rule.split('|')
+    for (const rule of rules) {
+      const validatorChain = validator.post(field.name).check(rule)
+      if (validation.message) {
+        const message = this.replacePlaceholders(validation.message, {
+          value: value,
+          field: field.name,
+          label: field.label || field.placeholder,
+          rule: rule
+        })
+        validatorChain.message(message)
+      }
+    }
+  }
+
   static async register(Candy) {
     const token = await Candy.request('_candy_register_token')
     if (!token) {
@@ -56,19 +72,7 @@ class Internal {
       const value = await Candy.request(field.name)
 
       for (const validation of field.validations) {
-        const rules = validation.rule.split('|')
-        for (const rule of rules) {
-          const validatorChain = validator.post(field.name).check(rule)
-          if (validation.message) {
-            const message = this.replacePlaceholders(validation.message, {
-              value: value,
-              field: field.name,
-              label: field.label || field.placeholder,
-              rule: rule
-            })
-            validatorChain.message(message)
-          }
-        }
+        this.#validateField(validator, field, validation, value)
       }
 
       if (field.unique) {
@@ -230,19 +234,7 @@ class Internal {
       const value = await Candy.request(field.name)
 
       for (const validation of field.validations) {
-        const rules = validation.rule.split('|')
-        for (const rule of rules) {
-          const validatorChain = validator.post(field.name).check(rule)
-          if (validation.message) {
-            const message = this.replacePlaceholders(validation.message, {
-              value: value,
-              field: field.name,
-              label: field.label || field.placeholder,
-              rule: rule
-            })
-            validatorChain.message(message)
-          }
-        }
+        this.#validateField(validator, field, validation, value)
       }
 
       credentials[field.name] = value
