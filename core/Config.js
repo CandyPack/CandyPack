@@ -55,6 +55,11 @@ class Config {
   }
 
   force() {
+    this.#changed = true
+    // Mark all modules as changed to force save
+    for (const moduleName of Object.keys(this.#moduleMap)) {
+      this.#moduleChanged[moduleName] = true
+    }
     this.#save()
   }
 
@@ -323,8 +328,9 @@ class Config {
         }
       }
 
-      // 3. Store original config for verification
+      // 3. Store original config for verification (only keys that actually exist)
       const originalConfig = JSON.parse(JSON.stringify(this.config))
+      log(`[Config] Original config keys: ${Object.keys(originalConfig).join(', ')}`)
 
       // 4. Split config object by module mapping and write each module
       let successfulWrites = 0
@@ -332,16 +338,18 @@ class Config {
 
       for (const [moduleName, keys] of Object.entries(this.#moduleMap)) {
         const moduleData = {}
+        let hasData = false
 
         // Extract relevant config keys for this module
         for (const key of keys) {
           if (this.config[key] !== undefined) {
             moduleData[key] = this.config[key]
+            hasData = true
           }
         }
 
-        // Only write module file if it has data
-        if (Object.keys(moduleData).length > 0) {
+        // Write module file if it has any keys (even if empty objects/arrays)
+        if (hasData) {
           const moduleFile = path.join(this.#configDir, moduleName + '.json')
 
           try {
@@ -415,13 +423,22 @@ class Config {
         }
       }
 
-      // Compare with original config object for data integrity
-      const comparison = this.#deepCompare(originalConfig, verifyConfig)
+      // Only verify keys that exist in original config
+      // Missing keys in both configs are acceptable (e.g., DNS not configured yet)
+      for (const key of Object.keys(originalConfig)) {
+        if (!(key in verifyConfig)) {
+          return {
+            success: false,
+            error: `Data mismatch: ${key} exists in original but missing after migration`
+          }
+        }
 
-      if (!comparison.equal) {
-        return {
-          success: false,
-          error: `Data mismatch detected: ${comparison.differences.join(', ')}`
+        const comparison = this.#deepCompare(originalConfig[key], verifyConfig[key], key)
+        if (!comparison.equal) {
+          return {
+            success: false,
+            error: `Data mismatch in ${key}: ${comparison.differences.join(', ')}`
+          }
         }
       }
 
