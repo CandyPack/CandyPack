@@ -207,7 +207,7 @@ class Web {
         if (!req.headers.host) {
           req.headers.host = host
         }
-        return this.#proxy.http2(req, res, website)
+        return this.#proxy.http2(req, res, website, host)
       }
 
       return this.#proxy.http1(req, res, website, host)

@@ -8,7 +8,7 @@ class WebProxy {
     this.#log = log
   }
 
-  http2(req, res, website) {
+  http2(req, res, website, host) {
     const options = {
       hostname: '127.0.0.1',
       port: website.port,
@@ -49,7 +49,7 @@ class WebProxy {
     })
 
     proxyReq.on('error', err => {
-      this.#log(`HTTP/2 proxy error: ${err.message}`)
+      this.#log(`HTTP/2 proxy error for ${host}: ${err.message}`)
       if (!res.headersSent) {
         res.writeHead(502)
         res.end('Bad Gateway')
