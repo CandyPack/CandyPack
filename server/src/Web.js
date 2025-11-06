@@ -173,10 +173,22 @@ class Web {
   request(req, res, secure) {
     let host = req.headers.host || req.headers[':authority']
     if (!host) return this.index(req, res)
-    while (!Candy.core('Config').config.websites[host] && host.includes('.')) host = host.split('.').slice(1).join('.')
-    const website = Candy.core('Config').config.websites[host]
+
+    // Remove port from host
+    if (host.includes(':')) {
+      host = host.split(':')[0]
+    }
+
+    // Find matching website (check subdomains)
+    let matchedHost = host
+    while (!Candy.core('Config').config.websites[matchedHost] && matchedHost.includes('.')) {
+      matchedHost = matchedHost.split('.').slice(1).join('.')
+    }
+
+    const website = Candy.core('Config').config.websites[matchedHost]
     if (!website) return this.index(req, res)
     if (!website.pid || !this.#watcher[website.pid]) return this.index(req, res)
+
     try {
       if (!secure) {
         res.writeHead(301, {Location: 'https://' + host + (req.url || req.headers[':path'] || '/')})
@@ -189,6 +201,9 @@ class Web {
         }
         if (!req.method && req.headers[':method']) {
           req.method = req.headers[':method'].toUpperCase()
+        }
+        if (!req.headers.host) {
+          req.headers.host = host
         }
         return this.#proxy.http2(req, res, website)
       }
