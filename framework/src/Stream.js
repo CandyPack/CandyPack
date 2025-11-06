@@ -137,6 +137,7 @@ class Stream {
       this.close()
     } catch (err) {
       this.error(err.message)
+      this.close()
     }
   }
 }
