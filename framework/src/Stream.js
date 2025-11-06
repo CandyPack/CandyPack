@@ -84,7 +84,10 @@ class Stream {
     if (input && typeof input.pipe === 'function') {
       input.on('data', chunk => this.send(chunk.toString()))
       input.on('end', () => this.close())
-      input.on('error', err => this.error(err.message))
+      input.on('error', err => {
+        this.error(err.message)
+        this.close()
+      })
       return
     }
 
