@@ -382,7 +382,7 @@ class Route {
       return
     }
     if (authFile) this.set('#page', path, authFile)
-    if (file) this.page(path, file)
+    if (file) this.set('page', path, file)
   }
 
   authPost(path, authFile, file) {

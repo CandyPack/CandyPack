@@ -231,12 +231,13 @@ class CandyRequest {
       }
 
       if (!pub) {
+        const activeSessions = new Set(Object.values(Candy.Request.sessionLocks).map(l => l.sessionId))
         do {
           pub = nodeCrypto
             .createHash('md5')
             .update(this.ip + this.id + Date.now().toString() + Math.random().toString())
             .digest('hex')
-        } while (Candy.Request.session[`${pub}-${pri}`] || Object.values(Candy.Request.sessionLocks).some(l => l.sessionId === pub))
+        } while (Candy.Request.session[`${pub}-${pri}`] || activeSessions.has(pub))
 
         Candy.Request.sessionLocks[lockKey] = {sessionId: pub, timestamp: now}
         Candy.Request.session[`${pub}-${pri}`] = {}
