@@ -63,6 +63,9 @@ module.exports = {
       _candy.write = function (value) {
         return _candy.Request.write(value)
       }
+      _candy.stream = function (input) {
+        return new (require('./Stream'))(_candy.Request.req, _candy.Request.res, input)
+      }
     }
 
     return _candy
