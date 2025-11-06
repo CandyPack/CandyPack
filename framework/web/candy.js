@@ -333,9 +333,13 @@ class candy {
           break
         }
 
-        if (input.hasAttribute('pattern') && input.value && !new RegExp(input.getAttribute('pattern')).test(input.value)) {
-          showError(input, 'pattern')
-          break
+        if (input.hasAttribute('pattern') && input.value) {
+          const trimmedValue = input.value.trim()
+          const pattern = input.getAttribute('pattern')
+          if (!new RegExp(pattern).test(trimmedValue)) {
+            showError(input, 'pattern')
+            break
+          }
         }
 
         if (input.type === 'email' && input.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value)) {
