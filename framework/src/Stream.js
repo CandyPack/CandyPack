@@ -69,7 +69,15 @@ class Stream {
     }
 
     if (input && typeof input.then === 'function') {
-      input.then(data => this.send(data)).catch(err => this.error(err.message))
+      input
+        .then(data => {
+          this.send(data)
+          this.close()
+        })
+        .catch(err => {
+          this.error(err.message)
+          this.close()
+        })
       return
     }
 
