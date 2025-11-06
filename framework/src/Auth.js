@@ -278,8 +278,8 @@ class Auth {
       columns.push(`${safeKey} ${columnType} NULL`)
     }
 
-    columns.push(`\`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP`)
-    columns.push(`\`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+    columns.push(`${mysql.escapeId('created_at')} TIMESTAMP DEFAULT CURRENT_TIMESTAMP`)
+    columns.push(`${mysql.escapeId('updated_at')} TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
     columns.push(`PRIMARY KEY (${safePrimaryKey})`)
 
     const safeTableName = mysql.escapeId(tableName)
