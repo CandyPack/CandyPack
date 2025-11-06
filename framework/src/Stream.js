@@ -117,14 +117,19 @@ class Stream {
   }
 
   #pipeIterator(iterator) {
+    const batchSize = 100
     const iterate = () => {
-      const {value, done} = iterator.next()
-      if (done) {
-        this.close()
-      } else {
+      let count = 0
+      while (count < batchSize) {
+        const {value, done} = iterator.next()
+        if (done) {
+          this.close()
+          return
+        }
         this.send(value)
-        setImmediate(iterate)
+        count++
       }
+      setImmediate(iterate)
     }
     iterate()
   }
