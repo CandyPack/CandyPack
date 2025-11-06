@@ -66,18 +66,29 @@ class WebProxy {
   }
 
   http1(req, res, website, host) {
-    this.#proxy.once('proxyReq', (proxyReq, req) => {
+    const onProxyReq = (proxyReq, req) => {
       proxyReq.setHeader('x-candy-connection-remoteaddress', req.socket.remoteAddress ?? '')
       proxyReq.setHeader('x-candy-connection-ssl', 'true')
-    })
+    }
 
-    this.#proxy.once('error', (err, req, res) => {
+    const onError = (err, req, res) => {
       this.#log(`Proxy error for ${host}: ${err.message}`)
       if (!res.headersSent) {
         res.statusCode = 502
         res.end('Bad Gateway')
       }
-    })
+    }
+
+    const cleanup = () => {
+      this.#proxy.off('proxyReq', onProxyReq)
+      this.#proxy.off('error', onError)
+    }
+
+    this.#proxy.on('proxyReq', onProxyReq)
+    this.#proxy.on('error', onError)
+
+    res.on('finish', cleanup)
+    res.on('close', cleanup)
 
     this.#proxy.web(req, res, {target: 'http://127.0.0.1:' + website.port})
   }
