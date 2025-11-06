@@ -89,6 +89,7 @@ class Stream {
     }
 
     this.send(input)
+    this.close()
   }
 
   send(data) {
