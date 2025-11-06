@@ -717,6 +717,55 @@ class candy {
       this.load(window.location.href, callback, false)
     })
   }
+
+  listen(url, onMessage, options = {}) {
+    const {onError = null, onOpen = null, autoReconnect = true, reconnectDelay = 3000} = options
+
+    let eventSource = null
+    let reconnectTimer = null
+    let isClosed = false
+
+    const connect = () => {
+      if (isClosed) return
+
+      eventSource = new EventSource(url)
+
+      eventSource.onopen = e => {
+        if (onOpen) onOpen(e)
+      }
+
+      eventSource.onmessage = e => {
+        try {
+          const data = JSON.parse(e.data)
+          onMessage(data)
+        } catch {
+          onMessage(e.data)
+        }
+      }
+
+      eventSource.onerror = e => {
+        if (onError) onError(e)
+
+        if (autoReconnect && !isClosed) {
+          eventSource.close()
+          reconnectTimer = setTimeout(connect, reconnectDelay)
+        }
+      }
+    }
+
+    connect()
+
+    return {
+      close: () => {
+        isClosed = true
+        if (reconnectTimer) clearTimeout(reconnectTimer)
+        if (eventSource) eventSource.close()
+      },
+      send: () => {
+        throw new Error('SSE is one-way. Use POST requests to send data.')
+      }
+    }
+  }
 }
 
 window.Candy = new candy()

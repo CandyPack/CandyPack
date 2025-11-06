@@ -321,6 +321,16 @@
           "title": "Mail Service"
         }
       ]
+    },
+    {
+      "file": "12-streaming",
+      "title": "Streaming",
+      "children": [
+        {
+          "file": "01-streaming-overview.md",
+          "title": "Streaming API"
+        }
+      ]
     }
   ],
   "frontend": [
@@ -369,6 +379,16 @@
         {
           "file": "01-get-post.md",
           "title": "GET & POST Requests"
+        }
+      ]
+    },
+    {
+      "file": "05-streaming",
+      "title": "Streaming",
+      "children": [
+        {
+          "file": "01-client-streaming.md",
+          "title": "Client-Side Streaming"
         }
       ]
     }
