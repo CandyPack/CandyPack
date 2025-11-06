@@ -158,37 +158,6 @@ module.exports = async (Candy) => {
 
 ## Real-World Examples
 
-### Auth Code Listener
-
-```javascript
-// route/www.js
-Candy.Route.get('/auth/listen', 'auth.listen')
-Candy.Route.post('/auth/verify', 'auth.verify')
-
-// controller/auth/get/listen.js
-module.exports = async (Candy) => {
-  const userId = await Candy.request('userId')
-  
-  Candy.stream((send) => {
-    send({ status: 'waiting', code: 'ABC-123' })
-    
-    global.authStreams = global.authStreams || {}
-    global.authStreams[userId] = { send }
-  })
-}
-
-// controller/auth/post/verify.js
-module.exports = async (Candy) => {
-  const userId = await Candy.request('userId')
-  
-  global.authStreams[userId]?.send({ 
-    status: 'connected' 
-  })
-  
-  return { success: true }
-}
-```
-
 ### Real-time Logs
 
 ```javascript
