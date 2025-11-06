@@ -21,7 +21,6 @@ const stream = Candy.listen('/events',
   {
     onOpen: () => console.log('Connected'),
     onError: (err) => console.error('Error:', err),
-    onClose: () => console.log('Disconnected'),
     autoReconnect: true,
     reconnectDelay: 3000
   }
