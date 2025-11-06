@@ -16,6 +16,7 @@ class Web {
   #active = {}
   #error_counts = {}
   #loaded = false
+  #log
   #logs = {log: {}, err: {}}
   #ports = {}
   #proxy
@@ -25,7 +26,8 @@ class Web {
   #watcher = {}
 
   constructor() {
-    this.#proxy = new WebProxy(log)
+    this.#log = log
+    this.#proxy = new WebProxy(this.#log)
   }
 
   check() {
