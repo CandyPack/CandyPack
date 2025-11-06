@@ -28,7 +28,15 @@ class WebProxy {
 
     const proxyReq = http.request(options, proxyRes => {
       const responseHeaders = {}
-      const forbiddenHeaders = ['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'proxy-connection']
+      const forbiddenHeaders = [
+        'connection',
+        'keep-alive',
+        'transfer-encoding',
+        'upgrade',
+        'proxy-connection',
+        'proxy-authenticate',
+        'trailer'
+      ]
 
       for (const [key, value] of Object.entries(proxyRes.headers)) {
         if (!forbiddenHeaders.includes(key.toLowerCase())) {
