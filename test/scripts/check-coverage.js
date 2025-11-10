@@ -7,7 +7,6 @@
 
 const {execSync} = require('child_process')
 const fs = require('fs')
-const path = require('path')
 
 // Get list of staged files
 function getStagedFiles() {
