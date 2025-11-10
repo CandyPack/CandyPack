@@ -864,7 +864,7 @@ class Config {
     }
     if (!this.#loaded) {
       if (data.length > 2) {
-        var backup = path.join(this.#dir, 'config-corrupted.json')
+        const backup = path.join(this.#dir, 'config-corrupted.json')
         if (fs.existsSync(this.#file)) fs.copyFileSync(this.#file, backup)
       }
       const bakDir = path.join(this.#dir, '.bak')
