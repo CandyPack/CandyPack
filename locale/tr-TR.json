@@ -49,7 +49,7 @@
     "No websites found.": "Web sitesi bulunamadı.",
     "Service %s is not running.": "%s hizmeti çalışmıyor.",
     "Service %s not found.": "%s hizmeti bulunamadı.",
-    "Enter the path to the website (%s): ": "Enter the path to the website (%s): ",
+    "Enter the path to the website (%s): ": "Web sitesinin yolunu girin (%s): ",
     "Website %s created.": "Website %s oluşturuldu.",
     "Websites:": "Web Siteleri:",
     "Website %s deleted.": "Website %s silindi.",
@@ -63,8 +63,8 @@
     "Exit": "Çık",
     "Website %s already exists.": "Website %s zaten var.",
     "Website %s not found.": "Website %s bulunamadı.",
-    "Create a new website": "Create a new website",
-    "Setting up domain %s...": "Setting up domain %s...",
+    "Create a new website": "Yeni bir web sitesi oluştur",
+    "Setting up domain %s...": "Domain %s ayarlanıyor...",
     "Domain %s set.": "Domain %s ayarlandı.",
     "Setting up website files for %s...": "Website dosyaları %s için ayarlanıyor...",
     "Website files for %s set.": "Website dosyaları %s için ayarlandı.",
@@ -77,6 +77,7 @@
     "Subdomain %s1 deleted successfully from domain %s2.": "%s1 alt alan adı %s2 domaininden başarıyla silindi.",
     "%s is a domain.": "%s bir alan adıdır.",
     "Enter the subdomain name (subdomain.example.com): ": "Alt alan adı girin (altalanadi.ornek.com): ",
-    "Create a new subdomain": "Create a new subdomain",
-    "Delete a subdomain": "Delete a subdomain"
+    "Create a new subdomain": "Yeni bir alt alan adı oluştur",
+    "Delete a subdomain": "Bir alt alan adı sil",
+    "Delete a Service": "Bir Hizmet Sil"
 }
