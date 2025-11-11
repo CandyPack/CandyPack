@@ -33,6 +33,17 @@ class WebProxy {
     options.headers['x-candy-connection-ssl'] = 'true'
 
     const proxyReq = http.request(options, proxyRes => {
+      if (proxyRes.headers['x-candy-early-hints'] && typeof res.writeEarlyHints === 'function') {
+        try {
+          const links = JSON.parse(proxyRes.headers['x-candy-early-hints'])
+          if (Array.isArray(links) && links.length > 0) {
+            res.writeEarlyHints({link: links})
+          }
+        } catch {
+          // Ignore parsing errors
+        }
+      }
+
       const responseHeaders = {}
       const forbiddenHeaders = [
         'connection',
@@ -41,7 +52,8 @@ class WebProxy {
         'upgrade',
         'proxy-connection',
         'proxy-authenticate',
-        'trailer'
+        'trailer',
+        'x-candy-early-hints'
       ]
 
       for (const [key, value] of Object.entries(proxyRes.headers)) {
@@ -71,6 +83,21 @@ class WebProxy {
       proxyReq.setHeader('x-candy-connection-ssl', 'true')
     }
 
+    const onProxyRes = (proxyRes, req, res) => {
+      if (proxyRes.headers['x-candy-early-hints'] && typeof res.writeEarlyHints === 'function') {
+        try {
+          const links = JSON.parse(proxyRes.headers['x-candy-early-hints'])
+          if (Array.isArray(links) && links.length > 0) {
+            res.writeEarlyHints({link: links})
+          }
+        } catch {
+          // Ignore parsing errors
+        }
+      }
+
+      delete proxyRes.headers['x-candy-early-hints']
+    }
+
     const onError = (err, req, res) => {
       this.#log(`Proxy error for ${host}: ${err.message}`)
       if (!res.headersSent) {
@@ -81,10 +108,12 @@ class WebProxy {
 
     const cleanup = () => {
       this.#proxy.off('proxyReq', onProxyReq)
+      this.#proxy.off('proxyRes', onProxyRes)
       this.#proxy.off('error', onError)
     }
 
     this.#proxy.on('proxyReq', onProxyReq)
+    this.#proxy.on('proxyRes', onProxyRes)
     this.#proxy.on('error', onError)
 
     res.on('finish', cleanup)
