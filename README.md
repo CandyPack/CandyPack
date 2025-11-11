@@ -30,8 +30,16 @@
 
 > 🔥 **Install with a single command. Works on Linux, macOS, and Windows.**
 
+#### Linux & macOS
+
 ```bash
-curl -sL https://candypack.dev/install | bash
+curl -sL https://candypack.dev/install | sudo bash
+```
+
+#### Windows (PowerShell)
+
+```powershell
+irm https://candypack.dev/install | iex
 ```
 
 This command:
