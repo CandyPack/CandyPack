@@ -19,8 +19,6 @@ class Mail {
   #server_smtp
   #started = false
   #sslCache = new Map()
-  #sslCacheTimestamps = new Map()
-  #ticketKeys = null
 
   check() {
     if (this.#checking) return
@@ -409,58 +407,35 @@ class Mail {
     const imap = new server(options)
     imap.listen(143)
     options.SNICallback = (hostname, callback) => {
-      try {
-        let ssl = Candy.core('Config').config.ssl ?? {}
-        let originalHostname = hostname
-        let cacheKey = originalHostname
-        let certPath = null
+      const cached = this.#sslCache.get(hostname)
+      if (cached) return callback(null, cached)
 
-        while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.')
-
-        let website = Candy.core('Config').config.websites[hostname]
-        if (
-          website &&
-          website.cert.ssl &&
-          website.cert.ssl.key &&
-          website.cert.ssl.cert &&
-          fs.existsSync(website.cert.ssl.key) &&
-          fs.existsSync(website.cert.ssl.cert)
-        ) {
-          certPath = website.cert.ssl.key + '|' + website.cert.ssl.cert
-        } else {
-          certPath = ssl.key + '|' + ssl.cert
-          cacheKey = 'default'
+      let ssl = Candy.core('Config').config.ssl ?? {}
+      let sslOptions = {}
+      while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.')
+      let website = Candy.core('Config').config.websites[hostname]
+      if (
+        website &&
+        website.cert.ssl &&
+        website.cert.ssl.key &&
+        website.cert.ssl.cert &&
+        fs.existsSync(website.cert.ssl.key) &&
+        fs.existsSync(website.cert.ssl.cert)
+      ) {
+        sslOptions = {
+          key: fs.readFileSync(website.cert.ssl.key),
+          cert: fs.readFileSync(website.cert.ssl.cert)
         }
-
-        const cachedCtx = this.#sslCache.get(cacheKey)
-        const cachedTimestamp = this.#sslCacheTimestamps.get(cacheKey)
-        const now = Date.now()
-
-        if (cachedCtx && cachedTimestamp && now - cachedTimestamp < 3600000) {
-          return callback(null, cachedCtx)
+      } else {
+        sslOptions = {
+          key: fs.readFileSync(ssl.key),
+          cert: fs.readFileSync(ssl.cert)
         }
-
-        const [keyPath, certPath_] = certPath.split('|')
-        const ctx = tls.createSecureContext({
-          key: fs.readFileSync(keyPath),
-          cert: fs.readFileSync(certPath_)
-        })
-
-        this.#sslCache.set(cacheKey, ctx)
-        this.#sslCacheTimestamps.set(cacheKey, now)
-
-        callback(null, ctx)
-      } catch (err) {
-        log(`SSL certificate error for ${hostname}: ${err.message}`)
-        callback(err)
       }
+      const ctx = tls.createSecureContext(sslOptions)
+      this.#sslCache.set(hostname, ctx)
+      callback(null, ctx)
     }
-    options.sessionTimeout = 300
-    if (!this.#ticketKeys) {
-      this.#ticketKeys = Buffer.allocUnsafe(48)
-      require('crypto').randomFillSync(this.#ticketKeys)
-    }
-    options.ticketKeys = this.#ticketKeys
     options.secure = true
     this.#server_smtp = new SMTPServer(options)
     this.#server_smtp.listen(465)
