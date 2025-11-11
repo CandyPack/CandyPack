@@ -171,6 +171,10 @@
         {
           "file": "04-environment-variables.md",
           "title": "Environment Variables"
+        },
+        {
+          "file": "05-early-hints.md",
+          "title": "Early Hints"
         }
       ]
     },
