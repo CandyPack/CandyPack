@@ -18,6 +18,9 @@ class Web {
   #loaded = false
   #log
   #logs = {log: {}, err: {}}
+  #sslCache = new Map()
+  #sslCacheTimestamps = new Map()
+  #ticketKeys = null
   #ports = {}
   #proxy
   #server_http
@@ -28,6 +31,32 @@ class Web {
   constructor() {
     this.#log = log
     this.#proxy = new WebProxy(this.#log)
+  }
+
+  clearSSLCache(domain) {
+    if (domain) {
+      this.#sslCache.delete(domain)
+      this.#sslCacheTimestamps.delete(domain)
+      const subdomains = Candy.core('Config').config.websites[domain]?.subdomain ?? []
+      for (const subdomain of subdomains) {
+        const fullDomain = subdomain + '.' + domain
+        this.#sslCache.delete(fullDomain)
+        this.#sslCacheTimestamps.delete(fullDomain)
+      }
+      log('SSL cache cleared for domain %s', domain)
+    } else {
+      this.#sslCache.clear()
+      this.#sslCacheTimestamps.clear()
+      log('SSL cache cleared for all domains')
+    }
+  }
+
+  #getTicketKeys() {
+    if (!this.#ticketKeys) {
+      this.#ticketKeys = Buffer.allocUnsafe(48)
+      require('crypto').randomFillSync(this.#ticketKeys)
+    }
+    return this.#ticketKeys
   }
 
   check() {
@@ -239,10 +268,14 @@ class Web {
       const serverOptions = {
         SNICallback: (hostname, callback) => {
           try {
-            let sslOptions
+            let originalHostname = hostname
             while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.'))
               hostname = hostname.split('.').slice(1).join('.')
+
             let website = Candy.core('Config').config.websites[hostname]
+            let cacheKey = originalHostname
+            let certPath = null
+
             if (
               website &&
               website.cert &&
@@ -252,17 +285,29 @@ class Web {
               fs.existsSync(website.cert.ssl.key) &&
               fs.existsSync(website.cert.ssl.cert)
             ) {
-              sslOptions = {
-                key: fs.readFileSync(website.cert.ssl.key),
-                cert: fs.readFileSync(website.cert.ssl.cert)
-              }
+              certPath = website.cert.ssl.key + '|' + website.cert.ssl.cert
             } else {
-              sslOptions = {
-                key: fs.readFileSync(ssl.key),
-                cert: fs.readFileSync(ssl.cert)
-              }
+              certPath = ssl.key + '|' + ssl.cert
+              cacheKey = 'default'
             }
-            const ctx = tls.createSecureContext(sslOptions)
+
+            const cachedCtx = this.#sslCache.get(cacheKey)
+            const cachedTimestamp = this.#sslCacheTimestamps.get(cacheKey)
+            const now = Date.now()
+
+            if (cachedCtx && cachedTimestamp && now - cachedTimestamp < 3600000) {
+              return callback(null, cachedCtx)
+            }
+
+            const [keyPath, certPath_] = certPath.split('|')
+            const ctx = tls.createSecureContext({
+              key: fs.readFileSync(keyPath),
+              cert: fs.readFileSync(certPath_)
+            })
+
+            this.#sslCache.set(cacheKey, ctx)
+            this.#sslCacheTimestamps.set(cacheKey, now)
+
             callback(null, ctx)
           } catch (err) {
             log(`SSL certificate error for ${hostname}: ${err.message}`)
@@ -270,7 +315,9 @@ class Web {
           }
         },
         key: fs.readFileSync(ssl.key),
-        cert: fs.readFileSync(ssl.cert)
+        cert: fs.readFileSync(ssl.cert),
+        sessionTimeout: 300,
+        ticketKeys: this.#getTicketKeys()
       }
 
       if (useHttp2) {
