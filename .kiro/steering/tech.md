@@ -57,7 +57,8 @@ npm install -g candypack                       # Manual install
 
 ## Logging Standards
 
-- **Log Class**: Use `Candy.core('Log', false).init('ModuleName')` for all logging
+### Server & Core Modules
+- **Log Class**: Use `Candy.core('Log', false).init('ModuleName')` for all logging in `server/` and `core/` directories
 - **Usage Pattern**:
 
   ```javascript
@@ -70,4 +71,17 @@ npm install -g candypack                       # Manual install
 
 - **CLI Mode**: Logs are automatically suppressed in CLI mode to avoid breaking the interface
 - **Location**: Log class is in `core/Log.js` (also available via `server/src/Log.js` for backward compatibility)
-- **Never use**: `console.log()` or `console.error()` directly - always use the Log class
+
+### Framework Modules
+- **Console Logging**: Use `console.log()` and `console.error()` directly in `framework/` directory
+- **Reason**: Framework runs in user's application context where Log class may not be available
+- **Usage Pattern**:
+
+  ```javascript
+  console.log('[ModuleName] Info message')
+  console.error('[ModuleName] Error:', error.message)
+  ```
+
+### General Rule
+- **Server/Core**: Always use Log class (never `console.log`)
+- **Framework**: Always use `console.log` (Log class not guaranteed to be available)
