@@ -20,6 +20,18 @@ class Mail {
   #started = false
   #sslCache = new Map()
 
+  clearSSLCache(domain) {
+    if (domain) {
+      for (const key of this.#sslCache.keys()) {
+        if (key === domain || key.endsWith('.' + domain)) {
+          this.#sslCache.delete(key)
+        }
+      }
+    } else {
+      this.#sslCache.clear()
+    }
+  }
+
   check() {
     if (this.#checking) return
     if (!this.#started) this.init()

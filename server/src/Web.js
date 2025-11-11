@@ -33,10 +33,10 @@ class Web {
 
   clearSSLCache(domain) {
     if (domain) {
-      this.#sslCache.delete(domain)
-      const subdomains = Candy.core('Config').config.websites[domain]?.subdomain ?? []
-      for (const subdomain of subdomains) {
-        this.#sslCache.delete(subdomain + '.' + domain)
+      for (const key of this.#sslCache.keys()) {
+        if (key === domain || key.endsWith('.' + domain)) {
+          this.#sslCache.delete(key)
+        }
       }
     } else {
       this.#sslCache.clear()
@@ -289,7 +289,11 @@ class Web {
         key: fs.readFileSync(ssl.key),
         cert: fs.readFileSync(ssl.cert),
         sessionTimeout: 300,
-        ciphers: 'TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384',
+        ciphers:
+          'TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384:' +
+          'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:' +
+          'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:' +
+          'ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305',
         honorCipherOrder: true
       }
 
