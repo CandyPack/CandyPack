@@ -18,6 +18,7 @@ class Web {
   #loaded = false
   #log
   #logs = {log: {}, err: {}}
+  #sslCache = new Map()
   #ports = {}
   #proxy
   #server_http
@@ -28,6 +29,18 @@ class Web {
   constructor() {
     this.#log = log
     this.#proxy = new WebProxy(this.#log)
+  }
+
+  clearSSLCache(domain) {
+    if (domain) {
+      this.#sslCache.delete(domain)
+      const subdomains = Candy.core('Config').config.websites[domain]?.subdomain ?? []
+      for (const subdomain of subdomains) {
+        this.#sslCache.delete(subdomain + '.' + domain)
+      }
+    } else {
+      this.#sslCache.clear()
+    }
   }
 
   check() {
@@ -239,6 +252,9 @@ class Web {
       const serverOptions = {
         SNICallback: (hostname, callback) => {
           try {
+            const cached = this.#sslCache.get(hostname)
+            if (cached) return callback(null, cached)
+
             let sslOptions
             while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.'))
               hostname = hostname.split('.').slice(1).join('.')
@@ -263,6 +279,7 @@ class Web {
               }
             }
             const ctx = tls.createSecureContext(sslOptions)
+            this.#sslCache.set(hostname, ctx)
             callback(null, ctx)
           } catch (err) {
             log(`SSL certificate error for ${hostname}: ${err.message}`)
@@ -270,7 +287,10 @@ class Web {
           }
         },
         key: fs.readFileSync(ssl.key),
-        cert: fs.readFileSync(ssl.cert)
+        cert: fs.readFileSync(ssl.cert),
+        sessionTimeout: 300,
+        ciphers: 'TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384',
+        honorCipherOrder: true
       }
 
       if (useHttp2) {

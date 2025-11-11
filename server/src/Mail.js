@@ -18,6 +18,7 @@ class Mail {
   #db
   #server_smtp
   #started = false
+  #sslCache = new Map()
 
   check() {
     if (this.#checking) return
@@ -406,6 +407,9 @@ class Mail {
     const imap = new server(options)
     imap.listen(143)
     options.SNICallback = (hostname, callback) => {
+      const cached = this.#sslCache.get(hostname)
+      if (cached) return callback(null, cached)
+
       let ssl = Candy.core('Config').config.ssl ?? {}
       let sslOptions = {}
       while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.')) hostname = hostname.split('.').slice(1).join('.')
@@ -429,6 +433,7 @@ class Mail {
         }
       }
       const ctx = tls.createSecureContext(sslOptions)
+      this.#sslCache.set(hostname, ctx)
       callback(null, ctx)
     }
     options.secure = true
