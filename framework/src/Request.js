@@ -178,10 +178,8 @@ class CandyRequest {
   print() {
     if (this.res.headersSent) return
 
-    if (this.#earlyHints && this.#earlyHints.length > 0) {
-      const EarlyHints = require('./View/EarlyHints')
-      const earlyHintsManager = new EarlyHints()
-      earlyHintsManager.send(this.res, this.#earlyHints)
+    if (this.#earlyHints && this.#earlyHints.length > 0 && global.Candy?.View?.EarlyHints) {
+      global.Candy.View.EarlyHints.send(this.res, this.#earlyHints)
     }
 
     this.#headers['Set-Cookie'] = this.#cookies.sent
