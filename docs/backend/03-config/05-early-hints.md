@@ -108,7 +108,7 @@ The framework intelligently selects only **critical resources** from the `<head>
 ### ✅ Included
 - CSS files: `<link rel="stylesheet" href="/css/main.css">`
 - Blocking JavaScript: `<script src="/js/app.js"></script>`
-- Web fonts: `<link href="/fonts/main.woff2" as="font">`
+- Web fonts: `<link href="/fonts/main.woff2" as="font">` (supports `.woff`, `.woff2`, `.ttf`, `.otf`, `.eot`)
 
 ### ❌ Excluded
 - Deferred scripts: `<script src="/js/app.js" defer></script>`
@@ -264,10 +264,18 @@ Or use `defer` for non-critical resources:
 
 ### 4. Preload Fonts
 
-If using custom fonts, include them in `<head>`:
+If using custom fonts, include them in `<head>`. All common font formats are supported:
 
 ```html
+<!-- WOFF2 (recommended, best compression) -->
 <link rel="preload" href="/fonts/main.woff2" as="font" type="font/woff2" crossorigin>
+
+<!-- WOFF (fallback for older browsers) -->
+<link rel="preload" href="/fonts/main.woff" as="font" type="font/woff" crossorigin>
+
+<!-- TrueType/OpenType -->
+<link rel="preload" href="/fonts/main.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/fonts/main.otf" as="font" type="font/otf" crossorigin>
 ```
 
 ## Troubleshooting
