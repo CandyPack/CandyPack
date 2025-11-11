@@ -235,15 +235,17 @@ describe('EarlyHints', () => {
       expect(mockRes.writeEarlyHints).not.toHaveBeenCalled()
     })
 
-    it('should return false when writeEarlyHints not available', () => {
+    it('should return true even when writeEarlyHints not available', () => {
       const mockRes = {
         headersSent: false,
-        writableEnded: false
+        writableEnded: false,
+        setHeader: jest.fn()
       }
       const resources = [{href: '/css/main.css', as: 'style'}]
 
       const result = earlyHints.send(mockRes, resources)
-      expect(result).toBe(false)
+      expect(result).toBe(true)
+      expect(mockRes.setHeader).toHaveBeenCalledWith('X-Candy-Early-Hints', JSON.stringify(['</css/main.css>; rel=preload; as=style']))
     })
 
     it('should send early hints successfully', () => {
