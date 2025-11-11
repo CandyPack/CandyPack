@@ -91,6 +91,7 @@ class Mysql {
   async delete() {
     let query = this.query('delete')
     let run = await this.run(query)
+    if (run === false) return false
     this.affected = run.affectedRows
     //       if($this->affected > 0) self::clearcache();
     return this
@@ -122,48 +123,22 @@ class Mysql {
           ') '
         )
       return `${mysql.escape(v)}`
-    } else if (type == 'table') {
+    } else if (type == 'table' || type == 'col') {
       let as = ''
       if (typeof v === 'object') {
         as = Object.values(v)[0]
         v = Object.keys(v)[0]
-        as = ' `' + as + '` '
+        as = type == 'col' ? ` AS ${mysql.escapeId(as)} ` : ` ${mysql.escapeId(as)} `
       }
-      if (v.includes('.'))
+      if (v.includes('.')) {
         return (
-          ' `' +
           v
             .split('.')
-            .map(val => {
-              val = mysql.escape(val)
-              return val.substring(1, val.length - 1)
-            })
-            .join('`.`') +
-          '` ' +
-          as
+            .map(val => mysql.escapeId(val))
+            .join('.') + as
         )
-      return '`' + mysql.escape(v).replace(/'/g, '') + '`' + as
-    } else if (type == 'col') {
-      let as = ''
-      if (typeof v === 'object') {
-        as = Object.values(v)[0]
-        v = Object.keys(v)[0]
-        as = 'AS "' + as + '" '
       }
-      if (v.includes('.'))
-        return (
-          ' `' +
-          v
-            .split('.')
-            .map(val => {
-              val = mysql.escape(val)
-              return val.substring(1, val.length - 1)
-            })
-            .join('`.`') +
-          '` ' +
-          as
-        )
-      return '`' + mysql.escape(v).replace(/'/g, '') + '`' + as
+      return mysql.escapeId(v) + as
     } else if (type == 'statement' || type == 'st') {
       return this.#statements.includes(v.toUpperCase()) ? v.toUpperCase() : '='
     }
@@ -219,8 +194,7 @@ class Mysql {
     this.#arr['values'] = ext['values']
     let query = this.query('insert')
     let run = await this.run(query)
-    //   if($sql === false) return $this->error();
-    //   $this->success = $sql;
+    if (run === false) return false
     this.id = run.insertId
     this.affected = run.affectedRows
     // if(this.affected > 0) this.clearcache();
@@ -256,6 +230,7 @@ class Mysql {
     this.#arr['values'] = ext['values']
     let query = this.query('replace')
     let run = await this.run(query)
+    if (run === false) return false
     this.id = run.insertId
     this.affected = run.affectedRows
     //       if($sql === false) return $this->error();
@@ -284,14 +259,17 @@ class Mysql {
     return rows
   }
 
-  run(query) {
+  run(query, params) {
     return new Promise(resolve => {
-      if (!query) return false
+      if (!query) return resolve(false)
+      if (!this.#conn) return resolve(false)
       if (this.#conn.state == 'disconnected') Candy.Mysql.init()
-      this.#conn.query(query, (err, result) => {
+      const args = params ? [query, params] : [query]
+      args.push((err, result) => {
         if (err) return resolve(this.#error(err, query))
         return resolve(result)
       })
+      this.#conn.query(...args)
     })
   }
 
@@ -505,7 +483,7 @@ class Mysql {
     let state = '='
     let last = 0
     for (const key of arr) {
-      if (key && ['array', 'object'].includes(typeof key) && state != 'IN' && state != 'NOT IN' && !(key instanceof Raw)) {
+      if (key && Array.isArray(key) && state != 'IN' && state != 'NOT IN' && !(key instanceof Raw)) {
         q += last == 1 ? ' AND ' + this.#whereExtract(key) : this.#whereExtract(key)
         in_arr = true
         last = 1
@@ -547,10 +525,20 @@ module.exports = {
           password: db.password,
           database: db.database
         })
-        Candy.Mysql.conn[key].connect()
+        Candy.Mysql.conn[key].connect(err => {
+          if (err) {
+            console.error(`CandyPack Mysql Error: Failed to connect to database '${key}'`)
+            console.error(`Host: ${db.host ?? '127.0.0.1'}`)
+            console.error(`User: ${db.user}`)
+            console.error(`Database: ${db.database}`)
+            console.error(`Error: ${err.message}`)
+            return resolve(false)
+          }
+        })
         Candy.Mysql.conn[key].query('SHOW TABLES', (err, result) => {
           if (err) {
-            console.error('Mysql Connection Error', err)
+            console.error(`CandyPack Mysql Error: Failed to query tables from database '${key}'`)
+            console.error(`Error: ${err.message}`)
             return resolve(false)
           }
           for (let table of result)
@@ -566,15 +554,21 @@ module.exports = {
     })
   },
   database: function (name) {
+    if (!Candy.Mysql.conn[name]) return null
     return new Mysql(name, Candy.Mysql.conn[name])
   },
-  run: function (query) {
-    return new Mysql(null, Candy.Mysql.conn['default']).run(query)
+  run: function (query, params) {
+    if (!Candy.Mysql.conn['default']) return Promise.resolve(false)
+    return new Mysql(null, Candy.Mysql.conn['default']).run(query, params)
   },
   table: function (name) {
+    if (!Candy.Mysql.conn['default']) return null
     return new Mysql(name, Candy.Mysql.conn['default'])
   },
   raw: function (query) {
+    if (typeof query !== 'string') {
+      throw new Error('Mysql.raw() requires a string parameter')
+    }
     return new Raw(query)
   }
 }

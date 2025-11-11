@@ -46,6 +46,14 @@ class MockCandyPack {
       Commands: {
         execute: jest.fn(),
         init: jest.fn()
+      },
+      Log: {
+        init: jest.fn(function (moduleName) {
+          return {
+            log: jest.fn(),
+            error: jest.fn()
+          }
+        })
       }
     }
 
@@ -127,18 +135,6 @@ class MockCandyPack {
         create: jest.fn(),
         delete: jest.fn(),
         list: jest.fn()
-      },
-      Log: {
-        init: jest.fn().mockReturnValue({
-          log: jest.fn(),
-          error: jest.fn(),
-          info: jest.fn(),
-          debug: jest.fn()
-        }),
-        log: jest.fn(),
-        error: jest.fn(),
-        info: jest.fn(),
-        debug: jest.fn()
       }
     }
 

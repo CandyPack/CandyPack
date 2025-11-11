@@ -45,3 +45,8 @@ jest-*
 
 # TypeScript
 *.tsbuildinfo
+
+# Kiro
+.kiro/specs/*
+
+.secret/

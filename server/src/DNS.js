@@ -1,4 +1,4 @@
-const {log, error} = Candy.server('Log', false).init('DNS')
+const {log, error} = Candy.core('Log', false).init('DNS')
 
 const axios = require('axios')
 const dns = require('native-dns')

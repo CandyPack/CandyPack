@@ -17,7 +17,20 @@ class Lang {
       this.#save()
     }
     let str = this.#data[args[0]]
-    for (let i = 1; i < args.length; i++) str = str.replace('%s', args[i])
+
+    // Support both %s (sequential) and %s1, %s2 (numbered) placeholders
+    const hasNumberedPlaceholders = /%s\d+/.test(str)
+
+    if (hasNumberedPlaceholders) {
+      for (let i = 1; i < args.length; i++) {
+        const numberedPattern = new RegExp(`%s${i}`, 'g')
+        str = str.replace(numberedPattern, args[i])
+      }
+    } else {
+      for (let i = 1; i < args.length; i++) {
+        str = str.replace('%s', args[i])
+      }
+    }
     return str
   }
 

@@ -17,9 +17,10 @@
 │   ├── controller/   # Template controllers
 │   ├── package.json  # Template package.json with {{domain}} placeholders
 │   └── config.json   # Template configuration
-├── docs/             # Documentation (framework & server)
+├── docs/             # Documentation (backend, frontend & server)
 │   ├── index.json    # Documentation navigation structure
-│   ├── framework/    # Framework documentation files
+│   ├── backend/      # Backend documentation files
+│   ├── frontend/     # Frontend documentation files
 │   └── server/       # Server documentation files
 ├── locale/           # Internationalization files
 └── test/             # Jest test files
@@ -67,6 +68,10 @@
 - **Index File**: `docs/index.json` contains the navigation structure for all documentation
 - **Adding New Docs**: When creating new documentation files, they MUST be added to `docs/index.json`
 - **Language**: All documentation content must be written in English
-- **Structure**: Documentation is organized into "server" and "framework" sections
+- **Structure**: Documentation is organized into THREE sections only:
+  - `docs/server/` - Server infrastructure documentation (CLI, DNS, SSL, Mail)
+  - `docs/backend/` - Backend framework documentation (Controllers, Routing, Auth, Database)
+  - `docs/frontend/` - Frontend documentation (candy.js, AJAX navigation, Forms)
+- **IMPORTANT**: There is NO `docs/framework/` directory - backend docs go in `docs/backend/`
 - **File Organization**: Each section has folders with numbered prefixes (01-overview, 02-structure, etc.)
 - **Navigation**: The index.json file defines the title and hierarchy shown in documentation site

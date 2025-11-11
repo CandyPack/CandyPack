@@ -6,6 +6,10 @@
 const {setupGlobalMocks, cleanupGlobalMocks} = require('./__mocks__/testHelpers')
 const {createMockWebsiteConfig} = require('./__mocks__/testFactories')
 
+// Create mock log functions first
+const mockLog = jest.fn()
+const mockError = jest.fn()
+
 describe('Subdomain', () => {
   let Subdomain
   let mockConfig
@@ -15,6 +19,15 @@ describe('Subdomain', () => {
 
   beforeEach(() => {
     setupGlobalMocks()
+
+    // Set up the Log mock before requiring Subdomain
+    const {mockCandy} = require('./__mocks__/globalCandy')
+    mockCandy.setMock('core', 'Log', {
+      init: jest.fn().mockReturnValue({
+        log: mockLog,
+        error: mockError
+      })
+    })
 
     // Create mock website configurations
     mockConfig = {

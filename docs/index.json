@@ -119,10 +119,10 @@
       ]
     }
   ],
-  "framework": [
+  "backend": [
     {
       "file": "01-overview",
-      "title": "Framework Overview",
+      "title": "Backend Overview",
       "children": [
         {
           "file": "01-whats-in-the-candy-box.md",
@@ -153,6 +153,10 @@
       "title": "Configuration",
       "children": [
         {
+          "file": "00-configuration-overview.md",
+          "title": "Configuration Overview"
+        },
+        {
           "file": "01-database-connection.md",
           "title": "Database Connection"
         },
@@ -163,6 +167,10 @@
         {
           "file": "03-request-timeout.md",
           "title": "Request Timeout"
+        },
+        {
+          "file": "04-environment-variables.md",
+          "title": "Environment Variables"
         }
       ]
     },
@@ -234,16 +242,48 @@
       "children": [
         {
           "file": "01-the-view-directory.md",
-          "title": "View Directory"
+          "title": "View System Overview"
         },
         {
           "file": "02-rendering-a-view.md",
           "title": "Rendering Views"
+        },
+        {
+          "file": "03-template-syntax.md",
+          "title": "Template Syntax"
+        },
+        {
+          "file": "04-passing-data-to-views.md",
+          "title": "Passing Data to Views"
         }
       ]
     },
     {
-      "file": "08-authentication",
+      "file": "08-database",
+      "title": "Database",
+      "children": [
+        {
+          "file": "01-database-connection.md",
+          "title": "Database Connection"
+        },
+        {
+          "file": "02-using-mysql.md",
+          "title": "Using MySQL"
+        }
+      ]
+    },
+    {
+      "file": "09-validation",
+      "title": "Validation",
+      "children": [
+        {
+          "file": "01-the-validator-service.md",
+          "title": "Validator Service"
+        }
+      ]
+    },
+    {
+      "file": "10-authentication",
       "title": "Authentication & Security",
       "children": [
         {
@@ -253,25 +293,27 @@
         {
           "file": "02-foiling-villains-with-csrf-protection.md",
           "title": "CSRF Protection"
-        }
-      ]
-    },
-    {
-      "file": "09-database",
-      "title": "Database",
-      "children": [
-        {
-          "file": "01-automatic-connection.md",
-          "title": "Database Connection"
         },
         {
-          "file": "02-running-a-query.md",
-          "title": "Running Queries"
+          "file": "03-register.md",
+          "title": "User Registration (Programmatic)"
+        },
+        {
+          "file": "04-candy-register-forms.md",
+          "title": "Candy Register Forms (Zero-Config)"
+        },
+        {
+          "file": "05-session-management.md",
+          "title": "Session Management"
+        },
+        {
+          "file": "06-candy-login-forms.md",
+          "title": "Candy Login Forms (Zero-Config)"
         }
       ]
     },
     {
-      "file": "10-mail",
+      "file": "11-mail",
       "title": "Email",
       "children": [
         {
@@ -281,23 +323,72 @@
       ]
     },
     {
-      "file": "11-validation",
-      "title": "Validation",
+      "file": "12-streaming",
+      "title": "Streaming",
       "children": [
         {
-          "file": "01-the-validator-service.md",
-          "title": "Validator Service"
+          "file": "01-streaming-overview.md",
+          "title": "Streaming API"
+        }
+      ]
+    }
+  ],
+  "frontend": [
+    {
+      "file": "01-overview",
+      "title": "candy.js Overview",
+      "children": [
+        {
+          "file": "01-introduction.md",
+          "title": "Introduction"
         }
       ]
     },
-
     {
-      "file": "Frontend",
-      "title": "Frontend",
+      "file": "02-ajax-navigation",
+      "title": "AJAX Navigation",
       "children": [
         {
-          "file": "01-candy-js.md",
-          "title": "candy.js Framework"
+          "file": "01-quick-start.md",
+          "title": "Quick Start"
+        },
+        {
+          "file": "02-configuration.md",
+          "title": "Configuration"
+        },
+        {
+          "file": "03-advanced-usage.md",
+          "title": "Advanced Usage"
+        }
+      ]
+    },
+    {
+      "file": "03-forms",
+      "title": "Form Handling",
+      "children": [
+        {
+          "file": "01-form-handling.md",
+          "title": "Form Handling"
+        }
+      ]
+    },
+    {
+      "file": "04-api-requests",
+      "title": "API Requests",
+      "children": [
+        {
+          "file": "01-get-post.md",
+          "title": "GET & POST Requests"
+        }
+      ]
+    },
+    {
+      "file": "05-streaming",
+      "title": "Streaming",
+      "children": [
+        {
+          "file": "01-client-streaming.md",
+          "title": "Client-Side Streaming"
         }
       ]
     }

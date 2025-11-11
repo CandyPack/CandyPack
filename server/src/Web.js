@@ -1,25 +1,34 @@
-const {log, error} = Candy.server('Log', false).init('Web')
+const {log, error} = Candy.core('Log', false).init('Web')
 
 const childProcess = require('child_process')
 const fs = require('fs')
 const http = require('http')
 const https = require('https')
-const httpProxy = require('http-proxy')
+const http2 = require('http2')
 const net = require('net')
 const os = require('os')
 const path = require('path')
 const tls = require('tls')
 
+const WebProxy = require('./Web/Proxy.js')
+
 class Web {
   #active = {}
   #error_counts = {}
   #loaded = false
+  #log
   #logs = {log: {}, err: {}}
   #ports = {}
+  #proxy
   #server_http
   #server_https
   #started = {}
   #watcher = {}
+
+  constructor() {
+    this.#log = log
+    this.#proxy = new WebProxy(this.#log)
+  }
 
   check() {
     if (!this.#loaded) return
@@ -164,34 +173,44 @@ class Web {
   }
 
   request(req, res, secure) {
-    let host = req.headers.host
+    let host = req.headers.host || req.headers[':authority']
     if (!host) return this.index(req, res)
-    while (!Candy.core('Config').config.websites[host] && host.includes('.')) host = host.split('.').slice(1).join('.')
-    const website = Candy.core('Config').config.websites[host]
+
+    // Remove port from host
+    if (host.includes(':')) {
+      host = host.split(':')[0]
+    }
+
+    // Find matching website (check subdomains)
+    let matchedHost = host
+    while (!Candy.core('Config').config.websites[matchedHost] && matchedHost.includes('.')) {
+      matchedHost = matchedHost.split('.').slice(1).join('.')
+    }
+
+    const website = Candy.core('Config').config.websites[matchedHost]
     if (!website) return this.index(req, res)
     if (!website.pid || !this.#watcher[website.pid]) return this.index(req, res)
+
     try {
       if (!secure) {
-        res.writeHead(301, {Location: 'https://' + host + req.url})
+        res.writeHead(301, {Location: 'https://' + host + (req.url || req.headers[':path'] || '/')})
         return res.end()
       }
-      const proxy = httpProxy.createProxyServer({
-        timeout: 30000,
-        proxyTimeout: 30000,
-        keepAlive: true
-      })
-      proxy.web(req, res, {target: 'http://127.0.0.1:' + website.port})
-      proxy.on('proxyReq', (proxyReq, req) => {
-        proxyReq.setHeader('X-Candy-Connection-RemoteAddress', req.socket.remoteAddress ?? '')
-        proxyReq.setHeader('X-Candy-Connection-SSL', secure ? 'true' : 'false')
-      })
-      proxy.on('error', (err, req, res) => {
-        log(`Proxy error for ${host}: ${err.message}`)
-        if (!res.headersSent) {
-          res.statusCode = 502
-          res.end('Bad Gateway')
+
+      if (req.httpVersion === '2.0') {
+        if (!req.url && req.headers[':path']) {
+          req.url = req.headers[':path']
         }
-      })
+        if (!req.method && req.headers[':method']) {
+          req.method = req.headers[':method'].toUpperCase()
+        }
+        if (!req.headers.host) {
+          req.headers.host = host
+        }
+        return this.#proxy.http2(req, res, website, host)
+      }
+
+      return this.#proxy.http1(req, res, website, host)
     } catch (e) {
       log(e)
       return this.index(req, res)
@@ -215,47 +234,57 @@ class Web {
 
     let ssl = Candy.core('Config').config.ssl ?? {}
     if (!this.#server_https && ssl && ssl.key && ssl.cert && fs.existsSync(ssl.key) && fs.existsSync(ssl.cert)) {
-      this.#server_https = https.createServer(
-        {
-          SNICallback: (hostname, callback) => {
-            try {
-              let sslOptions
-              while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.'))
-                hostname = hostname.split('.').slice(1).join('.')
-              let website = Candy.core('Config').config.websites[hostname]
-              if (
-                website &&
-                website.cert &&
-                website.cert.ssl &&
-                website.cert.ssl.key &&
-                website.cert.ssl.cert &&
-                fs.existsSync(website.cert.ssl.key) &&
-                fs.existsSync(website.cert.ssl.cert)
-              ) {
-                sslOptions = {
-                  key: fs.readFileSync(website.cert.ssl.key),
-                  cert: fs.readFileSync(website.cert.ssl.cert)
-                }
-              } else {
-                sslOptions = {
-                  key: fs.readFileSync(ssl.key),
-                  cert: fs.readFileSync(ssl.cert)
-                }
+      const useHttp2 = Candy.core('Config').config.http2 !== false
+
+      const serverOptions = {
+        SNICallback: (hostname, callback) => {
+          try {
+            let sslOptions
+            while (!Candy.core('Config').config.websites[hostname] && hostname.includes('.'))
+              hostname = hostname.split('.').slice(1).join('.')
+            let website = Candy.core('Config').config.websites[hostname]
+            if (
+              website &&
+              website.cert &&
+              website.cert.ssl &&
+              website.cert.ssl.key &&
+              website.cert.ssl.cert &&
+              fs.existsSync(website.cert.ssl.key) &&
+              fs.existsSync(website.cert.ssl.cert)
+            ) {
+              sslOptions = {
+                key: fs.readFileSync(website.cert.ssl.key),
+                cert: fs.readFileSync(website.cert.ssl.cert)
               }
-              const ctx = tls.createSecureContext(sslOptions)
-              callback(null, ctx)
-            } catch (err) {
-              log(`SSL certificate error for ${hostname}: ${err.message}`)
-              callback(err)
+            } else {
+              sslOptions = {
+                key: fs.readFileSync(ssl.key),
+                cert: fs.readFileSync(ssl.cert)
+              }
             }
-          },
-          key: fs.readFileSync(ssl.key),
-          cert: fs.readFileSync(ssl.cert)
+            const ctx = tls.createSecureContext(sslOptions)
+            callback(null, ctx)
+          } catch (err) {
+            log(`SSL certificate error for ${hostname}: ${err.message}`)
+            callback(err)
+          }
         },
-        (req, res) => {
+        key: fs.readFileSync(ssl.key),
+        cert: fs.readFileSync(ssl.cert)
+      }
+
+      if (useHttp2) {
+        serverOptions.allowHTTP1 = true
+        this.#server_https = http2.createSecureServer(serverOptions, (req, res) => {
           this.request(req, res, true)
-        }
-      )
+        })
+        log('HTTPS server starting with HTTP/2 support enabled')
+      } else {
+        this.#server_https = https.createServer(serverOptions, (req, res) => {
+          this.request(req, res, true)
+        })
+        log('HTTPS server starting with HTTP/1.1 only')
+      }
 
       this.#server_https.on('error', err => {
         log(`HTTPS server error: ${err.message}`)

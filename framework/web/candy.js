@@ -5,6 +5,8 @@ class candy {
   #page = null
   #token = {hash: [], data: false}
   #formSubmitHandlers = new Map()
+  #loader = {elements: {}, callback: null}
+  #isNavigating = false
 
   constructor() {
     this.#data = this.data()
@@ -137,6 +139,65 @@ class candy {
 
   action(obj) {
     if (obj.function) for (let func in obj.function) this.fn[func] = obj.function[func]
+
+    // Handle navigate configuration
+    if (obj.navigate !== undefined && obj.navigate !== false) {
+      let selector, elements, callback
+
+      // Minimal: navigate: 'main'
+      if (typeof obj.navigate === 'string') {
+        selector = 'a[href^="/"]:not([data-navigate="false"]):not(.no-navigate)'
+        elements = {content: obj.navigate}
+        callback = null
+      }
+      // Medium/Advanced: navigate: {...}
+      else if (typeof obj.navigate === 'object') {
+        // Determine base selector
+        let baseSelector
+        if (obj.navigate.links) {
+          baseSelector = obj.navigate.links
+        } else if (obj.navigate.selector) {
+          baseSelector = obj.navigate.selector
+        } else {
+          baseSelector = 'a[href^="/"]' // Default: all internal links
+        }
+
+        // Add exclusions to selector
+        selector = `${baseSelector}:not([data-navigate="false"]):not(.no-navigate)`
+
+        // Determine elements to update
+        if (obj.navigate.update) {
+          if (typeof obj.navigate.update === 'string') {
+            elements = {content: obj.navigate.update}
+          } else {
+            elements = obj.navigate.update
+          }
+        } else if (obj.navigate.elements) {
+          elements = obj.navigate.elements
+        } else {
+          elements = {content: 'main'} // Default
+        }
+
+        // Determine callback
+        callback = obj.navigate.on || obj.navigate.callback || null
+      }
+      // Boolean: navigate: true
+      else if (obj.navigate === true) {
+        selector = 'a[href^="/"]:not([data-navigate="false"]):not(.no-navigate)'
+        elements = {content: 'main'}
+        callback = null
+      }
+
+      // Initialize loader after DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          this.loader(selector, elements, callback)
+        })
+      } else {
+        this.loader(selector, elements, callback)
+      }
+    }
+
     if (obj.start) document.addEventListener('DOMContentLoaded', () => obj.start())
     if (obj.load) {
       if (!this.actions.load) this.actions.load = []
@@ -160,7 +221,7 @@ class candy {
       }
     }
     for (let key in obj) {
-      if (['function', 'start', 'load', 'page', 'interval'].includes(key)) continue
+      if (['function', 'start', 'load', 'page', 'interval', 'navigate'].includes(key)) continue
       for (let key2 in obj[key]) {
         if (typeof obj[key][key2] == 'function') {
           this.#on(document, key, key2, obj[key][key2])
@@ -209,7 +270,88 @@ class candy {
 
       e.preventDefault()
 
-      formElement.querySelectorAll('button, input[type="button"], input[type="submit"]').forEach(el => (el.disabled = true))
+      const inputs = formElement.querySelectorAll('input:not([type="hidden"]), textarea, select')
+      let isValid = true
+      let firstInvalidInput = null
+
+      const showError = (input, errorType) => {
+        isValid = false
+        firstInvalidInput = input
+
+        if (input.type !== 'checkbox' && input.type !== 'radio') {
+          input.style.borderColor = '#dc3545'
+        }
+
+        const customMessage = input.getAttribute(`data-error-${errorType}`)
+        if (customMessage) {
+          let errorSpan = formElement.querySelector(`[candy-form-error="${input.name}"]`)
+
+          if (!errorSpan) {
+            errorSpan = document.createElement('span')
+            errorSpan.setAttribute('candy-form-error', input.name)
+
+            if ((input.type === 'checkbox' || input.type === 'radio') && input.id) {
+              const label = formElement.querySelector(`label[for="${input.id}"]`)
+              if (label) {
+                label.parentNode.insertBefore(errorSpan, label.nextSibling)
+              } else {
+                input.parentNode.insertBefore(errorSpan, input.nextSibling)
+              }
+            } else {
+              input.parentNode.insertBefore(errorSpan, input.nextSibling)
+            }
+          }
+
+          errorSpan.textContent = customMessage
+          errorSpan.style.cssText = 'display:block;color:#dc3545;font-size:0.875rem;margin-top:0.25rem'
+        }
+      }
+
+      for (const input of inputs) {
+        input.style.borderColor = ''
+        const errorSpan = formElement.querySelector(`[candy-form-error="${input.name}"]`)
+        if (errorSpan) {
+          errorSpan.style.display = 'none'
+          errorSpan.textContent = ''
+        }
+
+        if (input.hasAttribute('required')) {
+          const isEmpty = input.type === 'checkbox' || input.type === 'radio' ? !input.checked : !input.value.trim()
+          if (isEmpty) {
+            showError(input, 'required')
+            break
+          }
+        }
+
+        if (input.hasAttribute('minlength') && input.value && input.value.trim().length < parseInt(input.getAttribute('minlength'))) {
+          showError(input, 'minlength')
+          break
+        }
+
+        if (input.hasAttribute('maxlength') && input.value && input.value.trim().length > parseInt(input.getAttribute('maxlength'))) {
+          showError(input, 'maxlength')
+          break
+        }
+
+        if (input.hasAttribute('pattern') && input.value) {
+          const trimmedValue = input.value.trim()
+          const pattern = input.getAttribute('pattern')
+          if (!new RegExp(pattern).test(trimmedValue)) {
+            showError(input, 'pattern')
+            break
+          }
+        }
+
+        if (input.type === 'email' && input.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())) {
+          showError(input, 'email')
+          break
+        }
+      }
+
+      if (!isValid) {
+        if (firstInvalidInput) firstInvalidInput.focus()
+        return
+      }
 
       let actions = this.actions
       if (
@@ -248,6 +390,18 @@ class candy {
         processData = true
       }
 
+      const submitButtons = formElement.querySelectorAll('button[type="submit"], input[type="submit"]')
+      submitButtons.forEach(btn => {
+        btn.disabled = true
+        const loadingText = btn.getAttribute('data-loading-text')
+        if (loadingText) {
+          btn.setAttribute('data-original-text', btn.textContent)
+          btn.textContent = loadingText
+        }
+      })
+
+      formElement.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(el => (el.disabled = true))
+
       this.#ajax({
         type: formElement.getAttribute('method'),
         url: formElement.getAttribute('action'),
@@ -267,35 +421,55 @@ class candy {
               } else {
                 formElement.insertAdjacentHTML('beforeend', `<span candy-form-success="${obj.form}">${data.result.message}</span>`)
               }
-            } else {
-              var invalid_input_class = '_candy_error'
-              var invalid_span_class = '_candy_form_info'
-              var invalid_span_style = ''
-
+            } else if (!data.result.success && data.errors) {
               Object.entries(data.errors).forEach(([name, message]) => {
                 if (message) {
-                  const errorEl = formElement.querySelector(`[candy-form-error="${name}"]`)
+                  let errorEl = formElement.querySelector(`[candy-form-error="${name}"]`)
                   if (errorEl) {
-                    errorEl.innerHTML = message
-                    this.#fadeIn(errorEl)
+                    errorEl.textContent = message
+                    errorEl.style.cssText = 'display:block;color:#dc3545;font-size:0.875rem;margin-top:0.25rem'
                   } else {
                     const inputEl = formElement.querySelector(`*[name="${name}"]`)
-                    if (inputEl)
-                      inputEl.insertAdjacentHTML(
-                        'afterend',
-                        `<span candy-form-error="${name}" class="${invalid_span_class}" style="${invalid_span_style}">${message}</span>`
-                      )
+                    if (inputEl) {
+                      errorEl = document.createElement('span')
+                      errorEl.setAttribute('candy-form-error', name)
+                      errorEl.textContent = message
+                      errorEl.style.cssText = 'display:block;color:#dc3545;font-size:0.875rem;margin-top:0.25rem'
+
+                      if ((inputEl.type === 'checkbox' || inputEl.type === 'radio') && inputEl.id) {
+                        const label = formElement.querySelector(`label[for="${inputEl.id}"]`)
+                        if (label) {
+                          label.parentNode.insertBefore(errorEl, label.nextSibling)
+                        } else {
+                          inputEl.parentNode.insertBefore(errorEl, inputEl.nextSibling)
+                        }
+                      } else {
+                        inputEl.parentNode.insertBefore(errorEl, inputEl.nextSibling)
+                      }
+                    } else if (name === '_candy_form') {
+                      errorEl = document.createElement('div')
+                      errorEl.setAttribute('candy-form-error', name)
+                      errorEl.textContent = message
+                      errorEl.style.cssText =
+                        'display:block;color:#dc3545;background-color:#f8d7da;border:1px solid #f5c2c7;border-radius:0.375rem;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.875rem'
+                      formElement.insertBefore(errorEl, formElement.firstChild)
+                    }
                   }
                 }
                 const inputEl = formElement.querySelector(`*[name="${name}"]`)
                 if (inputEl) {
-                  inputEl.classList.add(invalid_input_class)
+                  if (inputEl.type !== 'checkbox' && inputEl.type !== 'radio') {
+                    inputEl.style.borderColor = '#dc3545'
+                  }
                   inputEl.addEventListener(
                     'focus',
                     function handler() {
-                      inputEl.classList.remove(invalid_input_class)
+                      inputEl.style.borderColor = ''
                       const errorEl = formElement.querySelector(`[candy-form-error="${name}"]`)
-                      if (errorEl) this.#fadeOut(errorEl)
+                      if (errorEl) {
+                        errorEl.style.display = 'none'
+                        errorEl.textContent = ''
+                      }
                       inputEl.removeEventListener('focus', handler)
                     }.bind(this),
                     {once: true}
@@ -304,7 +478,9 @@ class candy {
               })
             }
           }
-          if (callback !== undefined) {
+          if (data.result.success && data.result.redirect) {
+            window.location.href = data.result.redirect
+          } else if (callback !== undefined) {
             if (typeof callback === 'function') callback(data)
             else if (data.result.success) window.location.replace(callback)
           }
@@ -327,7 +503,16 @@ class candy {
           console.error('CandyJS:', 'Somethings went wrong...', '\nForm: ' + obj.form + '\nRequest: ' + formElement.getAttribute('action'))
         },
         complete: () => {
-          formElement.querySelectorAll('button, input[type="button"], input[type="submit"]').forEach(el => (el.disabled = false))
+          const submitButtons = formElement.querySelectorAll('button[type="submit"], input[type="submit"]')
+          submitButtons.forEach(btn => {
+            btn.disabled = false
+            const originalText = btn.getAttribute('data-original-text')
+            if (originalText) {
+              btn.textContent = originalText
+              btn.removeAttribute('data-original-text')
+            }
+          })
+          formElement.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(el => (el.disabled = false))
         }
       })
     }
@@ -362,7 +547,7 @@ class candy {
       document.addEventListener('candy:ajaxSuccess', event => {
         const {detail} = event
         const {xhr, requestUrl} = detail
-        if (requestUrl.substr(0, 4) == 'http') return false
+        if (requestUrl.includes('://')) return false
         try {
           const token = xhr.getResponseHeader('X-Candy-Token')
           if (token) this.#token.hash.push(token)
@@ -402,6 +587,197 @@ class candy {
       })
     return return_token
   }
+
+  load(url, callback, push = true) {
+    if (this.#isNavigating) return false
+
+    const currentUrl = window.location.href
+
+    // Normalize URL to be absolute
+    url = new URL(url, currentUrl).href
+
+    if (url === '' || url.startsWith('javascript:') || url.includes('#')) return false
+
+    this.#isNavigating = true
+
+    this.#ajax({
+      url: url,
+      type: 'GET',
+      headers: {
+        'X-Candy': 'ajaxload',
+        'X-Candy-Load': Object.keys(this.#loader.elements).join(',')
+      },
+      dataType: 'json',
+      success: (data, status, xhr) => {
+        if (url !== currentUrl && push) {
+          window.history.pushState(null, document.title, url)
+        }
+
+        const newPage = xhr.getResponseHeader('X-Candy-Page')
+        if (newPage) this.#page = newPage
+
+        // Update elements with fade effect
+        const elements = Object.entries(this.#loader.elements)
+        let completed = 0
+
+        if (elements.length === 0) {
+          this.#handleLoadComplete(data, callback)
+          return
+        }
+
+        elements.forEach(([key, selector]) => {
+          const element = document.querySelector(selector)
+          if (!element) {
+            completed++
+            if (completed === elements.length) {
+              this.#handleLoadComplete(data, callback)
+            }
+            return
+          }
+
+          this.#fadeOut(element, 400, () => {
+            if (data.output && data.output[key]) {
+              element.innerHTML = data.output[key]
+            }
+            this.#fadeIn(element, 400, () => {
+              completed++
+              if (completed === elements.length) {
+                this.#handleLoadComplete(data, callback)
+              }
+            })
+          })
+        })
+      },
+      error: () => {
+        this.#isNavigating = false
+        window.location.replace(url)
+      }
+    })
+  }
+
+  #handleLoadComplete(data, callback) {
+    // Call load actions
+    if (this.actions.load) {
+      if (Array.isArray(this.actions.load)) {
+        this.actions.load.forEach(fn => fn(this.page(), data.variables))
+      } else if (typeof this.actions.load === 'function') {
+        this.actions.load(this.page(), data.variables)
+      }
+    }
+
+    // Call page-specific actions
+    if (this.actions.page && this.actions.page[this.page()]) {
+      const pageActions = this.actions.page[this.page()]
+      if (Array.isArray(pageActions)) {
+        pageActions.forEach(fn => fn(data.variables))
+      } else if (typeof pageActions === 'function') {
+        pageActions(data.variables)
+      }
+    }
+
+    // Call custom callback
+    if (callback && typeof callback === 'function') {
+      callback(this.page(), data.variables)
+    }
+
+    // Scroll to top
+    window.scrollTo({top: 0, behavior: 'smooth'})
+
+    this.#isNavigating = false
+  }
+
+  loader(selector, elements, callback) {
+    this.#loader.elements = elements
+    this.#loader.callback = callback
+
+    // Handle link clicks
+    this.#on(document, 'click', selector, e => {
+      if (e.ctrlKey || e.metaKey) return
+
+      // Get the matched anchor element (passed as 'this' from #on method)
+      const anchor = e.currentTarget || e.target.closest(selector)
+      if (!anchor) return
+
+      const url = anchor.getAttribute('href')
+      const target = anchor.getAttribute('target')
+
+      if (!url || url === '' || url.startsWith('javascript:') || url.startsWith('#')) return
+
+      const currentHost = window.location.host
+      const isExternal = url.includes('://') && !url.includes(currentHost)
+
+      if ((target === null || target === '_self') && !isExternal) {
+        e.preventDefault()
+        this.load(url, callback)
+      }
+    })
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', () => {
+      this.load(window.location.href, callback, false)
+    })
+  }
+
+  listen(url, onMessage, options = {}) {
+    const {onError = null, onOpen = null, autoReconnect = true, reconnectDelay = 3000} = options
+
+    let eventSource = null
+    let reconnectTimer = null
+    let isClosed = false
+
+    const connect = () => {
+      if (isClosed) return
+
+      eventSource = new EventSource(url)
+
+      eventSource.onopen = e => {
+        if (onOpen) onOpen(e)
+      }
+
+      eventSource.onmessage = e => {
+        try {
+          const data = JSON.parse(e.data)
+          onMessage(data)
+        } catch {
+          onMessage(e.data)
+        }
+      }
+
+      eventSource.onerror = e => {
+        if (onError) onError(e)
+
+        if (autoReconnect && !isClosed) {
+          eventSource.close()
+          reconnectTimer = setTimeout(connect, reconnectDelay)
+        }
+      }
+    }
+
+    connect()
+
+    return {
+      close: () => {
+        isClosed = true
+        if (reconnectTimer) clearTimeout(reconnectTimer)
+        if (eventSource) eventSource.close()
+      },
+      send: () => {
+        throw new Error('SSE is one-way. Use POST requests to send data.')
+      }
+    }
+  }
 }
 
 window.Candy = new candy()
+
+document.addEventListener('DOMContentLoaded', () => {
+  const formTypes = ['register', 'login']
+
+  formTypes.forEach(type => {
+    const forms = document.querySelectorAll(`form.candy-${type}-form[data-candy-${type}]`)
+    forms.forEach(form => {
+      const token = form.getAttribute(`data-candy-${type}`)
+      window.Candy.form({form: `form[data-candy-${type}="${token}"]`})
+    })
+  })
+})

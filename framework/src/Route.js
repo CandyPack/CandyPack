@@ -1,6 +1,7 @@
 const fs = require('fs')
 
 const Cron = require('./Route/Cron.js')
+const Internal = require('./Route/Internal.js')
 
 var routes2 = {}
 const mime = {
@@ -67,12 +68,16 @@ class Route {
   async check(Candy) {
     let url = Candy.Request.url.split('?')[0]
     if (url.substr(-1) === '/') url = url.substr(0, url.length - 1)
+
+    if (url.startsWith('/_candy/')) {
+      Candy.Request.route = '_candy_internal'
+    }
     if (
-      Candy.Request.url == '/' &&
-      Candy.Request.method == 'get' &&
-      Candy.Request.header('X-Candy') == 'token' &&
+      Candy.Request.url === '/' &&
+      Candy.Request.method === 'get' &&
+      Candy.Request.header('X-Candy') === 'token' &&
       Candy.Request.header('Referer').startsWith((Candy.Request.ssl ? 'https://' : 'http://') + Candy.Request.host + '/') &&
-      Candy.Request.header('X-Candy-Client') == Candy.Request.cookie('candy_client')
+      Candy.Request.header('X-Candy-Client') === Candy.Request.cookie('candy_client')
     ) {
       Candy.Request.header('Access-Control-Allow-Origin', (Candy.Request.ssl ? 'https://' : 'http://') + Candy.Request.host)
       Candy.Request.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
@@ -80,6 +85,15 @@ class Route {
         token: Candy.token(),
         page: this.routes[Candy.Request.route]['page'][url].file || this.routes[Candy.Request.route].error[404].file || ''
       }
+    }
+
+    // Handle AJAX page load requests
+    if (Candy.Request.method === 'get' && Candy.Request.header('X-Candy') === 'ajaxload') {
+      let loadElements = Candy.Request.header('X-Candy-Load')
+      if (loadElements) {
+        Candy.Request.ajaxLoad = loadElements.split(',')
+      }
+      Candy.Request.isAjaxLoad = true
     }
     if (Candy.Config.route && Candy.Config.route[url]) {
       Candy.Config.route[url] = Candy.Config.route[url].replace('${candy}', `${__dir}/node_modules/candypack`)
@@ -237,9 +251,43 @@ class Route {
 
   init() {
     this.#init()
+    this.#registerInternalRoutes()
     setInterval(() => {
       this.#init()
     }, 1000)
+  }
+
+  #registerInternalRoutes() {
+    if (!Candy.Route) Candy.Route = {}
+    Candy.Route.buff = '_candy_internal'
+
+    this.set(
+      'POST',
+      '/_candy/register',
+      async Candy => {
+        const csrfToken = await Candy.request('_token')
+        if (!csrfToken || !Candy.token(csrfToken)) {
+          return Candy.Request.abort(401)
+        }
+        return await Internal.register(Candy)
+      },
+      {token: true}
+    )
+
+    this.set(
+      'POST',
+      '/_candy/login',
+      async Candy => {
+        const csrfToken = await Candy.request('_token')
+        if (!csrfToken || !Candy.token(csrfToken)) {
+          return Candy.Request.abort(401)
+        }
+        return await Internal.login(Candy)
+      },
+      {token: true}
+    )
+
+    delete Candy.Route.buff
   }
 
   async request(req, res) {
@@ -261,31 +309,39 @@ class Route {
 
   set(type, url, file, options = {}) {
     if (!options) options = {}
-    if (typeof url != 'string') url.toString()
+    if (typeof url !== 'string') url = String(url)
     if (url.length && url.substr(-1) === '/') url = url.substr(0, url.length - 1)
+
+    type = type.toLowerCase()
+
+    const isFunction = typeof file === 'function'
     let path = `${__dir}/route/${Candy.Route.buff}.js`
-    if (typeof file !== 'function') {
+
+    if (!isFunction && file) {
       path = `${__dir}/controller/${type.replace('#', '')}/${file}.js`
       if (file.includes('.')) {
         let arr = file.split('.')
         path = `${__dir}/controller/${arr[0]}/${type.replace('#', '')}/${arr.slice(1).join('.')}.js`
       }
     }
+
     if (!this.routes[Candy.Route.buff]) this.routes[Candy.Route.buff] = {}
     if (!this.routes[Candy.Route.buff][type]) this.routes[Candy.Route.buff][type] = {}
+
     if (this.routes[Candy.Route.buff][type][url]) {
       this.routes[Candy.Route.buff][type][url].loaded = routes2[Candy.Route.buff]
-      if (this.routes[Candy.Route.buff][type][url].mtime < fs.statSync(path).mtimeMs) {
+      if (!isFunction && this.routes[Candy.Route.buff][type][url].mtime < fs.statSync(path).mtimeMs) {
         delete this.routes[Candy.Route.buff][type][url]
         delete require.cache[require.resolve(path)]
       } else return
     }
-    if (fs.existsSync(path)) {
+
+    if (isFunction || fs.existsSync(path)) {
       if (!this.routes[Candy.Route.buff][type][url]) this.routes[Candy.Route.buff][type][url] = {}
-      this.routes[Candy.Route.buff][type][url].cache = typeof file === 'function' ? file : require(path)
-      this.routes[Candy.Route.buff][type][url].type = typeof file === 'function' ? 'function' : 'controller'
+      this.routes[Candy.Route.buff][type][url].cache = isFunction ? file : require(path)
+      this.routes[Candy.Route.buff][type][url].type = isFunction ? 'function' : 'controller'
       this.routes[Candy.Route.buff][type][url].file = file
-      this.routes[Candy.Route.buff][type][url].mtime = fs.statSync(path).mtimeMs
+      this.routes[Candy.Route.buff][type][url].mtime = isFunction ? Date.now() : fs.statSync(path).mtimeMs
       this.routes[Candy.Route.buff][type][url].path = path
       this.routes[Candy.Route.buff][type][url].loaded = routes2[Candy.Route.buff]
       this.routes[Candy.Route.buff][type][url].token = options.token ?? true
@@ -293,17 +349,14 @@ class Route {
   }
 
   page(path, file) {
-    if (file === undefined) {
-      return {
-        view: (...args) => {
-          this.set('page', path, _candy => {
-            _candy.View.set(...args)
-            return
-          })
-        }
-      }
+    if (typeof file === 'object' && !Array.isArray(file)) {
+      this.set('page', path, _candy => {
+        _candy.View.set(file)
+        return
+      })
+      return
     }
-    this.set('page', path, file)
+    if (file) this.set('page', path, file)
   }
 
   post(path, file, options) {
@@ -315,24 +368,21 @@ class Route {
   }
 
   authPage(path, authFile, file) {
-    if (file === undefined) {
-      return {
-        view: (...args) => {
-          if (authFile)
-            this.set('#page', path, _candy => {
-              _candy.View.set(...args)
-              return
-            })
-          else
-            this.set('page', path, _candy => {
-              _candy.View.set(...args)
-              return
-            })
-        }
+    if (typeof authFile === 'object' && !Array.isArray(authFile)) {
+      this.set('#page', path, _candy => {
+        _candy.View.set(authFile)
+        return
+      })
+      if (typeof file === 'object' && !Array.isArray(file)) {
+        this.set('page', path, _candy => {
+          _candy.View.set(file)
+          return
+        })
       }
+      return
     }
     if (authFile) this.set('#page', path, authFile)
-    if (file) this.page(path, file)
+    if (file) this.set('page', path, file)
   }
 
   authPost(path, authFile, file) {

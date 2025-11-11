@@ -1,5 +1,8 @@
 const nodeCrypto = require('crypto')
 const fs = require('fs')
+const Form = require('./View/Form')
+
+const CACHE_DIR = './storage/.cache'
 
 class View {
   #cache = {}
@@ -20,20 +23,16 @@ class View {
       end: ').html().replace(/\\n/g, "<br>")}'
     },
     break: {
-      function: 'if($break) break;',
-      arguments: {
-        break: true
-      }
+      function: 'break;',
+      arguments: {}
     },
     component: {
       // TODO: Implement component
-      //   <candy-component name="navbar" title="Dashboard"/>
+      //   <candy:component name="navbar" title="Dashboard"/>
     },
     continue: {
-      function: 'if($continue) continue;',
-      arguments: {
-        continue: true
-      }
+      function: 'continue;',
+      arguments: {}
     },
     mysql: {
       // TODO: Implement mysql
@@ -42,14 +41,14 @@ class View {
       function: '} else {'
     },
     elseif: {
-      function: '} else if($elseif){',
+      function: '} else if($condition){',
       arguments: {
-        elseif: true
+        condition: true
       }
     },
     fetch: {
       // TODO: Implement fetch
-      //  <candy-fetch fetch="/get/products" as="data" method="GET" headers="{}" body="null" refresh="false">
+      //  <candy:fetch fetch="/get/products" as="data" method="GET" headers="{}" body="null" refresh="false">
     },
     for: {
       function: 'for(let $key in $in){ let $value = $constructor[$key];',
@@ -60,21 +59,21 @@ class View {
       }
     },
     if: {
-      function: 'if($if){',
+      function: 'if($condition){',
       arguments: {
-        if: true
+        condition: true
       }
     },
-    '<candy-js>': {
+    '<candy:js>': {
       end: ' html += `',
       function: '`; ',
-      close: '</candy-js>'
+      close: '</candy:js>'
     },
     lazy: {
       // TODO: Implement lazy
-      //  <candy-lazy>
-      //    <component name="profile-card" data="user"/>
-      //  </candy-lazy>
+      //  <candy:lazy>
+      //    <candy:component name="profile-card" data="user"/>
+      //  </candy:lazy>
     },
     list: {
       arguments: {
@@ -87,9 +86,9 @@ class View {
       replace: 'ul'
     },
     while: {
-      function: 'while($while){',
+      function: 'while($condition){',
       arguments: {
-        while: true
+        condition: true
       }
     }
   }
@@ -108,6 +107,40 @@ class View {
   // - PRINT VIEW
   print() {
     if (this.#candy.Request.res.finished) return
+
+    // Handle AJAX load requests
+    if (this.#candy.Request.isAjaxLoad === true && this.#candy.Request.ajaxLoad && this.#candy.Request.ajaxLoad.length > 0) {
+      let output = {}
+      let variables = {}
+
+      // Collect variables marked for AJAX
+      for (let key in this.#candy.Request.variables) {
+        if (this.#candy.Request.variables[key].ajax) {
+          variables[key] = this.#candy.Request.variables[key].value
+        }
+      }
+
+      // Render requested elements
+      for (let element of this.#candy.Request.ajaxLoad) {
+        if (this.#part[element]) {
+          let viewPath = this.#part[element]
+          if (viewPath.includes('.')) viewPath = viewPath.replace(/\./g, '/')
+          if (fs.existsSync(`./view/${element}/${viewPath}.html`)) {
+            output[element] = this.#render(`./view/${element}/${viewPath}.html`)
+          }
+        }
+      }
+
+      this.#candy.Request.header('Content-Type', 'application/json')
+      this.#candy.Request.header('X-Candy-Page', this.#candy.Request.page || '')
+      this.#candy.Request.end({
+        output: output,
+        variables: variables
+      })
+      return
+    }
+
+    // Normal page rendering
     let result = ''
     if (this.#part.skeleton && fs.existsSync(`./skeleton/${this.#part.skeleton}.html`)) {
       result = fs.readFileSync(`./skeleton/${this.#part.skeleton}.html`, 'utf8')
@@ -137,10 +170,109 @@ class View {
     this.#candy.Request.end(result)
   }
 
+  #parseCandyTag(content) {
+    // Parse backend comments
+    // Multi-line: <!--candy ... candy-->
+    // Single-line: <!--candy ... -->
+    content = content.replace(/<!--candy([\s\S]*?)(?:candy-->|-->)/g, () => {
+      return ''
+    })
+
+    // Parse <script:candy> tags (IDE-friendly JavaScript with backend execution)
+    content = content.replace(/<script:candy([^>]*)>([\s\S]*?)<\/script:candy>/g, (fullMatch, attributes, jsContent) => {
+      return `<candy:js>${jsContent}</candy:js>`
+    })
+
+    content = content.replace(/<candy([^>]*?)\/>/g, (fullMatch, attributes) => {
+      attributes = attributes.trim()
+
+      const attrs = {}
+      const attrMatches = attributes.match(/(\w+)(?:=["']([^"']*)["'])?/g) || []
+      for (const attr of attrMatches) {
+        const parts = attr.split('=')
+        const key = parts[0].trim()
+        const value = parts[1] ? parts[1].replace(/["']/g, '').trim() : true
+        attrs[key] = value
+      }
+
+      if (attrs.get) {
+        return `{{ get('${attrs.get}') }}`
+      } else if (attrs.var) {
+        if (attrs.raw) {
+          return `{!! ${attrs.var} !!}`
+        } else {
+          return `{{ ${attrs.var} }}`
+        }
+      }
+      return fullMatch
+    })
+
+    let depth = 0
+    let maxDepth = 10
+    while (depth < maxDepth && content.includes('<candy')) {
+      const before = content
+      content = content.replace(/<candy([^>]*)>((?:(?!<candy)[\s\S])*?)<\/candy>/g, (fullMatch, attributes, innerContent) => {
+        attributes = attributes.trim()
+        innerContent = innerContent.trim()
+
+        const attrs = {}
+        const attrMatches = attributes.match(/(\w+)(?:=["']([^"']*)["'])?/g) || []
+        for (const attr of attrMatches) {
+          const parts = attr.split('=')
+          const key = parts[0].trim()
+          const value = parts[1] ? parts[1].replace(/["']/g, '').trim() : true
+          attrs[key] = value
+        }
+
+        if (attrs.t || attrs.translate) {
+          const placeholders = []
+          let processedContent = innerContent
+          let placeholderIndex = 1
+
+          processedContent = processedContent.replace(/\{\{([^}]+)\}\}/g, (match, variable) => {
+            variable = variable.trim()
+            if (variable.startsWith("'") && variable.endsWith("'")) {
+              placeholders.push(variable)
+            } else {
+              placeholders.push(`Candy.Var(${variable}).html().replace(/\\n/g, "<br>")`)
+            }
+            return `%s${placeholderIndex++}`
+          })
+
+          processedContent = processedContent.replace(/\{!!([^}]+)!!}/g, (match, variable) => {
+            placeholders.push(variable.trim())
+            return `%s${placeholderIndex++}`
+          })
+
+          const translationCall =
+            placeholders.length > 0 ? `__('${processedContent}', ${placeholders.join(', ')})` : `__('${processedContent}')`
+
+          // Check if raw attribute is present
+          if (attrs.raw) {
+            return `{!! ${translationCall} !!}`
+          } else {
+            return `{{ ${translationCall} }}`
+          }
+        } else {
+          // <candy> without attributes = string literal
+          return `{{ '${innerContent}' }}`
+        }
+      })
+      if (before === content) break
+      depth++
+    }
+
+    return content
+  }
+
   #render(file) {
     let mtime = fs.statSync(file).mtimeMs
+    let content = fs.readFileSync(file, 'utf8')
+
     if (this.#cache[file]?.mtime !== mtime) {
-      let content = fs.readFileSync(file, 'utf8')
+      content = Form.parse(content, this.#candy)
+      content = this.#parseCandyTag(content)
+
       let result = 'html += `\n' + content + '\n`'
       content = content.split('\n')
       for (let key in this.#functions) {
@@ -148,17 +280,17 @@ class View {
         let func = this.#functions[key]
         let matches = func.close
           ? result.match(new RegExp(`${key}[\\s\\S]*?${func.close}`, 'g'))
-          : result.match(new RegExp(`<candy-${key}.*?>`, 'g'))
+          : result.match(new RegExp(`<candy:${key}.*?>`, 'g'))
         if (!matches) continue
         for (let match of matches) {
-          let args = match.match(/(?:\w+)=["].*?["]/g)
-          if (!func.close) match = match.replace(/<candy-|>/g, '')
+          let args = match.match(/(\w+)(?:=["']([^"']*)["'])?/g) || []
+          if (!func.close) match = match.replace(/<candy:|>/g, '')
           let vars = {}
           if (func.arguments)
             for (let arg of args) {
-              let [key, value] = arg.split('=')
-              key = key.trim()
-              value = value.replace(/"/g, '').trim()
+              const parts = arg.split('=')
+              const key = parts[0].trim()
+              const value = parts[1] ? parts[1].replace(/["']/g, '').trim() : true
               if (func.arguments[key] === undefined) {
                 att += `${key}="${value}"`
                 continue
@@ -178,23 +310,20 @@ class View {
             result = result.replace(match, fun + match.substring(key.length, match.length - func.close.length) + func.end)
           } else {
             result = result.replace(
-              `<candy-${match}>`,
+              `<candy:${match}>`,
               (func.replace ? `<${[func.replace, att].join(' ')}>` : '') + '`; ' + fun + ' html += `'
             )
             result = result.replace(
-              `</candy-${key}>`,
+              `</candy:${key}>`,
               '`; ' + (func.end ?? '}') + ' html += `' + (func.replace ? `</${func.replace}>` : '')
             )
           }
         }
       }
       let cache = `${nodeCrypto.createHash('md5').update(file).digest('hex')}`
-      if (!fs.existsSync('./storage/cache')) fs.mkdirSync('./storage/cache', {recursive: true})
-      fs.writeFileSync(
-        './storage/cache/' + cache,
-        `module.exports = (Candy, get, __) => {\nlet html = '';\n${result}\nreturn html.trim()\n}`
-      )
-      delete require.cache[require.resolve(__dir + '/storage/cache/' + cache)]
+      if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, {recursive: true})
+      fs.writeFileSync(`${CACHE_DIR}/${cache}`, `module.exports = (Candy, get, __) => {\nlet html = '';\n${result}\nreturn html.trim()\n}`)
+      delete require.cache[require.resolve(`${__dir}/${CACHE_DIR}/${cache}`)]
       if (!Candy.View) Candy.View = {}
       if (!Candy.View.cache) Candy.View.cache = {}
       Candy.View.cache[file] = {
@@ -203,7 +332,7 @@ class View {
       }
     }
     try {
-      return require(__dir + '/storage/cache/' + Candy.View.cache[file].cache)(
+      return require(`${__dir}/${CACHE_DIR}/${Candy.View.cache[file].cache}`)(
         this.#candy,
         key => this.#candy.Request.get(key),
         (...args) => this.#candy.Lang.get(...args)

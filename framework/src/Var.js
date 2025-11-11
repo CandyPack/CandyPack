@@ -105,7 +105,7 @@ class Var {
     if (args.includes('date')) result = (result || any) && ((any && result) || !isNaN(Date.parse(this.#value)))
     if (args.includes('domain')) result = (result || any) && ((any && result) || /^([a-z0-9-]+\.){1,2}[a-z]{2,6}$/i.test(this.#value))
     if (args.includes('email'))
-      result = (result || any) && ((any && result) || /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6}$/i.test(this.#value))
+      result = (result || any) && ((any && result) || /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(this.#value))
     if (args.includes('float')) result = (result || any) && ((any && result) || !isNaN(parseFloat(this.#value)))
     if (args.includes('host')) result = (result || any) && ((any && result) || /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/.test(this.#value))
     if (args.includes('ip')) result = (result || any) && ((any && result) || /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/.test(this.#value))

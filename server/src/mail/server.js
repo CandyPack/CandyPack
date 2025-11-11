@@ -1,4 +1,4 @@
-const {log} = Candy.server('Log', false).init('Mail', 'Server')
+const {log} = Candy.core('Log', false).init('Mail', 'Server')
 
 const tls = require('tls')
 const imap = require('./imap')
