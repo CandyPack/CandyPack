@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://candypack.dev/assets/img/github/header.png" alt="CandyPack Header">
+  <img src="https://candypack.dev/assets/img/github/header.png?v=1" alt="CandyPack Header">
 </p>
 
 # 🍭 CandyPack
