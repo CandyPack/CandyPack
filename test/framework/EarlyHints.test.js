@@ -118,6 +118,24 @@ describe('EarlyHints', () => {
       const resources = hints.extractFromHtml(html)
       expect(resources).toEqual([])
     })
+
+    it('should skip resources with defer attribute', () => {
+      const html = `
+        <html>
+          <head>
+            <link rel="stylesheet" href="/css/critical.css">
+            <link rel="stylesheet" href="/css/non-critical.css" defer>
+            <script src="/js/app.js"></script>
+            <script src="/js/analytics.js" defer></script>
+          </head>
+          <body></body>
+        </html>
+      `
+      const resources = earlyHints.extractFromHtml(html)
+      expect(resources).toHaveLength(2)
+      expect(resources[0]).toEqual({href: '/css/critical.css', as: 'style'})
+      expect(resources[1]).toEqual({href: '/js/app.js', as: 'script'})
+    })
   })
 
   describe('formatLinkHeader', () => {

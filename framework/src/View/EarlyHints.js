@@ -89,6 +89,7 @@ class EarlyHints {
     const cssMatches = head.matchAll(/<link[^>]+href=["']([^"']+\.css)["'][^>]*>/gi)
     for (const match of cssMatches) {
       const fullTag = match[0]
+      if (fullTag.includes('defer')) continue
       if (!fullTag.includes('rel=') || fullTag.includes('stylesheet')) {
         resources.push({href: match[1], as: 'style'})
       }
@@ -104,6 +105,8 @@ class EarlyHints {
 
     const fontMatches = head.matchAll(/<link[^>]+href=["']([^"']+\.(woff2?|ttf|otf|eot))["'][^>]*>/gi)
     for (const match of fontMatches) {
+      const fullTag = match[0]
+      if (fullTag.includes('defer')) continue
       resources.push({
         href: match[1],
         as: 'font',
