@@ -1,11 +1,13 @@
 const nodeCrypto = require('crypto')
 const fs = require('fs')
 const Form = require('./View/Form')
+const EarlyHints = require('./View/EarlyHints')
 
 const CACHE_DIR = './storage/.cache'
 
 class View {
   #cache = {}
+  #earlyHints = null
   #functions = {
     '{!!': {
       function: '${',
@@ -97,6 +99,18 @@ class View {
 
   constructor(candy) {
     this.#candy = candy
+
+    if (!global.Candy?.View?.EarlyHints) {
+      const config = candy.Config?.earlyHints
+      this.#earlyHints = new EarlyHints(config)
+      this.#earlyHints.init()
+
+      if (!global.Candy) global.Candy = {}
+      if (!global.Candy.View) global.Candy.View = {}
+      global.Candy.View.EarlyHints = this.#earlyHints
+    } else {
+      this.#earlyHints = global.Candy.View.EarlyHints
+    }
   }
 
   all(name) {
@@ -107,6 +121,8 @@ class View {
   // - PRINT VIEW
   print() {
     if (this.#candy.Request.res.finished) return
+
+    const routePath = this.#candy.Request.req.url.split('?')[0]
 
     // Handle AJAX load requests
     if (this.#candy.Request.isAjaxLoad === true && this.#candy.Request.ajaxLoad && this.#candy.Request.ajaxLoad.length > 0) {
@@ -166,6 +182,19 @@ class View {
           }
       }
     }
+
+    if (result) {
+      const hasEarlyHints = this.#candy.Request.hasEarlyHints()
+
+      if (!hasEarlyHints) {
+        const detectedResources = this.#earlyHints.extractFromHtml(result)
+
+        if (detectedResources && detectedResources.length > 0) {
+          this.#earlyHints.cacheHints(routePath, detectedResources)
+        }
+      }
+    }
+
     this.#candy.Request.header('Content-Type', 'text/html')
     this.#candy.Request.end(result)
   }
@@ -349,12 +378,44 @@ class View {
   set(...args) {
     if (args.length === 1 && typeof args[0] === 'object') for (let key in args[0]) this.#part[key] = args[0][key]
     else if (args.length === 2) this.#part[args[0]] = args[1]
+
+    this.#sendEarlyHintsIfAvailable()
     return this
   }
 
   skeleton(name) {
     this.#part.skeleton = name
+    this.#sendEarlyHintsIfAvailable()
     return this
+  }
+
+  #sendEarlyHintsIfAvailable() {
+    if (this.#candy.Request.res.headersSent) return
+
+    const routePath = this.#candy.Request.req.url.split('?')[0]
+    const viewPaths = []
+
+    if (this.#part.skeleton) {
+      viewPaths.push(`skeleton/${this.#part.skeleton}`)
+    }
+
+    for (let key in this.#part) {
+      if (['skeleton'].includes(key)) continue
+      if (this.#part[key]) {
+        const viewPath = this.#part[key].replace(/\./g, '/')
+        viewPaths.push(`view/${key}/${viewPath}`)
+      }
+    }
+
+    let hints = this.#earlyHints.getHints(null, routePath)
+
+    if (!hints && viewPaths.length > 0) {
+      hints = this.#earlyHints.getHintsForViewFiles(viewPaths)
+    }
+
+    if (hints && hints.length > 0) {
+      this.#candy.Request.setEarlyHints(hints)
+    }
   }
 }
 
