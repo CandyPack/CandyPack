@@ -168,6 +168,7 @@ class SSL {
       Candy.core('Config').config.websites = websites
 
       Candy.server('Web').clearSSLCache(domain)
+      Candy.server('Mail').clearSSLCache(domain)
 
       log('SSL certificate successfully generated and saved for domain %s', domain)
     } catch (err) {

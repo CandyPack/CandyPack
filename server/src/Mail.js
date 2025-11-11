@@ -20,6 +20,18 @@ class Mail {
   #started = false
   #sslCache = new Map()
 
+  clearSSLCache(domain) {
+    if (domain) {
+      this.#sslCache.delete(domain)
+      const subdomains = Candy.core('Config').config.websites[domain]?.subdomain ?? []
+      for (const subdomain of subdomains) {
+        this.#sslCache.delete(subdomain + '.' + domain)
+      }
+    } else {
+      this.#sslCache.clear()
+    }
+  }
+
   check() {
     if (this.#checking) return
     if (!this.#started) this.init()
