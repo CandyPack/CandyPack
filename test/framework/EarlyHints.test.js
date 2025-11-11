@@ -136,6 +136,23 @@ describe('EarlyHints', () => {
       expect(resources[0]).toEqual({href: '/css/critical.css', as: 'style'})
       expect(resources[1]).toEqual({href: '/js/app.js', as: 'script'})
     })
+
+    it('should only detect stylesheets with rel="stylesheet"', () => {
+      const html = `
+        <html>
+          <head>
+            <link rel="stylesheet" href="/css/main.css">
+            <link rel="icon" href="/favicon.css">
+            <link rel="preload" href="/data.css" as="fetch">
+            <link href="/other.css">
+          </head>
+          <body></body>
+        </html>
+      `
+      const resources = earlyHints.extractFromHtml(html)
+      expect(resources).toHaveLength(1)
+      expect(resources[0]).toEqual({href: '/css/main.css', as: 'style'})
+    })
   })
 
   describe('formatLinkHeader', () => {

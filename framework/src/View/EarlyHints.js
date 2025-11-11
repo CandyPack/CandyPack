@@ -90,7 +90,7 @@ class EarlyHints {
     for (const match of cssMatches) {
       const fullTag = match[0]
       if (fullTag.includes('defer')) continue
-      if (!fullTag.includes('rel=') || fullTag.includes('stylesheet')) {
+      if (fullTag.toLowerCase().includes('rel="stylesheet"') || fullTag.toLowerCase().includes("rel='stylesheet'")) {
         resources.push({href: match[1], as: 'style'})
       }
     }
