@@ -1,5 +1,37 @@
 ### ⚙️ Engine Tuning
 
+- Modular Config
+- New default web template
+
+### ✨ What's New
+
+- add <candy:login> component for zero-config registration
+- add <candy:register> component for zero-config registration
+- Environment variable support
+- **Framework:** Support multiple validation checks per field
+- HTTP2 & Server-Sent Events (SSE) Support
+- Modernize view template syntax with <candy> tags
+- No-Code AJAX Navigation
+
+### 📚 Documentation
+
+- Add examples for complex MySQL where conditions
+- Expand and update view system documentation
+- Revamp database docs: connection and queries
+
+### 🛠️ Fixes & Improvements
+
+- Added config module to candy debug
+- Improve config force save and migration verification
+
+
+
+---
+
+Powered by [🍭 CandyPack](https://candypack.dev)
+
+### ⚙️ Engine Tuning
+
 - Refactor SSL certificate generation and error handling
 
 ### ✨ What's New
