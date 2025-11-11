@@ -14,6 +14,19 @@ class WebProxy {
     })
   }
 
+  #handleEarlyHints(proxyRes, res) {
+    if (proxyRes.headers['x-candy-early-hints'] && typeof res.writeEarlyHints === 'function') {
+      try {
+        const links = JSON.parse(proxyRes.headers['x-candy-early-hints'])
+        if (Array.isArray(links) && links.length > 0) {
+          res.writeEarlyHints({link: links})
+        }
+      } catch {
+        // Ignore parsing errors
+      }
+    }
+  }
+
   http2(req, res, website, host) {
     const options = {
       hostname: '127.0.0.1',
@@ -33,16 +46,7 @@ class WebProxy {
     options.headers['x-candy-connection-ssl'] = 'true'
 
     const proxyReq = http.request(options, proxyRes => {
-      if (proxyRes.headers['x-candy-early-hints'] && typeof res.writeEarlyHints === 'function') {
-        try {
-          const links = JSON.parse(proxyRes.headers['x-candy-early-hints'])
-          if (Array.isArray(links) && links.length > 0) {
-            res.writeEarlyHints({link: links})
-          }
-        } catch {
-          // Ignore parsing errors
-        }
-      }
+      this.#handleEarlyHints(proxyRes, res)
 
       const responseHeaders = {}
       const forbiddenHeaders = [
@@ -84,17 +88,7 @@ class WebProxy {
     }
 
     const onProxyRes = (proxyRes, req, res) => {
-      if (proxyRes.headers['x-candy-early-hints'] && typeof res.writeEarlyHints === 'function') {
-        try {
-          const links = JSON.parse(proxyRes.headers['x-candy-early-hints'])
-          if (Array.isArray(links) && links.length > 0) {
-            res.writeEarlyHints({link: links})
-          }
-        } catch {
-          // Ignore parsing errors
-        }
-      }
-
+      this.#handleEarlyHints(proxyRes, res)
       delete proxyRes.headers['x-candy-early-hints']
     }
 
