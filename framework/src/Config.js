@@ -13,6 +13,11 @@ module.exports = {
   encrypt: {
     key: 'candy'
   },
+  earlyHints: {
+    enabled: true,
+    auto: true,
+    maxResources: 5
+  },
 
   init: function () {
     try {

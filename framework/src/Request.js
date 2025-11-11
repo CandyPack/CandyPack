@@ -9,6 +9,7 @@ class CandyRequest {
   #headers = {Server: 'CandyPack'}
   #status = 200
   #timeout = null
+  #earlyHints = null
   variables = {}
   isAjaxLoad = false
   ajaxLoad = null
@@ -176,8 +177,25 @@ class CandyRequest {
   // - PRINT HEADERS
   print() {
     if (this.res.headersSent) return
+
+    if (this.#earlyHints && this.#earlyHints.length > 0) {
+      const EarlyHints = require('./View/EarlyHints')
+      const earlyHintsManager = new EarlyHints()
+      earlyHintsManager.send(this.res, this.#earlyHints)
+    }
+
     this.#headers['Set-Cookie'] = this.#cookies.sent
     this.res.writeHead(this.#status, this.#headers)
+  }
+
+  // - SET EARLY HINTS
+  setEarlyHints(hints) {
+    this.#earlyHints = hints
+  }
+
+  // - HAS EARLY HINTS
+  hasEarlyHints() {
+    return this.#earlyHints !== null && this.#earlyHints.length > 0
   }
 
   // - REDIRECT
