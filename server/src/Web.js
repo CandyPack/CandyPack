@@ -33,10 +33,10 @@ class Web {
 
   clearSSLCache(domain) {
     if (domain) {
-      this.#sslCache.delete(domain)
-      const subdomains = Candy.core('Config').config.websites[domain]?.subdomain ?? []
-      for (const subdomain of subdomains) {
-        this.#sslCache.delete(subdomain + '.' + domain)
+      for (const key of this.#sslCache.keys()) {
+        if (key === domain || key.endsWith('.' + domain)) {
+          this.#sslCache.delete(key)
+        }
       }
     } else {
       this.#sslCache.clear()
