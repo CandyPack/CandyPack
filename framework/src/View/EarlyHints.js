@@ -88,9 +88,9 @@ class EarlyHints {
 
     const cssMatches = head.matchAll(/<link[^>]+href=["']([^"']+\.css)["'][^>]*>/gi)
     for (const match of cssMatches) {
-      const fullTag = match[0]
+      const fullTag = match[0].toLowerCase()
       if (fullTag.includes('defer')) continue
-      if (fullTag.toLowerCase().includes('rel="stylesheet"') || fullTag.toLowerCase().includes("rel='stylesheet'")) {
+      if (fullTag.includes('rel="stylesheet"') || fullTag.includes("rel='stylesheet'")) {
         resources.push({href: match[1], as: 'style'})
       }
     }
