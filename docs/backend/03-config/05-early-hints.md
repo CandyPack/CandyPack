@@ -329,7 +329,7 @@ Reduce `maxResources` in config:
 
 ## Disabling Early Hints
 
-To completely disable Early Hints:
+Removing the `earlyHints` configuration section from your `config.json` is equivalent to using the default settings, which has the feature enabled. To truly disable Early Hints, you must explicitly set `enabled: false` in your configuration:
 
 ```json
 {
@@ -338,8 +338,6 @@ To completely disable Early Hints:
   }
 }
 ```
-
-Or remove the configuration entirely - the feature will still work with defaults. To truly disable it, set `enabled: false`.
 
 ## Summary
 
