@@ -101,11 +101,7 @@ class View {
     this.#candy = candy
 
     if (!global.Candy?.View?.EarlyHints) {
-      const config = candy.Config?.earlyHints || {
-        enabled: true,
-        auto: true,
-        maxResources: 5
-      }
+      const config = candy.Config?.earlyHints
       this.#earlyHints = new EarlyHints(config)
       this.#earlyHints.init()
 
