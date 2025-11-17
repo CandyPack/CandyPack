@@ -225,7 +225,7 @@ class View {
       }
 
       if (attrs.get) {
-        return `{{ get('${attrs.get}') }}`
+        return `{{ get('${attrs.get}') || '' }}`
       } else if (attrs.var) {
         if (attrs.raw) {
           return `{!! ${attrs.var} !!}`
