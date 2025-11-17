@@ -1,10 +1,12 @@
-## 🔗 Accessing Request Data in Views
+## 🔗 Request Data (Query Parameters)
 
-Views can access data from the current HTTP request, including query parameters, form data, and request properties.
+The `<candy get>` tag allows you to access URL query parameters directly in your views. This is useful for forms, filters, and pagination.
 
 ### Getting Query Parameters
 
 Use `<candy get="key" />` to access URL query parameters:
+
+**Important:** `<candy get>` is for **query parameters** (URL parameters), not for data from controllers. For controller data, use `<candy var>` (see [Variables](./03-variables.md)).
 
 ```html
 <!-- URL: /search?q=laptop&page=2 -->
@@ -31,22 +33,54 @@ If a parameter doesn't exist, it safely returns an empty string:
 
 This prevents errors when parameters are optional.
 
-### Using Request Data in Controllers
+### Difference: get vs var
 
-While you can access request data directly in views, it's often better to process it in the controller:
+**`<candy get>` - Query Parameters (from URL):**
+```html
+<!-- URL: /search?q=laptop -->
+<candy get="q" />
+<!-- Output: laptop -->
+```
+
+**`<candy var>` - Controller Data (from Candy.set()):**
+```javascript
+// Controller
+Candy.set('productName', 'Laptop')
+```
+```html
+<!-- View -->
+<candy var="productName" />
+<!-- Output: Laptop -->
+```
+
+### Processing Request Data in Controllers
+
+While you can access query parameters directly in views with `<candy get>`, it's often better to process them in the controller:
 
 ```javascript
 // Controller: controller/search.js
 module.exports = async function(Candy) {
+  // Get query parameters
   const query = Candy.Request.get('q') || 'all products'
   const page = parseInt(Candy.Request.get('page')) || 1
   
-  // Fetch results based on query
-  const results = await searchProducts(query, page)
+  // Validate and process
+  const validatedQuery = query.trim()
+  const validatedPage = Math.max(1, page)
   
-  Candy.set('query', query)
-  Candy.set('page', page)
-  Candy.set('results', results)
+  // Fetch results
+  const results = await Candy.Mysql.table('products')
+    .where('name', 'like', `%${validatedQuery}%`)
+    .limit(20)
+    .offset((validatedPage - 1) * 20)
+    .get()
+  
+  // Pass processed data to view
+  Candy.set({
+    query: validatedQuery,
+    page: validatedPage,
+    results: results
+  })
   
   Candy.View.skeleton('main').set('content', 'search')
 }

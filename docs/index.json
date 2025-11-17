@@ -283,10 +283,6 @@
         {
           "file": "09-comments.md",
           "title": "Comments"
-        },
-        {
-          "file": "04-passing-data-to-views.md",
-          "title": "Passing Data to Views"
         }
       ]
     },

@@ -1,6 +1,30 @@
 ## 📦 Variables in Views
 
-Variables allow you to display dynamic data in your templates. Data is passed from controllers to views and can be displayed in various ways.
+Variables allow you to display dynamic data in your templates. Data is passed from controllers to views using `Candy.set()` and displayed using the `<candy var>` tag.
+
+### Passing Data from Controller
+
+Use `Candy.set()` in your controller to pass data to views:
+
+```javascript
+// Controller: controller/profile.js
+module.exports = async function(Candy) {
+  // Set single variable
+  Candy.set('username', 'John Doe')
+  
+  // Set multiple variables at once
+  Candy.set({
+    user: {
+      name: 'John Doe',
+      email: 'john@example.com',
+      role: 'admin'
+    },
+    pageTitle: 'User Profile'
+  })
+  
+  Candy.View.skeleton('main').set('content', 'profile')
+}
+```
 
 ### Displaying Variables
 
@@ -113,13 +137,20 @@ You have full access to the `Candy` object within templates:
 #### User Profile Card
 
 ```javascript
-// Controller
+// Controller: controller/profile.js
 module.exports = async function(Candy) {
+  // Fetch user from database
+  const userId = Candy.Request.get('id')
+  const user = await Candy.Mysql.table('users')
+    .where('id', userId)
+    .first()
+  
+  // Pass to view
   Candy.set('user', {
-    name: 'Emre Kaya',
-    email: 'emre@example.com',
-    bio: '<p>Full-stack developer</p>',
-    isVerified: true
+    name: user.name,
+    email: user.email,
+    bio: user.bio,
+    isVerified: user.verified
   })
   
   Candy.View.skeleton('main').set('content', 'profile')
@@ -127,7 +158,7 @@ module.exports = async function(Candy) {
 ```
 
 ```html
-<!-- View -->
+<!-- View: view/content/profile.html -->
 <div class="profile-card">
   <h2><candy var="user.name" /></h2>
   <p><candy var="user.email" /></p>
@@ -142,19 +173,24 @@ module.exports = async function(Candy) {
 </div>
 ```
 
-#### Product Display
+#### Product Display with Computed Values
 
 ```javascript
-// Controller
+// Controller: controller/product.js
 module.exports = async function(Candy) {
-  Candy.set('product', {
-    name: 'Laptop',
-    price: 999.99,
-    description: 'High-performance laptop\nPerfect for developers',
-    specs: {
-      ram: '16GB',
-      storage: '512GB SSD'
-    }
+  const productId = Candy.Request.get('id')
+  const product = await Candy.Mysql.table('products')
+    .where('id', productId)
+    .first()
+  
+  // Compute values in controller
+  const hasDiscount = product.discount > 0
+  const finalPrice = product.price * (1 - product.discount / 100)
+  
+  Candy.set({
+    product: product,
+    hasDiscount: hasDiscount,
+    finalPrice: finalPrice
   })
   
   Candy.View.skeleton('main').set('content', 'product')
@@ -162,20 +198,117 @@ module.exports = async function(Candy) {
 ```
 
 ```html
-<!-- View -->
+<!-- View: view/content/product.html -->
 <div class="product">
   <h1><candy var="product.name" /></h1>
-  <p class="price">$<candy var="product.price" /></p>
+  
+  <candy:if condition="hasDiscount">
+    <p class="original-price">$<candy var="product.price" /></p>
+    <p class="final-price">$<candy var="finalPrice" /></p>
+    <span class="discount">-<candy var="product.discount" />%</span>
+  <candy:else>
+    <p class="price">$<candy var="product.price" /></p>
+  </candy:if>
   
   <div class="description">
     <candy var="product.description" />
   </div>
-  
-  <div class="specs">
-    <p>RAM: <candy var="product.specs.ram" /></p>
-    <p>Storage: <candy var="product.specs.storage" /></p>
-  </div>
 </div>
+```
+
+#### Working with Arrays
+
+```javascript
+// Controller: controller/products.js
+module.exports = async function(Candy) {
+  const products = await Candy.Mysql.table('products')
+    .where('active', true)
+    .get()
+  
+  Candy.set({
+    products: products,
+    totalProducts: products.length
+  })
+  
+  Candy.View.skeleton('main').set('content', 'products')
+}
+```
+
+```html
+<!-- View: view/content/products.html -->
+<h1>Products (<candy var="totalProducts" />)</h1>
+
+<div class="products-grid">
+  <candy:for in="products" value="product">
+    <div class="product-card">
+      <h3><candy var="product.name" /></h3>
+      <p>$<candy var="product.price" /></p>
+    </div>
+  </candy:for>
+</div>
+```
+
+### Best Practices
+
+1. **Always use Candy.set()**: Pass all data through `Candy.set()` for consistency
+2. **Set data before rendering**: All `Candy.set()` calls should come before `Candy.View.set()`
+3. **Compute in controller**: Do calculations in the controller, not in views
+4. **Use descriptive names**: `pageTitle`, `userProfile` instead of `title`, `data`
+5. **Group related data**: Use objects to organize related data
+
+**Good:**
+```javascript
+// Controller
+const user = await Candy.Mysql.table('users').first()
+const isAdmin = user.role === 'admin'
+
+Candy.set({
+  user: user,
+  isAdmin: isAdmin
+})
+```
+
+**Avoid:**
+```html
+<!-- Don't do complex logic in views -->
+<candy:if condition="user.role === 'admin' && user.verified && !user.banned">
+  ...
+</candy:if>
+```
+
+### Error Handling
+
+Always handle cases where data might not exist:
+
+```javascript
+// Controller
+module.exports = async function(Candy) {
+  const productId = Candy.Request.get('id')
+  const product = await Candy.Mysql.table('products')
+    .where('id', productId)
+    .first()
+  
+  if (!product) {
+    Candy.set('error', 'Product not found')
+  } else {
+    Candy.set('product', product)
+  }
+  
+  Candy.View.skeleton('main').set('content', 'product')
+}
+```
+
+```html
+<!-- View -->
+<candy:if condition="error">
+  <div class="alert alert-danger">
+    <candy var="error" />
+  </div>
+<candy:else>
+  <div class="product">
+    <h1><candy var="product.name" /></h1>
+  </div>
+</candy:if>
 ```
 
 ### Legacy Syntax (Backward Compatibility)

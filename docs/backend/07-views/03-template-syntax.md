@@ -8,9 +8,9 @@ CandyPack uses a powerful template engine to create dynamic content in view file
 
 This page provides a quick overview of all available template features. For detailed documentation and examples, see the dedicated pages for each feature.
 
-### Variables
+### Variables (Controller Data)
 
-Display dynamic data from your controllers:
+Display data passed from controllers using `Candy.set()`:
 
 ```html
 <!-- HTML-safe output -->
@@ -25,17 +25,18 @@ Display dynamic data from your controllers:
 
 **[→ Learn more about Variables](./03-variables.md)**
 
-### Request Data
+### Request Data (Query Parameters)
 
-Access query parameters and request information:
+Access URL query parameters directly:
 
 ```html
-<!-- Get query parameter -->
-<candy get="search" />
-
-<!-- Access request object -->
-<candy var="Candy.Request.url" />
+<!-- Get query parameter from URL -->
+<!-- URL: /search?q=laptop -->
+<candy get="q" />
+<!-- Output: laptop -->
 ```
+
+**Note:** `<candy get>` is for URL parameters. For controller data, use `<candy var>`.
 
 **[→ Learn more about Request Data](./04-request-data.md)**
 
@@ -145,10 +146,10 @@ Full access to the Candy object in templates:
 
 | Feature | Syntax | Documentation |
 |---------|--------|---------------|
-| Variable | `<candy var="x" />` | [Variables](./03-variables.md) |
+| Variable (Controller) | `<candy var="x" />` | [Variables](./03-variables.md) |
 | Raw HTML | `<candy var="x" raw />` | [Variables](./03-variables.md) |
 | String | `<candy>text</candy>` | [Variables](./03-variables.md) |
-| Get Param | `<candy get="key" />` | [Request Data](./04-request-data.md) |
+| Query Parameter | `<candy get="key" />` | [Request Data](./04-request-data.md) |
 | Translation | `<candy translate>key</candy>` | [Translations](./07-translations.md) |
 | Translation Raw | `<candy translate raw>key</candy>` | [Translations](./07-translations.md) |
 | If | `<candy:if condition="x">` | [Conditionals](./05-conditionals.md) |
