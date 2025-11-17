@@ -254,7 +254,35 @@
         },
         {
           "file": "03-template-syntax.md",
-          "title": "Template Syntax"
+          "title": "Template Syntax Overview"
+        },
+        {
+          "file": "03-variables.md",
+          "title": "Variables"
+        },
+        {
+          "file": "04-request-data.md",
+          "title": "Request Data"
+        },
+        {
+          "file": "05-conditionals.md",
+          "title": "Conditionals"
+        },
+        {
+          "file": "06-loops.md",
+          "title": "Loops"
+        },
+        {
+          "file": "07-translations.md",
+          "title": "Translations (i18n)"
+        },
+        {
+          "file": "08-backend-javascript.md",
+          "title": "Backend JavaScript"
+        },
+        {
+          "file": "09-comments.md",
+          "title": "Comments"
         },
         {
           "file": "04-passing-data-to-views.md",
