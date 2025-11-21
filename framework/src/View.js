@@ -300,8 +300,20 @@ class View {
 
     if (this.#cache[file]?.mtime !== mtime) {
       content = Form.parse(content, this.#candy)
+
+      const jsBlocks = []
+      content = content.replace(/<script:candy([^>]*)>([\s\S]*?)<\/script:candy>/g, (match, attrs, jsContent) => {
+        const placeholder = `___CANDY_JS_BLOCK_${jsBlocks.length}___`
+        jsBlocks.push(jsContent)
+        return `<script:candy${attrs}>${placeholder}</script:candy>`
+      })
+
       content = this.#parseCandyTag(content)
-      content = content.replace(/`/g, '\\`')
+      content = content.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')
+
+      jsBlocks.forEach((jsContent, index) => {
+        content = content.replace(`___CANDY_JS_BLOCK_${index}___`, jsContent)
+      })
 
       let result = 'html += `\n' + content + '\n`'
       content = content.split('\n')
