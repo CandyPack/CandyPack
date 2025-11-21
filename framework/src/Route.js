@@ -319,7 +319,7 @@ class Route {
 
     if (!isFunction && file) {
       path = `${__dir}/controller/${type.replace('#', '')}/${file}.js`
-      if (file.includes('.')) {
+      if (typeof file === 'string' && file.includes('.')) {
         let arr = file.split('.')
         path = `${__dir}/controller/${arr[0]}/${type.replace('#', '')}/${arr.slice(1).join('.')}.js`
       }
