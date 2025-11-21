@@ -382,7 +382,16 @@ class Route {
       return
     }
     if (authFile) this.set('#page', path, authFile)
-    if (file) this.set('page', path, file)
+    if (file) {
+      if (typeof file === 'object' && !Array.isArray(file)) {
+        this.set('page', path, _candy => {
+          _candy.View.set(file)
+          return
+        })
+      } else {
+        this.set('page', path, file)
+      }
+    }
   }
 
   authPost(path, authFile, file) {
