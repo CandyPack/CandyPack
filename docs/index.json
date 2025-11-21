@@ -359,6 +359,16 @@
           "title": "Streaming API"
         }
       ]
+    },
+    {
+      "file": "13-utilities",
+      "title": "Utilities",
+      "children": [
+        {
+          "file": "01-candy-var.md",
+          "title": "Candy.Var"
+        }
+      ]
     }
   ],
   "frontend": [
