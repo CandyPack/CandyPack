@@ -6,6 +6,8 @@ package appmgr
 import (
 	"strings"
 	"testing"
+
+	"odac/internal/gpu"
 )
 
 // ---- privileged access ----
@@ -226,6 +228,145 @@ func TestSetNetworkMode(t *testing.T) {
 }
 
 // ---- egress isolation (its own axis, not a network mode) ----
+
+// ---- GPU reservation ----
+
+func TestSetGPU(t *testing.T) {
+	newGPU := func(t *testing.T, extra map[string]any) *fixture {
+		app := map[string]any{"id": float64(1), "name": "gpu-app", "type": "container"}
+		for k, v := range extra {
+			app[k] = v
+		}
+		fx := newFixture(t, []any{app})
+		fx.gpuHost.runtime = gpu.RuntimeNvidia
+		return fx
+	}
+
+	t.Run("persists the create-time shape", func(t *testing.T) {
+		fx := newGPU(t, nil)
+		if r := fx.m.SetGPU("gpu-app", map[string]any{"runtime": "nvidia"}); !r.Status {
+			t.Fatalf("failed: %v", r.Message)
+		}
+		persisted, _ := fx.app(0)["gpu"].(map[string]any)
+		if persisted["runtime"] != gpu.RuntimeNvidia || persisted["vendor"] != gpu.VendorNvidia || persisted["count"] != "all" {
+			t.Fatalf("persisted gpu = %v", fx.app(0)["gpu"])
+		}
+	})
+
+	// The zero-config path: no vendor named, so the host's own card decides.
+	t.Run("infers the runtime from the host", func(t *testing.T) {
+		fx := newGPU(t, nil)
+		fx.gpuHost.runtime = gpu.RuntimeROCm
+		if r := fx.m.SetGPU("gpu-app", map[string]any{}); !r.Status {
+			t.Fatalf("failed: %v", r.Message)
+		}
+		persisted, _ := fx.app(0)["gpu"].(map[string]any)
+		if persisted["runtime"] != gpu.RuntimeROCm || persisted["vendor"] != gpu.VendorAMD {
+			t.Fatalf("persisted gpu = %v", fx.app(0)["gpu"])
+		}
+	})
+
+	t.Run("refuses inference when the host has no GPU", func(t *testing.T) {
+		fx := newGPU(t, nil)
+		fx.gpuHost.runtime = ""
+		if r := fx.m.SetGPU("gpu-app", map[string]any{}); r.Status {
+			t.Fatal("reservation accepted on a GPU-less host")
+		}
+		if _, present := fx.app(0)["gpu"]; present {
+			t.Fatalf("app touched after refusal: %v", fx.app(0))
+		}
+	})
+
+	t.Run("keeps an explicit count", func(t *testing.T) {
+		fx := newGPU(t, nil)
+		if r := fx.m.SetGPU("gpu-app", map[string]any{"runtime": "nvidia", "count": "2"}); !r.Status {
+			t.Fatalf("failed: %v", r.Message)
+		}
+		persisted, _ := fx.app(0)["gpu"].(map[string]any)
+		if persisted["count"] != float64(2) {
+			t.Fatalf("count = %v", persisted["count"])
+		}
+	})
+
+	// The reservation only takes effect on the next start, and that start
+	// reads the persisted object back through toGPU.
+	t.Run("reaches the container on the next start", func(t *testing.T) {
+		fx := newGPU(t, map[string]any{"image": "ml:latest", "ports": []any{map[string]any{"container": float64(3000)}}})
+		if r := fx.m.SetGPU("gpu-app", map[string]any{"runtime": "nvidia", "count": float64(1)}); !r.Status {
+			t.Fatalf("failed: %v", r.Message)
+		}
+		fx.setHTTPPorts(3000)
+		if err := fx.m.run("gpu-app", nil); err != nil {
+			t.Fatalf("run: %v", err)
+		}
+		spec := fx.dock.runCallAt(0).options.GPU
+		if spec == nil || spec.Runtime != gpu.RuntimeNvidia || spec.Count != 1 {
+			t.Fatalf("RunOptions.GPU = %+v", spec)
+		}
+	})
+
+	t.Run("off releases the reservation", func(t *testing.T) {
+		fx := newGPU(t, map[string]any{"gpu": map[string]any{"vendor": "nvidia", "runtime": "nvidia", "count": "all"}})
+		if r := fx.m.SetGPU("gpu-app", false); !r.Status {
+			t.Fatalf("failed: %v", r.Message)
+		}
+		if _, present := fx.app(0)["gpu"]; present {
+			t.Fatalf("reservation kept: %v", fx.app(0))
+		}
+	})
+
+	// An unusable request must never read as a release: the app would keep
+	// running on the CPU while its operator believes the GPU is reserved.
+	t.Run("rejects a malformed request without touching the app", func(t *testing.T) {
+		fx := newGPU(t, map[string]any{"gpu": map[string]any{"vendor": "nvidia", "runtime": "nvidia", "count": "all"}})
+		for _, request := range []any{float64(2), []any{"nvidia"}, map[string]any{"runtime": "cuda"}, map[string]any{"runtime": "nvidia", "count": "half"}} {
+			if r := fx.m.SetGPU("gpu-app", request); r.Status {
+				t.Fatalf("accepted %v", request)
+			}
+		}
+		if persisted, _ := fx.app(0)["gpu"].(map[string]any); persisted["runtime"] != gpu.RuntimeNvidia {
+			t.Fatalf("app touched after refusal: %v", fx.app(0))
+		}
+	})
+
+	// Same pre-flight as create: a host whose engine cannot pass the runtime
+	// through says so now, not on every start from here on.
+	t.Run("refuses a runtime the host cannot pass through", func(t *testing.T) {
+		fx := newGPU(t, nil)
+		fx.gpuHost.allow(gpu.RuntimeROCm)
+		r := fx.m.SetGPU("gpu-app", map[string]any{"runtime": "nvidia"})
+		if r.Status {
+			t.Fatal("reservation accepted on a host without the runtime")
+		}
+		if !strings.Contains(jsString(r.Message), "nvidia-container-toolkit") {
+			t.Fatalf("unhelpful refusal: %v", r.Message)
+		}
+		if _, present := fx.app(0)["gpu"]; present {
+			t.Fatalf("app touched after refusal: %v", fx.app(0))
+		}
+	})
+
+	// Releasing must stay possible on a host that has lost its GPU, or an app
+	// created with a reservation could never be moved back to the CPU.
+	t.Run("off skips the host pre-flight", func(t *testing.T) {
+		fx := newGPU(t, map[string]any{"gpu": map[string]any{"vendor": "nvidia", "runtime": "nvidia", "count": "all"}})
+		fx.gpuHost.allow()
+		fx.gpuHost.runtime = ""
+		if r := fx.m.SetGPU("gpu-app", false); !r.Status {
+			t.Fatalf("release refused: %v", r.Message)
+		}
+		if _, present := fx.app(0)["gpu"]; present {
+			t.Fatalf("reservation kept: %v", fx.app(0))
+		}
+	})
+
+	t.Run("unknown app", func(t *testing.T) {
+		fx := newGPU(t, nil)
+		if r := fx.m.SetGPU("nope", map[string]any{"runtime": "nvidia"}); r.Status {
+			t.Fatal("unknown app accepted")
+		}
+	})
+}
 
 func TestSetIsolated(t *testing.T) {
 	newIso := func(t *testing.T, extra map[string]any) *fixture {

@@ -112,6 +112,18 @@ func (i *Info) gpuField() jscanon.Obj {
 	}
 }
 
+// GPURuntime names the kind of working GPU this host has ("" when there is
+// none). It is the inventory half of the question CanPassthrough answers,
+// exported so appmgr can infer the runtime an operator did not spell out:
+// `odac app gpu my-app` should reserve the card that is actually here rather
+// than make the operator name a vendor ODAC already knows.
+func (i *Info) GPURuntime() string {
+	if forced, ok := forcedGPURuntime(); ok {
+		return forced
+	}
+	return i.gpuState().runtime
+}
+
 // CanPassthrough answers a stricter question than the system.info gate: not
 // "is there a GPU here" but "can the container engine actually hand one to
 // an app container". The two differ on purpose — a host with drivers but no

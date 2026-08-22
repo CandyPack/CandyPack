@@ -71,6 +71,10 @@
         {
           "file": "08-api-access.md",
           "title": "API Access"
+        },
+        {
+          "file": "09-gpu-reservation.md",
+          "title": "GPU Reservation"
         }
       ]
     },

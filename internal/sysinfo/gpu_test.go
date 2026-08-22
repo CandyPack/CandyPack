@@ -367,6 +367,32 @@ func TestCanPassthrough(t *testing.T) {
 	}
 }
 
+// GPURuntime is the inventory answer appmgr infers an unspelled vendor from,
+// so it must report the detected card even where passthrough is impossible,
+// and honour the operator override on hosts ODAC cannot see into.
+func TestGPURuntime(t *testing.T) {
+	fs := newFakeSysfs(t)
+	info := New(nil, nil)
+	if rt := info.GPURuntime(); rt != "" {
+		t.Errorf("bare host reported %q", rt)
+	}
+
+	fs.pciDevice(t, "0000:01:00.0", "0x030000", pciVendorNvidia, "0x2684", nil)
+	fs.dir(t, "module", "nvidia")
+	if rt := New(nil, nil).GPURuntime(); rt != gpu.RuntimeNvidia {
+		t.Errorf("GPURuntime = %q, want nvidia", rt)
+	}
+
+	t.Setenv("ODAC_GPU_RUNTIME", "rocm")
+	if rt := New(nil, nil).GPURuntime(); rt != gpu.RuntimeROCm {
+		t.Errorf("the override must win: %q", rt)
+	}
+	t.Setenv("ODAC_GPU_RUNTIME", "none")
+	if rt := New(nil, nil).GPURuntime(); rt != "" {
+		t.Errorf("a disabled host must report no runtime: %q", rt)
+	}
+}
+
 func TestCanPassthroughDeviceNodes(t *testing.T) {
 	fs := newFakeSysfs(t)
 	info := New(nil, nil)

@@ -1,6 +1,7 @@
 package appmgr
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 	"odac/internal/applog"
 	"odac/internal/appstatus"
 	"odac/internal/docker"
+	"odac/internal/gpu"
 	"odac/internal/netmode"
 	"odac/internal/ports"
 )
@@ -1128,6 +1130,114 @@ func (m *Manager) SetIsolated(id any, isolated bool) *api.Result {
 		result = res(true, __("%s can reach the network again. Restart required to apply.", app["name"]))
 	})
 	return result
+}
+
+// SetGPU attaches or clears an app's GPU reservation after create time. The
+// Cloud fills the same `gpu` field when it installs a ready-made AI app;
+// this is the path for an app that was created without one, or that has
+// outgrown the CPU.
+//
+// request is the app.create `gpu` object (runtime/vendor/count); nil, false
+// or "off" releases the reservation. An object that names neither runtime
+// nor vendor inherits the host's detected runtime, so the common case needs
+// no vendor at all. Persisted only: a container's device requests are fixed
+// at create time, so it takes a restart.
+func (m *Manager) SetGPU(id any, request any) *api.Result {
+	wanted, reserve, err := gpuRequest(request)
+	if err != nil {
+		return res(false, __("Invalid GPU configuration: %s", err.Error()))
+	}
+
+	var spec *gpu.Spec
+	if reserve {
+		if gpuFieldEmpty(wanted, "runtime") && gpuFieldEmpty(wanted, "vendor") {
+			runtime := ""
+			if m.deps.GPUHost != nil {
+				runtime = m.deps.GPUHost.GPURuntime()
+			}
+			if runtime == "" {
+				return res(false, __("No GPU was detected on this host. Name the runtime explicitly (--nvidia, --amd or --intel) if ODAC cannot see the card from inside its container."))
+			}
+			wanted["runtime"] = runtime
+		}
+		spec, err = gpu.Parse(wanted)
+		if err != nil {
+			return res(false, __("Invalid GPU configuration: %s", err.Error()))
+		}
+	}
+
+	// The same create-time pre-flight, for the same reason: a host that
+	// cannot pass this runtime through should say so now, with the missing
+	// piece named, instead of failing every start from here on.
+	if reason := m.checkGPUHost(spec); reason != "" {
+		return res(false, reason)
+	}
+
+	var result *api.Result
+	m.cfg.Mutate(func() {
+		app := m.getLocked(id)
+		if app == nil {
+			result = res(false, __("App %s not found.", jsString(id)))
+			return
+		}
+
+		if spec == nil {
+			had := app["gpu"] != nil
+			delete(app, "gpu")
+			m.saveAppsLocked()
+			if !had {
+				result = res(true, __("%s has no GPU reservation.", app["name"]))
+				return
+			}
+			result = res(true, __("GPU reservation removed from %s. Restart required to apply.", app["name"]))
+			return
+		}
+
+		app["gpu"] = spec.Map()
+		m.saveAppsLocked()
+		result = res(true, __("%s now reserves %s. Restart required to apply.", app["name"], spec.String()))
+	})
+	return result
+}
+
+// gpuRequest normalizes a SetGPU request into the object gpu.Parse takes.
+// reserve is false for a release (nil, false, or an "off"/"none"/"" string).
+// An object always means a reservation, the empty one included: the CLI's
+// bare `odac app gpu my-app` sends {} to mean "whatever this host has", so
+// only an explicit release may clear the field. Anything else is an error
+// rather than a silent release, which would drop a GPU an operator believes
+// is still reserved.
+func gpuRequest(request any) (map[string]any, bool, error) {
+	switch v := request.(type) {
+	case nil:
+		return nil, false, nil
+	case bool:
+		if !v {
+			return nil, false, nil
+		}
+		return map[string]any{}, true, nil
+	case string:
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "", "off", "none", "false":
+			return nil, false, nil
+		default:
+			return map[string]any{"runtime": v}, true, nil
+		}
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, val := range v {
+			out[key] = val
+		}
+		return out, true, nil
+	}
+	return nil, false, errors.New("gpu must be an object")
+}
+
+// gpuFieldEmpty reports whether a request member is absent or blank, so an
+// unspelled runtime can be inferred from the host.
+func gpuFieldEmpty(request map[string]any, key string) bool {
+	s, _ := request[key].(string)
+	return strings.TrimSpace(s) == ""
 }
 
 // SetAPI grants or revokes an app's access to ODAC's own API. permissions is

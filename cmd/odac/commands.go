@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"odac/internal/gpu"
 )
 
 type command struct {
@@ -127,6 +129,11 @@ func init() {
 							},
 						}},
 					},
+				}},
+				{"gpu", &command{
+					description: "Reserve GPUs for an app: --nvidia, --amd or --intel (auto-detected when omitted), --count N for part of the host. Use --off to release. Restart required.",
+					args:        []string{"-i", "--id", "--nvidia", "--amd", "--intel", "--count", "--off"},
+					action:      appGPUAction,
 				}},
 				{"isolate", &command{
 					description: "Cut off an app's outbound network access. Use --off to restore it. Restart required.",
@@ -505,6 +512,33 @@ func appNetworkAction(a *app, args []string) int {
 		}
 	}
 	return a.call("app.network", []any{app, mode}, false)
+}
+
+// appGPUAction reserves host GPUs for an app. The vendor flags are optional:
+// with none of them the server infers the runtime from the card it detected,
+// which is the zero-config path on a single-GPU host.
+func appGPUAction(a *app, args []string) int {
+	// --count consumes a value, and appIDArg takes the first bare argument
+	// as the app, so that value must not still be sitting in the slice.
+	appID := appIDArg(a, withoutFlagValue(args, "--count"))
+
+	if slices.Contains(args, "--off") {
+		return a.call("app.gpu", []any{appID, false}, false)
+	}
+
+	request := map[string]any{}
+	switch {
+	case slices.Contains(args, "--nvidia"):
+		request["runtime"] = gpu.RuntimeNvidia
+	case slices.Contains(args, "--amd"):
+		request["runtime"] = gpu.RuntimeROCm
+	case slices.Contains(args, "--intel"):
+		request["runtime"] = gpu.RuntimeIntel
+	}
+	if count := parseArg(args, "--count"); count != "" {
+		request["count"] = count
+	}
+	return a.call("app.gpu", []any{appID, request}, false)
 }
 
 func appAPIAction(a *app, args []string) int {
