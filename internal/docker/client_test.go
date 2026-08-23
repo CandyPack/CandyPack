@@ -16,6 +16,7 @@ import (
 	dockerspec "github.com/moby/docker-image-spec/specs-go/v1"
 
 	"odac/internal/gpu"
+	"odac/internal/kernel"
 	"odac/internal/logx"
 )
 
@@ -962,5 +963,100 @@ func TestRunAppRefusalWithoutGPURequest(t *testing.T) {
 	_, err := newTestClient(t, f).RunApp("cpu", RunOptions{Image: "img"}, nil, nil)
 	if errors.Is(err, ErrGPUUnavailable) {
 		t.Fatalf("CPU app classified as a GPU refusal: %v", err)
+	}
+}
+
+// A UDP entry becomes a udp port key on both the exposed set and the
+// bindings, and TCP entries keep the shape they always had. The two may
+// share a number: they are different bindings to the kernel.
+func TestRunAppUDPPorts(t *testing.T) {
+	f := newFakeAPI()
+	f.images["img"] = image.InspectResponse{}
+	c := newTestClient(t, f)
+
+	_, err := c.RunApp("wg", RunOptions{
+		Image: "img",
+		Ports: []map[string]any{
+			{"host": 51820.0, "container": 51820.0, "proto": "udp", "public": true},
+			{"host": 51820.0, "container": 51820.0},
+			{"host": 8080.0, "container": 80.0, "proto": "tcp"},
+		},
+	}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := f.created[0]
+	want := nat.PortMap{
+		"51820/udp": {{HostIP: "", HostPort: "51820"}},
+		"51820/tcp": {{HostIP: "127.0.0.1", HostPort: "51820"}},
+		"80/tcp":    {{HostIP: "127.0.0.1", HostPort: "8080"}},
+	}
+	if !reflect.DeepEqual(call.HostConfig.PortBindings, want) {
+		t.Errorf("port bindings = %#v", call.HostConfig.PortBindings)
+	}
+	for _, key := range []string{"51820/udp", "51820/tcp", "80/tcp"} {
+		if _, ok := call.Config.ExposedPorts[nat.Port(key)]; !ok {
+			t.Errorf("exposed ports missing %s: %#v", key, call.Config.ExposedPorts)
+		}
+	}
+}
+
+// Capabilities and sysctls reach HostConfig verbatim, and an app that asked
+// for neither must produce the container config it always produced.
+func TestRunAppKernelSpec(t *testing.T) {
+	f := newFakeAPI()
+	f.images["img"] = image.InspectResponse{}
+	c := newTestClient(t, f)
+
+	spec := &kernel.Spec{
+		Caps:    []string{kernel.CapNetAdmin},
+		Sysctls: map[string]string{"net.ipv4.ip_forward": "1", "kernel.shmmax": "1024"},
+	}
+	if _, err := c.RunApp("wg", RunOptions{Image: "img", Kernel: spec}, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	hc := f.created[0].HostConfig
+	if !reflect.DeepEqual([]string(hc.CapAdd), []string{kernel.CapNetAdmin}) {
+		t.Errorf("cap add = %#v", hc.CapAdd)
+	}
+	if !reflect.DeepEqual(hc.Sysctls, map[string]string{"net.ipv4.ip_forward": "1", "kernel.shmmax": "1024"}) {
+		t.Errorf("sysctls = %#v", hc.Sysctls)
+	}
+
+	if _, err := c.RunApp("plain", RunOptions{Image: "img"}, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	hc = f.created[1].HostConfig
+	if hc.CapAdd != nil || hc.Sysctls != nil {
+		t.Errorf("an app requesting neither must send neither: caps %#v sysctls %#v", hc.CapAdd, hc.Sysctls)
+	}
+}
+
+// Host networking shares the host's network namespace, so the daemon refuses
+// a create carrying net.* sysctls. They are dropped (the engine would
+// otherwise refuse every recreate), while the namespaced IPC ones and the
+// capabilities stay.
+func TestRunAppHostNetworkDropsNetSysctls(t *testing.T) {
+	f := newFakeAPI()
+	f.images["img"] = image.InspectResponse{}
+	c := newTestClient(t, f)
+
+	spec := &kernel.Spec{
+		Caps:    []string{kernel.CapNetAdmin},
+		Sysctls: map[string]string{"net.ipv4.ip_forward": "1", "kernel.shmmax": "1024"},
+	}
+	if _, err := c.RunApp("wg", RunOptions{Image: "img", NetworkMode: "host", Kernel: spec}, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	hc := f.created[0].HostConfig
+	if !reflect.DeepEqual(hc.Sysctls, map[string]string{"kernel.shmmax": "1024"}) {
+		t.Errorf("sysctls = %#v, want the net ones dropped", hc.Sysctls)
+	}
+	if !reflect.DeepEqual([]string(hc.CapAdd), []string{kernel.CapNetAdmin}) {
+		t.Errorf("cap add = %#v, capabilities are unaffected by the namespace", hc.CapAdd)
+	}
+	// The caller's spec must survive: it is the persisted record.
+	if len(spec.Sysctls) != 2 {
+		t.Errorf("RunApp mutated the caller's spec: %#v", spec.Sysctls)
 	}
 }

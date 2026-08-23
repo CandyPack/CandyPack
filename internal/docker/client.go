@@ -33,6 +33,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -41,6 +42,7 @@ import (
 
 	"odac/internal/applog"
 	"odac/internal/gpu"
+	"odac/internal/kernel"
 	"odac/internal/logx"
 	"odac/internal/netmode"
 	"odac/internal/ports"
@@ -124,6 +126,11 @@ type RunOptions struct {
 	// alongside the bridge: a host-namespace container has no bridge to
 	// isolate, so the two never combine (appmgr refuses it).
 	Isolated bool
+	// Kernel is the validated capability / sysctl request, nil for an app
+	// that asked for neither — which must produce byte-identical container
+	// config to what it produced before the field existed. SECURITY: every
+	// name in it passed kernel's allowlist; do not fill it from raw payload.
+	Kernel *kernel.Spec
 }
 
 // BuildLog is the phase-aware build log control the container operations
@@ -444,6 +451,60 @@ var renderDeviceNodes = map[string][]string{
 // renderGroups is a test seam over the host's render group ids.
 var renderGroups = gpu.RenderGroups
 
+// kernelHostSpec is the host-config contribution of a capability / sysctl
+// request.
+type kernelHostSpec struct {
+	caps    strslice.StrSlice
+	sysctls map[string]string
+}
+
+// kernelHostConfig translates a validated kernel request into host config,
+// logging what a container is being handed: an added capability is host
+// privilege crossing into a container, and the only place an operator can
+// later see that it happened is this log line.
+//
+// Host networking drops the net.* sysctls. The container joins the host's
+// network namespace, so those settings would retune the host itself and the
+// daemon refuses the create outright — and a refused create is not a visible
+// failure here, it is a container the app manager recreates on every check
+// tick. appmgr already drops them when an app switches to host mode; this is
+// the second door, for a hand-edited config that never passed through it.
+func (c *Client) kernelHostConfig(name string, spec *kernel.Spec, hostNetwork bool) kernelHostSpec {
+	if spec == nil {
+		return kernelHostSpec{}
+	}
+	if hostNetwork {
+		if dropped := spec.NetSysctls(); len(dropped) > 0 {
+			c.log.Log("App %s uses host networking: ignoring the network sysctls %s (they would configure the host's own namespace, which the engine refuses).",
+				name, strings.Join(dropped, ", "))
+			spec = spec.WithoutNetSysctls()
+		}
+	}
+	if spec == nil {
+		return kernelHostSpec{}
+	}
+	out := kernelHostSpec{}
+	if len(spec.Caps) > 0 {
+		c.log.Log("App %s runs with extra kernel capabilities: %s.", name, strings.Join(spec.Caps, ", "))
+		out.caps = strslice.StrSlice(append([]string(nil), spec.Caps...))
+	}
+	if len(spec.Sysctls) > 0 {
+		keys := make([]string, 0, len(spec.Sysctls))
+		for k := range spec.Sysctls {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		out.sysctls = make(map[string]string, len(spec.Sysctls))
+		pairs := make([]string, 0, len(keys))
+		for _, k := range keys {
+			out.sysctls[k] = spec.Sysctls[k]
+			pairs = append(pairs, k+"="+spec.Sysctls[k])
+		}
+		c.log.Log("App %s sets container sysctls: %s.", name, strings.Join(pairs, ", "))
+	}
+	return out
+}
+
 // gpuHostSpec is the host-config contribution of a GPU request.
 type gpuHostSpec struct {
 	requests []container.DeviceRequest
@@ -543,9 +604,10 @@ func (c *Client) RunApp(name string, options RunOptions, buildLog BuildLog, isCa
 				name, jsString(entry["container"]))
 			continue
 		}
-		portKey := nat.Port(jsString(entry["container"]) + "/tcp")
+		proto := ports.Proto(entry)
+		portKey := nat.Port(jsString(entry["container"]) + "/" + proto)
 		if ports.IsPublic(entry) {
-			c.log.Log("Publishing %s port %s on every interface (public).", name, jsString(entry["host"]))
+			c.log.Log("Publishing %s port %s/%s on every interface (public).", name, jsString(entry["host"]), proto)
 		}
 		// Append: Docker takes a list of host bindings per container port, so a
 		// single container port may be published on several host ports.
@@ -587,6 +649,8 @@ func (c *Client) RunApp(name string, options RunOptions, buildLog BuildLog, isCa
 	default:
 		c.ensureNetwork(ctx, networkName, false)
 	}
+
+	kernelSpec := c.kernelHostConfig(name, options.Kernel, hostNetwork)
 
 	c.log.Log("Starting app container %s (%s)...", name, options.Image)
 
@@ -630,6 +694,8 @@ func (c *Client) RunApp(name string, options RunOptions, buildLog BuildLog, isCa
 		NetworkMode:   container.NetworkMode(netMode),
 		GroupAdd:      gpuCfg.groups,
 		Privileged:    options.Privileged,
+		CapAdd:        kernelSpec.caps,
+		Sysctls:       kernelSpec.sysctls,
 	}
 
 	created, err := c.api.ContainerCreate(ctx, cfg, hostCfg, nil, nil, name)

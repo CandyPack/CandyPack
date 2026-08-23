@@ -75,6 +75,10 @@
         {
           "file": "09-gpu-reservation.md",
           "title": "GPU Reservation"
+        },
+        {
+          "file": "10-kernel-capabilities.md",
+          "title": "Capabilities & Sysctls"
         }
       ]
     },

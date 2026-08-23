@@ -15,6 +15,7 @@ import (
 	"odac/internal/api"
 	"odac/internal/docker"
 	"odac/internal/gpu"
+	"odac/internal/kernel"
 	"odac/internal/ports"
 )
 
@@ -40,6 +41,23 @@ func parseGPURequest(payload, recipe any) (*gpu.Spec, error) {
 		return spec, err
 	}
 	return gpu.Parse(recipe)
+}
+
+// parseKernelRequest validates the `caps` / `sysctls` members of a create
+// payload, falling back to the recipe's own declaration when the payload
+// carries none. Same precedence as the GPU request and for the same reason:
+// a recipe may know that its image needs NET_ADMIN, but an explicit request
+// from the Cloud wins.
+//
+// Both fields are allowlisted (see internal/kernel), so an unknown
+// capability or a host-wide sysctl fails the create here rather than at
+// container create, which the app manager would retry on every check tick.
+func parseKernelRequest(payload, recipe any) (*kernel.Spec, error) {
+	spec, err := kernel.Parse(payload)
+	if err != nil || spec != nil {
+		return spec, err
+	}
+	return kernel.Parse(recipe)
 }
 
 // startFailureMessage words a failed start for the Cloud. The GPU case gets
@@ -194,6 +212,12 @@ func (m *Manager) createFromRecipe(cfg map[string]any) *api.Result {
 		return res(false, reason)
 	}
 
+	kernelSpec, err := parseKernelRequest(cfg, recipe)
+	if err != nil {
+		m.clog.Log("createFromRecipe: %s", err.Error())
+		return res(false, __("Invalid kernel configuration: %s", err.Error()))
+	}
+
 	// Template detection: multi-app stacks are delegated to the template
 	// handler.
 	recipeName, _ := recipe["name"].(string)
@@ -280,6 +304,7 @@ func (m *Manager) createFromRecipe(cfg map[string]any) *api.Result {
 		if gpuSpec != nil {
 			app["gpu"] = gpuSpec.Map()
 		}
+		kernelSpec.Apply(app)
 		appID = app["id"]
 		m.apps = append(m.apps, app)
 		m.saveAppsLocked()
@@ -379,6 +404,20 @@ func (m *Manager) createFromTemplate(baseName, recipeName string, templateApps m
 			return res(false, reason)
 		}
 		gpuSpecs[key] = spec
+	}
+
+	// Phase 1c: capability / sysctl requests, validated for the whole stack
+	// for the same reason as the GPU ones — a template asking for a
+	// capability ODAC will not grant must fail before it half-deploys.
+	kernelSpecs := map[string]*kernel.Spec{}
+	for _, key := range orderedKeys {
+		appDef, _ := templateApps[key].(map[string]any)
+		spec, kerr := parseKernelRequest(appDef, nil)
+		if kerr != nil {
+			m.clog.Log("createFromTemplate: %s (%s)", kerr.Error(), key)
+			return res(false, __("Invalid kernel configuration for %s: %s", key, kerr.Error()))
+		}
+		kernelSpecs[key] = spec
 	}
 
 	// Phase 2: container names — Cloud-provided or locally generated.
@@ -515,6 +554,7 @@ func (m *Manager) createFromTemplate(baseName, recipeName string, templateApps m
 				if spec := gpuSpecs[key]; spec != nil {
 					app["gpu"] = spec.Map()
 				}
+				kernelSpecs[key].Apply(app)
 				appID = app["id"]
 				m.apps = append(m.apps, app)
 				m.saveAppsLocked()
@@ -614,6 +654,14 @@ func (m *Manager) createFromGit(cfg map[string]any) *api.Result {
 	// the `docker build -t` command run with host docker.sock access.
 	if !validAppName(name) {
 		return res(false, __("Invalid app name."))
+	}
+
+	// Validated before the clone: an unknown capability is a payload bug,
+	// and finding it out after a multi-minute clone and build wastes both.
+	kernelSpec, kerr := parseKernelRequest(cfg, nil)
+	if kerr != nil {
+		m.clog.Log("createFromGit: %s", kerr.Error())
+		return res(false, __("Invalid kernel configuration: %s", kerr.Error()))
 	}
 
 	exists := false
@@ -741,6 +789,7 @@ func (m *Manager) createFromGit(cfg map[string]any) *api.Result {
 		if branch != "" {
 			app["branch"] = branch
 		}
+		kernelSpec.Apply(app)
 		appID = app["id"]
 		m.apps = append(m.apps, app)
 		m.saveAppsLocked()

@@ -740,6 +740,18 @@ func (m *Manager) SetPorts(id any, portsPayload []any, payloadOK bool) *api.Resu
 		if isPublic && hv == ports.Proxy {
 			return res(false, __("A \"%s\" port cannot be public. Give it a host port to publish it.", ports.Proxy))
 		}
+
+		// The transport is validated here rather than defaulted, because
+		// this is the path a user's first config edit takes: swallowing an
+		// unreadable `proto` would quietly republish a VPN's tunnel as TCP,
+		// which listens and answers nothing.
+		proto, ok := ports.ParseProto(entry["proto"])
+		if !ok {
+			return res(false, __("Invalid protocol: %s. Must be \"%s\" or \"%s\".", jsString(entry["proto"]), ports.TCP, ports.UDP))
+		}
+		if proto == ports.UDP && hv == ports.Proxy {
+			return res(false, __("A \"%s\" port cannot be %s: the proxy routes HTTP over TCP. Publish it on a host port instead.", ports.Proxy, ports.UDP))
+		}
 		entries = append(entries, entry)
 	}
 
@@ -1024,6 +1036,7 @@ func (m *Manager) SetNetworkMode(id any, mode string) *api.Result {
 	// a View nested inside a Mutate deadlocks.
 	var name string
 	var idNum float64
+	var netSysctls []string
 	found, isolated := false, false
 	m.cfg.View(func() {
 		if app := m.getLocked(id); app != nil {
@@ -1031,6 +1044,7 @@ func (m *Manager) SetNetworkMode(id any, mode string) *api.Result {
 			name, _ = app["name"].(string)
 			idNum, _ = app["id"].(float64)
 			isolated = jsTruthy(app["isolated"])
+			netSysctls = toKernel(app).NetSysctls()
 		}
 	})
 	if !found {
@@ -1064,6 +1078,15 @@ func (m *Manager) SetNetworkMode(id any, mode string) *api.Result {
 			delete(app, "networkMode")
 		} else {
 			app["networkMode"] = parsed
+			// A host-namespace container configures the host's own network
+			// namespace, so the engine refuses a create carrying net.*
+			// sysctls outright — and a refused create is not a visible
+			// failure, it is a container recreated on every check tick.
+			// They are dropped here, named in the reply, rather than left to
+			// turn the app into a respawn loop.
+			if len(netSysctls) > 0 {
+				toKernel(app).WithoutNetSysctls().Apply(app)
+			}
 		}
 		// The cached address belongs to the old namespace; keeping it would
 		// point the proxy at a dead bridge IP (or a stale loopback) until the
@@ -1072,6 +1095,11 @@ func (m *Manager) SetNetworkMode(id any, mode string) *api.Result {
 		m.saveAppsLocked()
 
 		if parsed == netmode.Host {
+			if len(netSysctls) > 0 {
+				result = res(true, __("%s now uses HOST networking (no network isolation from the host). Dropped the network sysctls %s: they configure the host's own namespace, so set them on the host instead. Restart required to apply.",
+					app["name"], strings.Join(netSysctls, ", ")))
+				return
+			}
 			result = res(true, __("%s now uses HOST networking (no network isolation from the host). Restart required to apply.", app["name"]))
 			return
 		}
