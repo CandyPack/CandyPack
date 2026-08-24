@@ -131,8 +131,8 @@ func init() {
 					},
 				}},
 				{"gpu", &command{
-					description: "Reserve GPUs for an app: --nvidia, --amd or --intel (auto-detected when omitted), --count N for part of the host. Use --off to release. Restart required.",
-					args:        []string{"-i", "--id", "--nvidia", "--amd", "--intel", "--count", "--off"},
+					description: "Reserve GPUs for an app: --nvidia, --amd or --intel (auto-detected when omitted), --count N for part of the host, --optional to fall back to the CPU when the host has no GPU. Use --off to release. Restart required.",
+					args:        []string{"-i", "--id", "--nvidia", "--amd", "--intel", "--count", "--optional", "--off"},
 					action:      appGPUAction,
 				}},
 				{"isolate", &command{
@@ -516,7 +516,9 @@ func appNetworkAction(a *app, args []string) int {
 
 // appGPUAction reserves host GPUs for an app. The vendor flags are optional:
 // with none of them the server infers the runtime from the card it detected,
-// which is the zero-config path on a single-GPU host.
+// which is the zero-config path on a single-GPU host. --optional turns the
+// reservation into a preference, for the many apps that accelerate when a
+// card is there and run on the CPU when it is not.
 func appGPUAction(a *app, args []string) int {
 	// --count consumes a value, and appIDArg takes the first bare argument
 	// as the app, so that value must not still be sitting in the slice.
@@ -537,6 +539,9 @@ func appGPUAction(a *app, args []string) int {
 	}
 	if count := parseArg(args, "--count"); count != "" {
 		request["count"] = count
+	}
+	if slices.Contains(args, "--optional") {
+		request["optional"] = true
 	}
 	return a.call("app.gpu", []any{appID, request}, false)
 }

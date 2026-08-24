@@ -206,6 +206,11 @@ func (m *Manager) runGitApp(id any, containerName string) error {
 		return errors.New("app not found")
 	}
 
+	// Outside the config lock on purpose: parsing the persisted object is
+	// pure and stays under it, but resolving asks the host what it can do,
+	// and that probe must not stall the config mutex.
+	s.gpu = m.resolveGPU(s.name, s.gpu)
+
 	env := envToStrings(s.env)
 
 	// API permission injection.
@@ -249,7 +254,7 @@ func (m *Manager) runGitApp(id any, containerName string) error {
 		return nil
 	}
 
-	started, err := m.deps.Docker.RunApp(s.name, runOptions, nil, func() bool { return m.appDeleted(id) })
+	started, err := m.startWithGPUFallback(s.name, runOptions, nil, func() bool { return m.appDeleted(id) })
 	if err != nil {
 		return err
 	}
@@ -338,6 +343,11 @@ func (m *Manager) runContainer(id any, containerName string, logCtrl *applog.Bui
 		return errors.New("app not found")
 	}
 
+	// Outside the config lock on purpose: parsing the persisted object is
+	// pure and stays under it, but resolving asks the host what it can do,
+	// and that probe must not stall the config mutex.
+	s.gpu = m.resolveGPU(s.name, s.gpu)
+
 	// Pull the image FIRST so subsequent inspections (port, user) have
 	// metadata available.
 	var pullLog io.Writer
@@ -391,7 +401,7 @@ func (m *Manager) runContainer(id any, containerName string, logCtrl *applog.Bui
 		return nil
 	}
 
-	started, err := m.deps.Docker.RunApp(s.name, runOptions, buildLog, func() bool { return m.appDeleted(id) })
+	started, err := m.startWithGPUFallback(s.name, runOptions, buildLog, func() bool { return m.appDeleted(id) })
 	if err != nil {
 		return err
 	}
@@ -564,6 +574,11 @@ func (m *Manager) runScriptContainer(id any) error {
 		return errors.New("app not found")
 	}
 
+	// Outside the config lock on purpose: parsing the persisted object is
+	// pure and stays under it, but resolving asks the host what it can do,
+	// and that probe must not stall the config mutex.
+	s.gpu = m.resolveGPU(s.name, s.gpu)
+
 	filename := filepath.Base(s.file)
 	dir := filepath.Dir(s.file)
 	runner := runnerFor(filename)
@@ -593,7 +608,7 @@ func (m *Manager) runScriptContainer(id any) error {
 	}
 	m.applyPrivilege(s.name, s.privileged, &runOptions)
 
-	_, err := m.deps.Docker.RunApp(s.name, runOptions, nil, nil)
+	_, err := m.startWithGPUFallback(s.name, runOptions, nil, nil)
 	return err
 }
 

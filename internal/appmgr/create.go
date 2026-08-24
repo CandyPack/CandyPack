@@ -106,6 +106,13 @@ func (m *Manager) checkGPUHost(spec *gpu.Spec) string {
 	if spec == nil || m.deps.GPUHost == nil {
 		return ""
 	}
+	// An optional request has an answer for a host that cannot serve it:
+	// run on the CPU. Refusing the create here would turn "accelerate when
+	// you can" into "never install on this host", which is the opposite of
+	// what it asks for. resolveGPU drops it at start instead.
+	if spec.Optional {
+		return ""
+	}
 	if m.deps.GPUHost.CanPassthrough(spec.Runtime) {
 		return ""
 	}

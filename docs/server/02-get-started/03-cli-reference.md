@@ -134,6 +134,7 @@ Reserve host GPUs for an application. See [GPU Reservation](../03-app/09-gpu-res
 odac app gpu my-app                     # Reserve the detected GPU, all devices
 odac app gpu my-app --nvidia            # Name the runtime (--amd, --intel)
 odac app gpu my-app --nvidia --count 2  # Reserve two devices
+odac app gpu my-app --optional          # Use a GPU when the host has one, else CPU
 odac app gpu my-app --off               # Release the reservation
 ```
 

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -1010,14 +1011,90 @@ func (c *Client) GetImageExposedPorts(imageName string) []int {
 
 // Status is Container.getStatus's shape.
 type Status struct {
-	Running   bool     `json:"running"`
-	Restarts  int      `json:"restarts"`
-	StartTime string   `json:"startTime,omitempty"`
-	Networks  []string `json:"networks,omitempty"`
+	Running   bool           `json:"running"`
+	Restarts  int            `json:"restarts"`
+	StartTime string         `json:"startTime,omitempty"`
+	Networks  []string       `json:"networks,omitempty"`
+	GPU       *GPUAttachment `json:"gpu,omitempty"`
 }
 
-// GetStatus returns run state, restart count, start time and networks
-// (zero Status on errors).
+// GPUAttachment is the accelerator a container actually holds, read back from
+// the engine instead of from the app's request.
+//
+// The two genuinely differ. An optional reservation falls back to the CPU on
+// a host that cannot serve it, and the fallback can happen at the engine's
+// refusal rather than at ODAC's pre-flight, so the config alone can no longer
+// answer "is this app using a GPU right now". Only the container can.
+type GPUAttachment struct {
+	// Vendor is inferred from the passthrough shape, which is unambiguous:
+	// only NVIDIA uses DeviceRequests, and only ROCm carries /dev/kfd.
+	Vendor string `json:"vendor"`
+	// Nodes are the device paths the container holds, empty for NVIDIA
+	// (whose runtime injects the devices itself). These are the paths as
+	// passed, so Intel and ROCm report the /dev/dri directory rather than
+	// the individual renderD* nodes the daemon expands it into.
+	Nodes []string `json:"nodes,omitempty"`
+	// Count is the NVIDIA device count, gpu.CountAll for every device.
+	Count int `json:"count,omitempty"`
+}
+
+// gpuNodePaths is the set of device paths that mean "this is GPU passthrough"
+// rather than an app-declared device. Derived from renderDeviceNodes so the
+// reader and the writer can never drift apart.
+var gpuNodePaths = func() map[string]bool {
+	set := map[string]bool{}
+	for _, nodes := range renderDeviceNodes {
+		for _, node := range nodes {
+			set[node] = true
+		}
+	}
+	return set
+}()
+
+// gpuAttachment reads a container's GPU passthrough back out of its host
+// config, nil when it has none. It runs off an inspect the caller already
+// made: List calls GetStatus once per app, and a second round-trip per app
+// to answer the same question would be a Docker call per row.
+func gpuAttachment(hostConfig *container.HostConfig) *GPUAttachment {
+	if hostConfig == nil {
+		return nil
+	}
+	for _, request := range hostConfig.Resources.DeviceRequests {
+		if strings.EqualFold(request.Driver, gpu.RuntimeNvidia) || requestsGPUCapability(request) {
+			return &GPUAttachment{Vendor: gpu.VendorNvidia, Count: request.Count}
+		}
+	}
+
+	var nodes []string
+	for _, device := range hostConfig.Resources.Devices {
+		if gpuNodePaths[device.PathOnHost] {
+			nodes = append(nodes, device.PathOnHost)
+		}
+	}
+	if len(nodes) == 0 {
+		return nil
+	}
+	// /dev/kfd is the ROCm compute interface; Intel passthrough is DRM only.
+	vendor := gpu.VendorIntel
+	if slices.Contains(nodes, "/dev/kfd") {
+		vendor = gpu.VendorAMD
+	}
+	return &GPUAttachment{Vendor: vendor, Nodes: nodes}
+}
+
+// requestsGPUCapability recognises a DeviceRequest that names no driver but
+// asks for the "gpu" capability, the shape `docker run --gpus all` produces.
+func requestsGPUCapability(request container.DeviceRequest) bool {
+	for _, set := range request.Capabilities {
+		if slices.Contains(set, "gpu") {
+			return true
+		}
+	}
+	return false
+}
+
+// GetStatus returns run state, restart count, start time, networks and the
+// GPU the container actually holds (zero Status on errors).
 func (c *Client) GetStatus(name string) Status {
 	if !c.available {
 		return Status{}
@@ -1041,7 +1118,7 @@ func (c *Client) GetStatus(name string) Status {
 		networks = []string{string(data.HostConfig.NetworkMode)}
 	}
 
-	st := Status{Restarts: data.RestartCount, Networks: networks}
+	st := Status{Restarts: data.RestartCount, Networks: networks, GPU: gpuAttachment(data.HostConfig)}
 	if data.State != nil {
 		st.Running = data.State.Running
 		st.StartTime = data.State.StartedAt

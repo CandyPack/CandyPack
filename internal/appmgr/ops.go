@@ -1165,11 +1165,11 @@ func (m *Manager) SetIsolated(id any, isolated bool) *api.Result {
 // this is the path for an app that was created without one, or that has
 // outgrown the CPU.
 //
-// request is the app.create `gpu` object (runtime/vendor/count); nil, false
-// or "off" releases the reservation. An object that names neither runtime
-// nor vendor inherits the host's detected runtime, so the common case needs
-// no vendor at all. Persisted only: a container's device requests are fixed
-// at create time, so it takes a restart.
+// request is the app.create `gpu` object (runtime/vendor/count/optional);
+// nil, false or "off" releases the reservation. An object that names neither
+// runtime nor vendor inherits the host's detected runtime, so the common case
+// needs no vendor at all. Persisted only: a container's device requests are
+// fixed at create time, so it takes a restart.
 func (m *Manager) SetGPU(id any, request any) *api.Result {
 	wanted, reserve, err := gpuRequest(request)
 	if err != nil {
@@ -1178,13 +1178,18 @@ func (m *Manager) SetGPU(id any, request any) *api.Result {
 
 	var spec *gpu.Spec
 	if reserve {
-		if gpuFieldEmpty(wanted, "runtime") && gpuFieldEmpty(wanted, "vendor") {
+		// A bare request pins the host's current card, so `odac app list`
+		// shows what the app actually holds. An optional one deliberately
+		// does not: it stays unresolved on purpose, so the app follows the
+		// host across a card being added or removed instead of freezing
+		// today's answer into the config.
+		if gpuFieldEmpty(wanted, "runtime") && gpuFieldEmpty(wanted, "vendor") && !jsTruthy(wanted["optional"]) {
 			runtime := ""
 			if m.deps.GPUHost != nil {
 				runtime = m.deps.GPUHost.GPURuntime()
 			}
 			if runtime == "" {
-				return res(false, __("No GPU was detected on this host. Name the runtime explicitly (--nvidia, --amd or --intel) if ODAC cannot see the card from inside its container."))
+				return res(false, __("No GPU was detected on this host. Name the runtime explicitly (--nvidia, --amd or --intel), or pass --optional to run on the CPU until one appears."))
 			}
 			wanted["runtime"] = runtime
 		}
@@ -1478,6 +1483,11 @@ func (m *Manager) List(detailed bool) *api.Result {
 		}
 		if len(statusInfo.Networks) > 0 {
 			cp["networks"] = statusInfo.Networks
+		}
+		// Only apps that asked for a GPU get the answer: inventing the member
+		// on every other row would mark them all changed for nothing.
+		if request, ok := cp["gpu"].(map[string]any); ok {
+			cp["gpu"] = gpuRow(request, isRunning, statusInfo.GPU)
 		}
 		if isRunning && statusInfo.StartTime != "" {
 			if t, err := time.Parse(time.RFC3339Nano, statusInfo.StartTime); err == nil {
