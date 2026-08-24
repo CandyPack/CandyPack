@@ -17,6 +17,7 @@ import (
 	"odac/internal/gpu"
 	"odac/internal/kernel"
 	"odac/internal/ports"
+	"odac/internal/resources"
 )
 
 var (
@@ -58,6 +59,20 @@ func parseKernelRequest(payload, recipe any) (*kernel.Spec, error) {
 		return spec, err
 	}
 	return kernel.Parse(recipe)
+}
+
+// parseResourcesRequest validates the `shmSize` member of a create payload,
+// falling back to the recipe's own declaration when the payload carries
+// none. Same precedence as the GPU and kernel requests: a recipe knows that
+// its image needs a bigger /dev/shm (Frigate does), but an explicit request
+// from the Cloud wins because only the operator knows how many cameras are
+// pointed at it.
+func parseResourcesRequest(payload, recipe any) (*resources.Spec, error) {
+	spec, err := resources.Parse(payload)
+	if err != nil || spec != nil {
+		return spec, err
+	}
+	return resources.Parse(recipe)
 }
 
 // startFailureMessage words a failed start for the Cloud. The GPU case gets
@@ -218,6 +233,12 @@ func (m *Manager) createFromRecipe(cfg map[string]any) *api.Result {
 		return res(false, __("Invalid kernel configuration: %s", err.Error()))
 	}
 
+	resourceSpec, err := parseResourcesRequest(cfg, recipe)
+	if err != nil {
+		m.clog.Log("createFromRecipe: %s", err.Error())
+		return res(false, __("Invalid resource configuration: %s", err.Error()))
+	}
+
 	// Template detection: multi-app stacks are delegated to the template
 	// handler.
 	recipeName, _ := recipe["name"].(string)
@@ -305,6 +326,7 @@ func (m *Manager) createFromRecipe(cfg map[string]any) *api.Result {
 			app["gpu"] = gpuSpec.Map()
 		}
 		kernelSpec.Apply(app)
+		resourceSpec.Apply(app)
 		appID = app["id"]
 		m.apps = append(m.apps, app)
 		m.saveAppsLocked()
@@ -418,6 +440,20 @@ func (m *Manager) createFromTemplate(baseName, recipeName string, templateApps m
 			return res(false, __("Invalid kernel configuration for %s: %s", key, kerr.Error()))
 		}
 		kernelSpecs[key] = spec
+	}
+
+	// Phase 1d: resource sizing, same shape and same reason: a stack whose
+	// detector asks for an unreadable /dev/shm must fail before any of its
+	// containers exist.
+	resourceSpecs := map[string]*resources.Spec{}
+	for _, key := range orderedKeys {
+		appDef, _ := templateApps[key].(map[string]any)
+		spec, rerr := parseResourcesRequest(appDef, nil)
+		if rerr != nil {
+			m.clog.Log("createFromTemplate: %s (%s)", rerr.Error(), key)
+			return res(false, __("Invalid resource configuration for %s: %s", key, rerr.Error()))
+		}
+		resourceSpecs[key] = spec
 	}
 
 	// Phase 2: container names — Cloud-provided or locally generated.
@@ -555,6 +591,7 @@ func (m *Manager) createFromTemplate(baseName, recipeName string, templateApps m
 					app["gpu"] = spec.Map()
 				}
 				kernelSpecs[key].Apply(app)
+				resourceSpecs[key].Apply(app)
 				appID = app["id"]
 				m.apps = append(m.apps, app)
 				m.saveAppsLocked()
@@ -662,6 +699,12 @@ func (m *Manager) createFromGit(cfg map[string]any) *api.Result {
 	if kerr != nil {
 		m.clog.Log("createFromGit: %s", kerr.Error())
 		return res(false, __("Invalid kernel configuration: %s", kerr.Error()))
+	}
+
+	resourceSpec, rerr := parseResourcesRequest(cfg, nil)
+	if rerr != nil {
+		m.clog.Log("createFromGit: %s", rerr.Error())
+		return res(false, __("Invalid resource configuration: %s", rerr.Error()))
 	}
 
 	exists := false
@@ -790,6 +833,7 @@ func (m *Manager) createFromGit(cfg map[string]any) *api.Result {
 			app["branch"] = branch
 		}
 		kernelSpec.Apply(app)
+		resourceSpec.Apply(app)
 		appID = app["id"]
 		m.apps = append(m.apps, app)
 		m.saveAppsLocked()

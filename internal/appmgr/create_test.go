@@ -1390,6 +1390,158 @@ func TestCreateRejectsDisallowedKernelRequest(t *testing.T) {
 	}
 }
 
+// The Frigate shape: a bigger /dev/shm asked for at the payload root,
+// persisted as a canonical byte count and handed to the engine.
+func TestCreateWithShmSize(t *testing.T) {
+	fx := newFixture(t, []any{})
+	fx.setRecipe(map[string]any{"name": "frigate", "image": "blakeblackshear/frigate"})
+
+	r := fx.m.Create(map[string]any{
+		"type": "app", "app": "frigate", "name": "frigate-a1b2c3",
+		"shmSize": "512m",
+	})
+	if !r.Status {
+		t.Fatalf("create failed: %v", r.Message)
+	}
+	fx.waitIdle(t)
+
+	app := fx.findApp("frigate-a1b2c3")
+	if app == nil {
+		t.Fatal("app not persisted")
+	}
+	if app["shmSize"] != float64(512<<20) {
+		t.Fatalf("persisted shmSize = %v, want %v", app["shmSize"], float64(512<<20))
+	}
+	if spec := fx.dock.runCallAt(0).options.Resources; spec.Shm() != 512<<20 {
+		t.Fatalf("RunOptions.Resources = %+v", spec)
+	}
+}
+
+// A recipe may size its own image's /dev/shm; an explicit payload still
+// wins, because only the operator knows how many cameras are pointed at it.
+func TestCreateShmSizePayloadOverridesRecipe(t *testing.T) {
+	fx := newFixture(t, []any{})
+	fx.setRecipe(map[string]any{
+		"name": "frigate", "image": "blakeblackshear/frigate",
+		"shmSize": "256m",
+	})
+	if r := fx.m.Create(map[string]any{"type": "app", "app": "frigate", "name": "recipe-shm"}); !r.Status {
+		t.Fatalf("create failed: %v", r.Message)
+	}
+	fx.waitIdle(t)
+	if spec := fx.dock.runCallAt(0).options.Resources; spec.Shm() != 256<<20 {
+		t.Fatalf("recipe shmSize ignored: %+v", spec)
+	}
+
+	fx2 := newFixture(t, []any{})
+	fx2.setRecipe(map[string]any{
+		"name": "frigate", "image": "blakeblackshear/frigate",
+		"shmSize": "256m",
+	})
+	if r := fx2.m.Create(map[string]any{
+		"type": "app", "app": "frigate", "name": "payload-shm",
+		"shmSize": float64(1 << 30),
+	}); !r.Status {
+		t.Fatalf("create failed: %v", r.Message)
+	}
+	fx2.waitIdle(t)
+	if spec := fx2.dock.runCallAt(0).options.Resources; spec.Shm() != 1<<30 {
+		t.Fatalf("payload shmSize did not win: %+v", spec)
+	}
+}
+
+// Every other app's record and container config must be what it was before
+// the field existed.
+func TestCreateWithoutShmSize(t *testing.T) {
+	fx := newFixture(t, []any{})
+	fx.setRecipe(map[string]any{"name": "redis", "image": "redis:alpine"})
+
+	if r := fx.m.Create(map[string]any{"type": "app", "app": "redis", "name": "plain-shm"}); !r.Status {
+		t.Fatalf("create failed: %v", r.Message)
+	}
+	fx.waitIdle(t)
+
+	if app := fx.findApp("plain-shm"); app != nil {
+		if _, present := app["shmSize"]; present {
+			t.Fatalf("app carries a shmSize key: %v", app["shmSize"])
+		}
+	}
+	if spec := fx.dock.runCallAt(0).options.Resources; spec != nil {
+		t.Fatalf("RunOptions.Resources = %+v, want nil", spec)
+	}
+}
+
+// An unreadable size fails the create rather than falling back to the
+// default: an app sized for shared memory that silently gets 64 MiB dies
+// under load with nothing naming the cause.
+func TestCreateRejectsBadShmSize(t *testing.T) {
+	for _, value := range []any{"512", "lots", float64(int64(1) << 40), float64(-1)} {
+		fx := newFixture(t, []any{})
+		fx.setRecipe(map[string]any{"name": "frigate", "image": "blakeblackshear/frigate"})
+
+		r := fx.m.Create(map[string]any{
+			"type": "app", "app": "frigate", "name": "bad-shm",
+			"shmSize": value,
+		})
+		if r.Status || !strings.Contains(jsString(r.Message), "Invalid resource configuration") {
+			t.Fatalf("shmSize %v: r = %+v", value, r)
+		}
+		if fx.appCount() != 0 || fx.dock.runCallCount() != 0 {
+			t.Fatalf("a rejected create must persist and start nothing: %d apps, %d runs", fx.appCount(), fx.dock.runCallCount())
+		}
+	}
+}
+
+// Template shape: the size belongs to the container that needs it, and a bad
+// one fails the stack before a single container exists.
+func TestTemplateShmSizePerContainer(t *testing.T) {
+	fx := newFixture(t, []any{})
+
+	r := fx.m.Create(map[string]any{
+		"type": "template", "name": "nvr",
+		"apps": map[string]any{
+			"ui": map[string]any{"container": "nvr-ui", "image": "nginx"},
+			"detector": map[string]any{
+				"container": "nvr-detector", "image": "blakeblackshear/frigate",
+				"linked":  []any{"ui"},
+				"shmSize": "512m",
+			},
+		},
+	})
+	if !r.Status {
+		t.Fatalf("create failed: %v", r.Message)
+	}
+	fx.waitIdle(t)
+
+	if detector := fx.findApp("nvr-detector"); detector["shmSize"] != float64(512<<20) {
+		t.Fatalf("detector shmSize = %v", detector["shmSize"])
+	}
+	if ui := fx.findApp("nvr-ui"); ui != nil {
+		if _, present := ui["shmSize"]; present {
+			t.Fatalf("the plain member must not inherit shmSize: %v", ui["shmSize"])
+		}
+	}
+
+	bad := newFixture(t, []any{})
+	r = bad.m.Create(map[string]any{
+		"type": "template", "name": "nvr",
+		"apps": map[string]any{
+			"ui": map[string]any{"container": "bad-ui", "image": "nginx"},
+			"detector": map[string]any{
+				"container": "bad-detector", "image": "blakeblackshear/frigate",
+				"linked":  []any{"ui"},
+				"shmSize": "512",
+			},
+		},
+	})
+	if r.Status || !strings.Contains(jsString(r.Message), "Invalid resource configuration") {
+		t.Fatalf("bad template shmSize: r = %+v", r)
+	}
+	if bad.appCount() != 0 || bad.dock.runCallCount() != 0 {
+		t.Fatalf("a rejected template must persist and start nothing: %d apps, %d runs", bad.appCount(), bad.dock.runCallCount())
+	}
+}
+
 // Template shape: caps live per container under apps.<key>, and only that
 // member gets them.
 func TestTemplateKernelPerContainer(t *testing.T) {

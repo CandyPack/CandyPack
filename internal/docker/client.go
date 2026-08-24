@@ -46,6 +46,7 @@ import (
 	"odac/internal/logx"
 	"odac/internal/netmode"
 	"odac/internal/ports"
+	"odac/internal/resources"
 )
 
 // networkName is the shared bridge network every ODAC app joins.
@@ -131,6 +132,10 @@ type RunOptions struct {
 	// config to what it produced before the field existed. SECURITY: every
 	// name in it passed kernel's allowlist; do not fill it from raw payload.
 	Kernel *kernel.Spec
+	// Resources is the validated sizing request, nil for an app that asked
+	// for none, which must produce byte-identical container config to what
+	// it produced before the field existed.
+	Resources *resources.Spec
 }
 
 // BuildLog is the phase-aware build log control the container operations
@@ -505,6 +510,22 @@ func (c *Client) kernelHostConfig(name string, spec *kernel.Spec, hostNetwork bo
 	return out
 }
 
+// shmHostConfig translates a validated sizing request into the /dev/shm
+// size, 0 meaning "leave the engine's 64 MiB default alone", which is what
+// every app that never asked for this gets, byte for byte.
+//
+// It is logged because /dev/shm is a RAM-backed tmpfs: the pages a container
+// puts there come out of the host's memory, so a host under pressure needs a
+// record of which containers were handed a bigger one.
+func (c *Client) shmHostConfig(name string, spec *resources.Spec) int64 {
+	size := spec.Shm()
+	if size <= 0 {
+		return 0
+	}
+	c.log.Log("App %s runs with a %s /dev/shm (default is %s).", name, resources.FormatSize(size), resources.FormatSize(resources.DefaultShmSize))
+	return size
+}
+
 // gpuHostSpec is the host-config contribution of a GPU request.
 type gpuHostSpec struct {
 	requests []container.DeviceRequest
@@ -651,6 +672,7 @@ func (c *Client) RunApp(name string, options RunOptions, buildLog BuildLog, isCa
 	}
 
 	kernelSpec := c.kernelHostConfig(name, options.Kernel, hostNetwork)
+	shmSize := c.shmHostConfig(name, options.Resources)
 
 	c.log.Log("Starting app container %s (%s)...", name, options.Image)
 
@@ -696,6 +718,7 @@ func (c *Client) RunApp(name string, options RunOptions, buildLog BuildLog, isCa
 		Privileged:    options.Privileged,
 		CapAdd:        kernelSpec.caps,
 		Sysctls:       kernelSpec.sysctls,
+		ShmSize:       shmSize,
 	}
 
 	created, err := c.api.ContainerCreate(ctx, cfg, hostCfg, nil, nil, name)

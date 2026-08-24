@@ -16,6 +16,7 @@ import (
 	"odac/internal/gpu"
 	"odac/internal/kernel"
 	"odac/internal/ports"
+	"odac/internal/resources"
 )
 
 // scriptRunner mirrors SCRIPT_RUNNERS.
@@ -140,6 +141,7 @@ func (m *Manager) runGitApp(id any, containerName string) error {
 		networkMode           string
 		isolated              bool
 		kernel                *kernel.Spec
+		resources             *resources.Spec
 		port                  int
 	}
 	var s snap
@@ -169,6 +171,7 @@ func (m *Manager) runGitApp(id any, containerName string) error {
 		s.networkMode = toNetworkMode(app["networkMode"])
 		s.isolated = jsTruthy(app["isolated"])
 		s.kernel = toKernel(app)
+		s.resources = toResources(app)
 		s.cmd = toCmd(app["cmd"])
 		s.volumes = toMounts(app["volumes"])
 		s.devices = toDevices(app["devices"])
@@ -227,6 +230,7 @@ func (m *Manager) runGitApp(id any, containerName string) error {
 		NetworkMode: s.networkMode,
 		Isolated:    s.isolated,
 		Kernel:      s.kernel,
+		Resources:   s.resources,
 	}
 
 	// In dev mode the mounted host directory is owned by the host user/root;
@@ -286,6 +290,7 @@ func (m *Manager) runContainer(id any, containerName string, logCtrl *applog.Bui
 		networkMode           string
 		isolated              bool
 		kernel                *kernel.Spec
+		resources             *resources.Spec
 	}
 	var s snap
 	found := false
@@ -309,6 +314,7 @@ func (m *Manager) runContainer(id any, containerName string, logCtrl *applog.Bui
 		s.networkMode = toNetworkMode(app["networkMode"])
 		s.isolated = jsTruthy(app["isolated"])
 		s.kernel = toKernel(app)
+		s.resources = toResources(app)
 		s.cmd = toCmd(app["cmd"])
 		s.volumes = toMounts(app["volumes"])
 		s.devices = toDevices(app["devices"])
@@ -372,6 +378,7 @@ func (m *Manager) runContainer(id any, containerName string, logCtrl *applog.Bui
 		NetworkMode: s.networkMode,
 		Isolated:    s.isolated,
 		Kernel:      s.kernel,
+		Resources:   s.resources,
 	}
 	m.applyPrivilege(s.name, s.privileged, &runOptions)
 
@@ -525,6 +532,7 @@ func (m *Manager) runScriptContainer(id any) error {
 		networkMode          string
 		isolated             bool
 		kernel               *kernel.Spec
+		resources            *resources.Spec
 	}
 	var s snap
 	found := false
@@ -544,6 +552,7 @@ func (m *Manager) runScriptContainer(id any) error {
 		s.networkMode = toNetworkMode(app["networkMode"])
 		s.isolated = jsTruthy(app["isolated"])
 		s.kernel = toKernel(app)
+		s.resources = toResources(app)
 		s.devices = toDevices(app["devices"])
 		s.gpu = toGPU(app["gpu"])
 		if jsTruthy(app["api"]) {
@@ -580,6 +589,7 @@ func (m *Manager) runScriptContainer(id any) error {
 		NetworkMode: s.networkMode,
 		Isolated:    s.isolated,
 		Kernel:      s.kernel,
+		Resources:   s.resources,
 	}
 	m.applyPrivilege(s.name, s.privileged, &runOptions)
 

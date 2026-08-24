@@ -18,6 +18,7 @@ import (
 	"odac/internal/gpu"
 	"odac/internal/kernel"
 	"odac/internal/logx"
+	"odac/internal/resources"
 )
 
 func newTestClient(t *testing.T, f *fakeAPI) *Client {
@@ -1003,6 +1004,28 @@ func TestRunAppUDPPorts(t *testing.T) {
 
 // Capabilities and sysctls reach HostConfig verbatim, and an app that asked
 // for neither must produce the container config it always produced.
+// /dev/shm sizing reaches the host config, and an app that asked for none
+// keeps the engine default (0 means "unset" on the wire).
+func TestRunAppShmSize(t *testing.T) {
+	f := newFakeAPI()
+	f.images["img"] = image.InspectResponse{}
+	c := newTestClient(t, f)
+
+	if _, err := c.RunApp("frigate", RunOptions{Image: "img", Resources: &resources.Spec{ShmSize: 512 << 20}}, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.created[0].HostConfig.ShmSize; got != 512<<20 {
+		t.Errorf("shm size = %d, want %d", got, int64(512)<<20)
+	}
+
+	if _, err := c.RunApp("plain", RunOptions{Image: "img"}, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.created[1].HostConfig.ShmSize; got != 0 {
+		t.Errorf("an app requesting none must send 0, got %d", got)
+	}
+}
+
 func TestRunAppKernelSpec(t *testing.T) {
 	f := newFakeAPI()
 	f.images["img"] = image.InspectResponse{}

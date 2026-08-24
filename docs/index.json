@@ -79,6 +79,10 @@
         {
           "file": "10-kernel-capabilities.md",
           "title": "Capabilities & Sysctls"
+        },
+        {
+          "file": "11-shared-memory.md",
+          "title": "Shared Memory"
         }
       ]
     },
